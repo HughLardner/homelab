@@ -9,14 +9,14 @@ metadata:
 spec:
   secretName: grafana-tls
   issuerRef:
-    name: {{ grafana_cert_issuer | default('letsencrypt-staging') }}
+    name: letsencrypt-production
     kind: ClusterIssuer
   dnsNames:
-    - {{ grafana_domain }}
+    - grafana.silverseekers.org
 
 ---
 # Grafana IngressRoute
-# Access at: https://{{ grafana_domain }}
+# Access at: https://grafana.silverseekers.org
 apiVersion: traefik.io/v1alpha1
 kind: IngressRoute
 metadata:
@@ -28,10 +28,10 @@ spec:
   entryPoints:
     - websecure
   routes:
-    - match: Host(`{{ grafana_domain }}`)
+    - match: Host(`grafana.silverseekers.org`)
       kind: Rule
       services:
-        - name: kube-prometheus-grafana
+        - name: monitoring-grafana
           port: 80
   tls:
     secretName: grafana-tls
