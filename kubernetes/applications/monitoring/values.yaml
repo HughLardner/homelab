@@ -100,18 +100,9 @@ grafana:
   # Environment variables from secrets
   envFromSecret: grafana-admin-secret
 
-  # Datasources
-  datasources:
-    datasources.yaml:
-      apiVersion: 1
-      datasources:
-        - name: Prometheus
-          type: prometheus
-          url: http://kube-prometheus-prometheus:9090
-          access: proxy
-          isDefault: true
-          jsonData:
-            timeInterval: 30s
+  # Datasources - disabled, using chart's default Prometheus datasource
+  # The kube-prometheus-stack chart automatically configures Prometheus as default
+  datasources: {}
 
   # Default dashboards
   dashboardProviders:
