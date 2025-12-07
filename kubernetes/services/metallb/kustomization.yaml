@@ -11,6 +11,10 @@ resources:
   - ipaddresspool.yaml
   - l2advertisement.yaml
 
+# Patches for HA configuration
+patchesStrategicMerge:
+  - controller-ha-patch.yaml
+
 # Optional: Add common labels to all resources
 commonLabels:
   app.kubernetes.io/name: metallb

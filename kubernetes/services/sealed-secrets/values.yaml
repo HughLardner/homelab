@@ -35,13 +35,13 @@ resources:
     cpu: 50m
     memory: 64Mi
 
-# High availability (optional, for production)
-# replicas: 2
+# High availability (enabled for production)
+replicas: 2
 
 # Pod disruption budget
 podDisruptionBudget:
-  enabled: false
-  # minAvailable: 1
+  enabled: true
+  minAvailable: 1
 
 # Metrics
 metrics:
