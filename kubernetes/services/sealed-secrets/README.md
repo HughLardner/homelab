@@ -2,7 +2,7 @@
 
 **Purpose**: Encrypt Kubernetes secrets for safe storage in Git repositories
 
-**Status**: 🔲 Not yet deployed
+**Status**: ✅ Deployed
 
 **Repository**: [bitnami-labs/sealed-secrets](https://github.com/bitnami-labs/sealed-secrets)
 
