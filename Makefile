@@ -1,4 +1,4 @@
-.PHONY: help init plan apply destroy ssh-* k3s-* metallb-* longhorn-* cert-manager-* traefik-* argocd-* monitoring-* sealed-secrets-* root-app-deploy apps-list apps-status monitoring-secrets inventory clean
+.PHONY: help init plan apply destroy ssh-* k3s-* metallb-* longhorn-* cert-manager-* traefik-* argocd-* monitoring-* sealed-secrets-* seal-secrets root-app-deploy apps-list apps-status monitoring-secrets inventory clean
 
 # Default target
 help:
@@ -33,6 +33,7 @@ help:
 	@echo "  make argocd-ui            - Open ArgoCD web UI"
 	@echo "  make sealed-secrets-install - Install Sealed Secrets (Secret Encryption)"
 	@echo "  make sealed-secrets-status  - Check Sealed Secrets status"
+	@echo "  make seal-secrets           - Encrypt secrets from secrets.yml and commit to git"
 	@echo ""
 	@echo "ArgoCD GitOps Commands:"
 	@echo "  make root-app-deploy       - Deploy App-of-Apps (manages all applications)"
@@ -258,6 +259,19 @@ sealed-secrets-status:
 	@echo "  Linux:  See kubernetes/services/sealed-secrets/README.md"
 	@echo ""
 	@echo "📖 Documentation: kubernetes/services/sealed-secrets/README.md"
+
+seal-secrets:
+	@if [ ! -f secrets.yml ]; then \
+		echo "❌ secrets.yml not found!"; \
+		echo ""; \
+		echo "Create it from the template:"; \
+		echo "  cp secrets.example.yml secrets.yml"; \
+		echo ""; \
+		echo "Then fill in your secret values and run this command again."; \
+		exit 1; \
+	fi
+	@echo "Sealing secrets from secrets.yml..."
+	ansible-playbook ansible/playbooks/seal-secrets.yml
 
 # ============================================================================
 # ArgoCD GitOps Commands
