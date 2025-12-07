@@ -1,4 +1,4 @@
-.PHONY: help init plan apply destroy ssh-* k3s-* metallb-* longhorn-* cert-manager-* traefik-* argocd-* monitoring-* root-app-deploy apps-list apps-status inventory clean
+.PHONY: help init plan apply destroy ssh-* k3s-* metallb-* longhorn-* cert-manager-* traefik-* argocd-* monitoring-* root-app-deploy apps-list apps-status monitoring-secrets inventory clean
 
 # Default target
 help:
@@ -33,15 +33,16 @@ help:
 	@echo "  make argocd-ui            - Open ArgoCD web UI"
 	@echo ""
 	@echo "ArgoCD GitOps Commands:"
-	@echo "  make root-app-deploy      - Deploy App-of-Apps (manages all applications)"
-	@echo "  make apps-list            - List all ArgoCD applications"
-	@echo "  make apps-status          - Show status of all applications"
-	@echo "  make monitoring-deploy    - Deploy monitoring via ArgoCD (GitOps)"
-	@echo "  make monitoring-sync      - Sync monitoring application"
-	@echo "  make monitoring-install   - Install monitoring via Ansible (legacy)"
-	@echo "  make monitoring-status    - Check monitoring stack status"
-	@echo "  make grafana-ui           - Open Grafana dashboard"
-	@echo "  make prometheus-ui        - Port-forward Prometheus UI"
+	@echo "  make root-app-deploy       - Deploy App-of-Apps (manages all applications)"
+	@echo "  make apps-list             - List all ArgoCD applications"
+	@echo "  make apps-status           - Show status of all applications"
+	@echo "  make monitoring-secrets    - Create monitoring Kubernetes secrets (prerequisite)"
+	@echo "  make monitoring-deploy     - Deploy monitoring via ArgoCD (GitOps)"
+	@echo "  make monitoring-sync       - Sync monitoring application"
+	@echo "  make monitoring-install    - Install monitoring via Ansible (legacy)"
+	@echo "  make monitoring-status     - Check monitoring stack status"
+	@echo "  make grafana-ui            - Open Grafana dashboard"
+	@echo "  make prometheus-ui         - Port-forward Prometheus UI"
 	@echo "  make ping                 - Test connectivity to all nodes"
 	@echo ""
 	@echo "SSH Commands:"
@@ -264,11 +265,18 @@ apps-status:
 		kubectl get applications -n argocd -o wide; \
 	fi
 
+monitoring-secrets: inventory
+	@echo "Creating monitoring Kubernetes secrets..."
+	cd ansible && ansible-playbook playbooks/monitoring-secrets.yml
+
 monitoring-deploy:
 	@echo "Deploying Monitoring Stack via ArgoCD..."
 	kubectl apply -f kubernetes/applications/monitoring/application.yaml
 	@echo ""
 	@echo "✅ Monitoring application deployed!"
+	@echo ""
+	@echo "⚠️  IMPORTANT: Ensure secrets exist first:"
+	@echo "  make monitoring-secrets"
 	@echo ""
 	@echo "Monitor sync status:"
 	@echo "  make monitoring-sync"
