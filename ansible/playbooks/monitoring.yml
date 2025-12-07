@@ -27,7 +27,7 @@
     monitoring_namespace: monitoring
     monitoring_helm_repo: https://prometheus-community.github.io/helm-charts
     monitoring_helm_chart: kube-prometheus-stack
-    monitoring_helm_version: "67.6.1"  # Latest stable version
+    monitoring_helm_version: "79.12.0"  # Latest stable version
     monitoring_manifests_path: "{{ playbook_dir }}/../../kubernetes/services/monitoring"
 
   tasks:
