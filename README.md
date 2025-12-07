@@ -18,6 +18,7 @@ Production-ready Kubernetes (K3s) platform on Proxmox VE with complete GitOps wo
 - **Cert-Manager** automated TLS certificates via Let's Encrypt
 - **Traefik** ingress controller with HTTPS
 - **ArgoCD** GitOps continuous delivery platform
+- **Sealed Secrets** encrypted secrets for GitOps workflow
 
 ### Monitoring (ArgoCD/Helm)
 - **Grafana** metrics visualization (https://grafana.silverseekers.org)
@@ -42,6 +43,7 @@ make longhorn-install    # Distributed storage
 make cert-manager-install # TLS certificates
 make traefik-install     # Ingress controller
 make argocd-install      # GitOps platform
+make sealed-secrets-install # Secret encryption
 
 # 3. Deploy monitoring (requires secrets first)
 make monitoring-secrets  # Create Grafana credentials
@@ -78,6 +80,8 @@ make traefik-dashboard     # Open Traefik dashboard
 make argocd-install        # Install ArgoCD GitOps
 make argocd-ui             # Open ArgoCD UI
 make argocd-password       # Get ArgoCD admin password
+make sealed-secrets-install # Install Sealed Secrets
+make sealed-secrets-status  # Check Sealed Secrets status
 
 # Monitoring (ArgoCD/Ansible)
 make monitoring-secrets    # Create monitoring secrets (required first)
@@ -117,6 +121,7 @@ make help              # Show all commands
 - [Cert-Manager README](kubernetes/services/cert-manager/README.md) - TLS certificate automation
 - [Traefik README](kubernetes/services/traefik/README.md) - Ingress controller
 - [ArgoCD README](kubernetes/services/argocd/README.md) - GitOps platform
+- [Sealed Secrets README](kubernetes/services/sealed-secrets/README.md) - Secret encryption
 
 ### Monitoring
 - [Monitoring README](kubernetes/applications/monitoring/README.md) - Prometheus + Grafana stack

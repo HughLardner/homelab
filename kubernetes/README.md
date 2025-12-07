@@ -20,7 +20,8 @@ kubernetes/
     ├── longhorn/          # Distributed block storage
     ├── cert-manager/      # TLS certificate automation
     ├── traefik/           # Ingress controller
-    └── argocd/            # GitOps platform
+    ├── argocd/            # GitOps platform
+    └── sealed-secrets/    # Secret encryption for GitOps
 ```
 
 ## Purpose and Philosophy
@@ -296,6 +297,7 @@ data:
 - [x] **Cert-Manager** - Automated TLS certificates via Let's Encrypt
 - [x] **Traefik** - Ingress controller with HTTPS (192.168.10.146)
 - [x] **ArgoCD** - GitOps continuous delivery platform
+- [x] **Sealed Secrets** - Encrypt secrets for safe storage in Git
 
 ### Monitoring ⚠️
 - [x] **Grafana** - Metrics dashboards (https://grafana.silverseekers.org)
@@ -320,7 +322,6 @@ data:
 - [ ] **jaeger** - Distributed tracing UI
 
 ### Security
-- [ ] **sealed-secrets** - Encrypted secrets in git
 - [ ] **vault** - Secret management
 - [ ] **falco** - Runtime security
 - [ ] **trivy** - Vulnerability scanning

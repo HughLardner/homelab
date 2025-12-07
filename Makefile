@@ -1,4 +1,4 @@
-.PHONY: help init plan apply destroy ssh-* k3s-* metallb-* longhorn-* cert-manager-* traefik-* argocd-* monitoring-* root-app-deploy apps-list apps-status monitoring-secrets inventory clean
+.PHONY: help init plan apply destroy ssh-* k3s-* metallb-* longhorn-* cert-manager-* traefik-* argocd-* monitoring-* sealed-secrets-* root-app-deploy apps-list apps-status monitoring-secrets inventory clean
 
 # Default target
 help:
@@ -31,6 +31,8 @@ help:
 	@echo "  make argocd-status        - Check ArgoCD status"
 	@echo "  make argocd-password      - Get ArgoCD admin password"
 	@echo "  make argocd-ui            - Open ArgoCD web UI"
+	@echo "  make sealed-secrets-install - Install Sealed Secrets (Secret Encryption)"
+	@echo "  make sealed-secrets-status  - Check Sealed Secrets status"
 	@echo ""
 	@echo "ArgoCD GitOps Commands:"
 	@echo "  make root-app-deploy       - Deploy App-of-Apps (manages all applications)"
@@ -234,6 +236,28 @@ argocd-ui:
 		echo "ArgoCD UI: https://$$ARGOCD_DOMAIN"; \
 		open "https://$$ARGOCD_DOMAIN" 2>/dev/null || xdg-open "https://$$ARGOCD_DOMAIN" 2>/dev/null || echo "Open https://$$ARGOCD_DOMAIN in your browser"; \
 	fi
+
+sealed-secrets-install: inventory
+	@echo "Installing Sealed Secrets..."
+	cd ansible && ansible-playbook playbooks/sealed-secrets.yml
+
+sealed-secrets-status:
+	@echo "Sealed Secrets Status:"
+	@echo ""
+	@echo "Pods:"
+	@kubectl get pods -n kube-system -l app.kubernetes.io/name=sealed-secrets
+	@echo ""
+	@echo "Service:"
+	@kubectl get svc -n kube-system sealed-secrets-controller
+	@echo ""
+	@echo "Sealing Keys:"
+	@kubectl get secrets -n kube-system -l sealedsecrets.bitnami.com/sealed-secrets-key
+	@echo ""
+	@echo "💡 To install kubeseal CLI:"
+	@echo "  macOS:  brew install kubeseal"
+	@echo "  Linux:  See kubernetes/services/sealed-secrets/README.md"
+	@echo ""
+	@echo "📖 Documentation: kubernetes/services/sealed-secrets/README.md"
 
 # ============================================================================
 # ArgoCD GitOps Commands
