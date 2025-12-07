@@ -95,9 +95,9 @@ make grafana-ui
 ## Accessing Grafana
 
 After installation, access Grafana at:
-- URL: `https://<grafana_domain>`
+- URL: `https://grafana.silverseekers.org`
 - Username: `admin`
-- Password: Configured via Terraform (`grafana_admin_password`)
+- Password: Configured via Sealed Secrets (see [Secrets Management](#secrets-management))
 
 ## Pre-loaded Dashboards
 
@@ -138,23 +138,46 @@ Access dashboards: **Home → Dashboards**
 
 ## Configuration
 
+### Secrets Management
+
+Grafana credentials are managed via **Sealed Secrets**:
+
+```bash
+# 1. Create secrets.yml with Grafana credentials
+cp ../../../secrets.example.yml ../../../secrets.yml
+vim ../../../secrets.yml
+
+# 2. Add Grafana admin secret:
+secrets:
+  - name: grafana-admin-secret
+    namespace: monitoring
+    type: Opaque
+    scope: strict
+    output_path: kubernetes/applications/monitoring/secrets/grafana-admin-sealed.yaml
+    data:
+      admin-user: admin
+      admin-password: your-secure-password
+
+# 3. Encrypt and commit
+make seal-secrets
+```
+
+See [secrets/README.md](./secrets/README.md) and [SECRETS.md](../../../SECRETS.md) for details.
+
 ### Terraform Variables
 
 ```hcl
 # clusters.tf
-grafana_domain = "grafana.example.com"
-
-# secrets.tf
-grafana_admin_password = "your-secure-password"
+grafana_domain = "grafana.silverseekers.org"
 ```
 
-### Ansible Variables
+### Helm Values
 
-| Variable | Default | Description |
-|----------|---------|-------------|
+Configuration is managed in [values.yaml](./values.yaml):
+
+| Setting | Default | Description |
+|---------|---------|-------------|
 | `monitoring_namespace` | `monitoring` | Kubernetes namespace |
-| `grafana_domain` | Required | Domain for Grafana UI |
-| `grafana_admin_password` | Required | Admin password |
 | `monitoring_storage_class` | `longhorn` | StorageClass for PVCs |
 | `prometheus_storage_size` | `10Gi` | Prometheus data volume |
 | `prometheus_retention` | `15d` | Metrics retention period |

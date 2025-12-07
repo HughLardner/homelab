@@ -20,6 +20,7 @@ ansible/**/vault/*.yml.bak
 # Sealed Secrets private keys (if accidentally committed)
 sealed-secrets-private-key.pem
 sealed-secrets-public-key.pem
+sealed-secrets-key-backup.yaml
 
 # Plain secrets file (NEVER commit this!)
 secrets.yml

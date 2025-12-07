@@ -175,16 +175,67 @@ All application files are kept together in one directory for easier management.
 
 ## Secrets Management
 
-**Problem:** Values files may contain Ansible templates: `{{ grafana_admin_password }}`
+This project uses **Sealed Secrets** (Bitnami) to safely store encrypted secrets in Git.
 
-**Solutions:**
+### How It Works
 
-### Option 1: Ansible Pre-templating (Current)
-1. Ansible templates values → tmp/
-2. Helm installs from tmp/
-3. ArgoCD watches but doesn't manage
+1. **Plain secrets** are stored in `secrets.yml` (gitignored)
+2. **Encrypt with kubeseal** via `make seal-secrets`
+3. **Sealed secrets** are committed to Git (safe - can only be decrypted by cluster)
+4. **ArgoCD syncs** sealed secrets from Git
+5. **Sealed Secrets controller** automatically decrypts them in the cluster
 
-### Option 2: External Secrets Operator (Future)
+### Quick Start
+
+```bash
+# 1. Create your secrets file
+cp secrets.example.yml secrets.yml
+vim secrets.yml
+
+# 2. Encrypt and commit
+make seal-secrets
+
+# 3. ArgoCD automatically applies them
+# Or manually: kubectl apply -f kubernetes/applications/monitoring/secrets/grafana-admin-sealed.yaml
+```
+
+### Example Secret Definition
+
+```yaml
+# secrets.yml (never committed)
+secrets:
+  - name: grafana-admin-secret
+    namespace: monitoring
+    type: Opaque
+    scope: strict
+    output_path: kubernetes/applications/monitoring/secrets/grafana-admin-sealed.yaml
+    data:
+      admin-user: admin
+      admin-password: your-secure-password
+```
+
+After running `make seal-secrets`, a SealedSecret file is created and committed:
+
+```yaml
+# kubernetes/applications/monitoring/secrets/grafana-admin-sealed.yaml (safe to commit)
+apiVersion: bitnami.com/v1alpha1
+kind: SealedSecret
+metadata:
+  name: grafana-admin-secret
+  namespace: monitoring
+spec:
+  encryptedData:
+    admin-user: AgAFudtUn21lVQO4... (encrypted)
+    admin-password: AgAYdDHviFDItIt3... (encrypted)
+```
+
+### Documentation
+
+See [SECRETS.md](../../SECRETS.md) for comprehensive secrets management guide.
+
+### Alternative Options (Future)
+
+**External Secrets Operator:**
 ```yaml
 # Reference secrets from external source
 helm:
@@ -197,16 +248,7 @@ helm:
             key: password
 ```
 
-### Option 3: Sealed Secrets (Future)
-```bash
-# Encrypt secret
-kubeseal < secret.yaml > sealed-secret.yaml
-
-# Commit encrypted secret
-git add sealed-secret.yaml
-```
-
-### Option 4: ArgoCD Vault Plugin (Future)
+**ArgoCD Vault Plugin:**
 ```yaml
 # Reference from Vault
 grafana_admin_password: <path:secret/data/grafana#password>

@@ -28,36 +28,58 @@ Production-ready Kubernetes (K3s) platform on Proxmox VE with complete GitOps wo
 
 ## Quick Start
 
+### One-Command Deployment
+
 ```bash
-# 1. Initialize and deploy infrastructure
+# Deploy everything from scratch (recommended)
 cd terraform
 terraform init
 terraform workspace select k3s  # or alpha, beta, gamma
-terraform apply
-
-# 2. Deploy K3s cluster and core services
 cd ..
-make k3s-install         # K3s with HA etcd
-make metallb-install     # LoadBalancer support
-make longhorn-install    # Distributed storage
-make cert-manager-install # TLS certificates
-make traefik-install     # Ingress controller
-make argocd-install      # GitOps platform
-make sealed-secrets-install # Secret encryption
+make deploy-all
 
-# 3. Deploy monitoring (requires secrets first)
-make monitoring-secrets  # Create Grafana credentials
-make monitoring-install  # Deploy Prometheus + Grafana
+# Or deploy in stages
+make deploy-infra      # 1. Terraform VMs only
+make deploy-platform   # 2. Add K3s cluster
+make deploy-services   # 3. Add all core services
+make deploy-apps       # 4. Add monitoring applications
 
-# 4. Access your cluster
+# Access your cluster
 export KUBECONFIG=~/.kube/config-homelab
 kubectl get nodes
 kubectl get pods -A
 ```
 
+### Manual Step-by-Step
+
+```bash
+# 1. Infrastructure
+cd terraform && terraform init
+terraform workspace select k3s
+terraform apply && cd ..
+
+# 2. Platform
+make k3s-install
+
+# 3. Core Services
+make metallb-install longhorn-install cert-manager-install
+make traefik-install argocd-install sealed-secrets-install
+
+# 4. Applications
+make monitoring-secrets monitoring-install
+```
+
 ## Available Make Commands
 
 ```bash
+# Full Stack Deployment (Recommended)
+make deploy-all        # Deploy everything (infra + platform + services + apps)
+make deploy-services   # Deploy infra + platform + all core services
+make deploy-platform   # Deploy infra + K3s cluster
+make deploy-infra      # Deploy Terraform VMs only
+make deploy-apps       # Deploy applications only
+make deploy            # Alias for deploy-services
+
 # Infrastructure (Terraform)
 make init              # Initialize Terraform
 make plan              # Plan infrastructure changes
@@ -82,6 +104,7 @@ make argocd-ui             # Open ArgoCD UI
 make argocd-password       # Get ArgoCD admin password
 make sealed-secrets-install # Install Sealed Secrets
 make sealed-secrets-status  # Check Sealed Secrets status
+make seal-secrets          # Encrypt secrets from secrets.yml
 
 # Monitoring (ArgoCD/Ansible)
 make monitoring-secrets    # Create monitoring secrets (required first)
@@ -109,6 +132,7 @@ make help              # Show all commands
 ### Planning & Architecture
 - [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) - Complete implementation guide with phases
 - [CLAUDE.md](CLAUDE.md) - Architecture and development guide for AI assistants
+- [SECRETS.md](SECRETS.md) - Secrets management workflow with Sealed Secrets
 
 ### Infrastructure & Platform
 - [Terraform README](terraform/README.md) - Infrastructure provisioning on Proxmox VE
@@ -147,6 +171,7 @@ make help              # Show all commands
 │  • Cert-Manager (TLS)                       │
 │  • Traefik (Ingress @ 192.168.10.146)       │
 │  • ArgoCD (GitOps)                          │
+│  • Sealed Secrets (Secret Encryption)       │
 └─────────────────────────────────────────────┘
                      ↓
 ┌─────────────────────────────────────────────┐
@@ -158,6 +183,7 @@ make help              # Show all commands
 ┌─────────────────────────────────────────────┐
 │ Your Applications (ArgoCD)                  │
 │  • Deployed via GitOps workflow             │
+│  • Secrets encrypted with Sealed Secrets    │
 └─────────────────────────────────────────────┘
 ```
 

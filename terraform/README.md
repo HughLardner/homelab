@@ -90,7 +90,40 @@ Files have been renamed with `.disabled` extension:
 
 ## Next Steps
 
-After Terraform creates the VMs:
-1. Use Ansible to install Kubernetes (see `../ansible/QUICK_START.md`)
-2. Configure kubectl with the generated kubeconfig
-3. Deploy cluster services (MetalLB, Ingress, cert-manager, etc.)
+After Terraform creates the VMs, you have several options:
+
+### Option 1: Full Stack Deployment (Recommended)
+```bash
+# From project root
+make deploy-all
+```
+This deploys everything: VMs → K3s → Core Services → Applications
+
+### Option 2: Manual Steps
+```bash
+# 1. Deploy infrastructure
+cd terraform && terraform apply && cd ..
+
+# 2. Install K3s cluster
+make k3s-install
+
+# 3. Deploy core services
+make metallb-install
+make longhorn-install
+make cert-manager-install
+make traefik-install
+make argocd-install
+make sealed-secrets-install
+
+# 4. Deploy applications
+make monitoring-install
+```
+
+### Option 3: Use Ansible Directly
+See [../ansible/README.md](../ansible/README.md) for Ansible-specific commands.
+
+### Full Documentation
+- [Main README](../README.md) - Complete deployment guide
+- [Ansible README](../ansible/README.md) - K3s cluster setup
+- [Kubernetes README](../kubernetes/README.md) - Services and applications
+- [SECRETS.md](../SECRETS.md) - Secrets management with Sealed Secrets
