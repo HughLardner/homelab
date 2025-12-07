@@ -57,6 +57,57 @@ argocd login <argocd_domain> --username admin --password <password>
 argocd login <argocd_domain> --sso
 ```
 
+## Repository Configuration
+
+### Automatic Configuration (via Terraform)
+
+The Ansible playbook automatically configures a private GitHub repository connection if you provide:
+
+**Terraform Variables:**
+```hcl
+# terraform/clusters.tf
+argocd_github_repo_url = "https://github.com/yourusername/homelab.git"
+
+# terraform/secrets.tf
+github_token = "ghp_your_github_personal_access_token"
+```
+
+**GitHub Personal Access Token Requirements:**
+- Scope: `repo` (Full control of private repositories)
+- For public repos only, no token needed (use SSH or HTTPS URL without credentials)
+
+### Verify Repository Connection
+
+```bash
+# List configured repositories
+argocd repo list
+
+# Test repository access
+argocd repo get https://github.com/yourusername/homelab.git
+```
+
+### Manual Repository Configuration
+
+If you need to add additional repositories:
+
+```bash
+# Add via CLI
+argocd repo add https://github.com/your-org/another-repo.git \
+  --username not-used \
+  --password ghp_your_token
+
+# Or via kubectl
+kubectl create secret generic another-repo \
+  --namespace argocd \
+  --from-literal=type=git \
+  --from-literal=url=https://github.com/your-org/another-repo.git \
+  --from-literal=password=ghp_your_token \
+  --from-literal=username=not-used
+kubectl label secret another-repo \
+  --namespace argocd \
+  argocd.argoproj.io/secret-type=repository
+```
+
 ## Creating Applications
 
 ### Via Web UI

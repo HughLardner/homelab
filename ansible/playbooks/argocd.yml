@@ -197,6 +197,32 @@
       changed_when: "'created' in ingressroute_result.stdout or 'configured' in ingressroute_result.stdout"
 
     # =========================================================================
+    # Configure Repository Connection
+    # =========================================================================
+    - name: Check if GitHub repository URL is configured
+      ansible.builtin.set_fact:
+        github_repo_configured: "{{ argocd_github_repo_url is defined and argocd_github_repo_url | length > 0 and argocd_github_token is defined and argocd_github_token | length > 0 }}"
+
+    - name: Template repository configuration
+      ansible.builtin.template:
+        src: "{{ argocd_manifests_path }}/repository.yaml"
+        dest: "{{ temp_dir.path }}/repository.yaml"
+        mode: "0600"
+      when: github_repo_configured | bool
+      no_log: true
+
+    - name: Apply repository connection
+      ansible.builtin.command:
+        cmd: /usr/local/bin/k3s kubectl apply -f {{ temp_dir.path }}/repository.yaml
+      register: repository_result
+      changed_when: "'created' in repository_result.stdout or 'configured' in repository_result.stdout"
+      when: github_repo_configured | bool
+
+    - name: Display repository connection status
+      ansible.builtin.debug:
+        msg: "{{ 'Repository connection configured for: ' + argocd_github_repo_url if github_repo_configured else 'Skipping repository configuration (no GitHub URL/token provided)' }}"
+
+    # =========================================================================
     # Cleanup and Verification
     # =========================================================================
     - name: Clean up temporary directory
@@ -252,6 +278,9 @@
           🔐 Certificate:
           {{ argocd_cert.stdout | default('Not found - check cert-manager') }}
 
+          📦 Repository Connection:
+          {{ 'Configured: ' + argocd_github_repo_url if github_repo_configured else 'Not configured (no GitHub URL/token provided)' }}
+
           ========================================
           📝 Access Information:
           ========================================
@@ -271,17 +300,21 @@
           ========================================
           📚 Quick Start:
           ========================================
+          # Verify repository connection:
+          argocd repo list
+
           # List applications:
           argocd app list
 
-          # Create an application:
+          # Create an application from your repo:
           argocd app create my-app \
-            --repo https://github.com/your-org/repo.git \
+            --repo {{ argocd_github_repo_url if github_repo_configured else 'https://github.com/your-org/repo.git' }} \
             --path kubernetes/manifests \
             --dest-server https://kubernetes.default.svc \
-            --dest-namespace default
+            --dest-namespace default \
+            --sync-policy automated
 
-          # Sync an application:
+          # Manual sync:
           argocd app sync my-app
 
           ========================================

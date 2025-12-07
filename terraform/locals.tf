@@ -36,10 +36,15 @@ resource "local_file" "cluster_config_json" {
     cloudflare_api_token  = var.cloudflare_api_token
     # Traefik configuration
     traefik_dashboard_domain   = var.cluster.traefik_dashboard_domain
-    traefik_dashboard_password = var.cluster.traefik_dashboard_password
+    traefik_dashboard_password = var.traefik_dashboard_password
     # ArgoCD configuration
     argocd_domain   = var.cluster.argocd_domain
-    argocd_password = var.cluster.argocd_password
+    argocd_password = var.argocd_password
+    argocd_github_repo_url = var.cluster.argocd_github_repo_url
+    argocd_github_token = var.github_token
+    # Monitoring configuration
+    grafana_domain = var.cluster.grafana_domain
+    grafana_admin_password = var.grafana_admin_password
   })
   filename = "../ansible/tmp/${var.cluster.cluster_name}/cluster_config.json"
 }

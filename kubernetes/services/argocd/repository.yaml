@@ -1,0 +1,15 @@
+---
+# ArgoCD Repository Connection
+# Configures private GitHub repository access for GitOps
+apiVersion: v1
+kind: Secret
+metadata:
+  name: homelab-repo
+  namespace: argocd
+  labels:
+    argocd.argoproj.io/secret-type: repository
+stringData:
+  type: git
+  url: {{ argocd_github_repo_url }}
+  password: {{ argocd_github_token }}
+  username: not-used
