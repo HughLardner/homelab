@@ -1,4 +1,4 @@
-.PHONY: help init plan apply destroy ssh-* k3s-* metallb-* longhorn-* cert-manager-* traefik-* argocd-* monitoring-* sealed-secrets-* seal-secrets root-app-deploy apps-list apps-status monitoring-secrets inventory clean deploy-infra deploy-platform deploy-services deploy-all deploy deploy-apps
+.PHONY: help init plan apply destroy ssh-* k3s-* metallb-* longhorn-* cert-manager-* traefik-* argocd-* monitoring-* sealed-secrets-* seal-secrets external-dns-* kured-* root-app-deploy apps-list apps-status monitoring-secrets inventory clean deploy-infra deploy-platform deploy-services deploy-all deploy deploy-apps
 
 # Default target
 help:
@@ -34,6 +34,13 @@ help:
 	@echo "  make sealed-secrets-install - Install Sealed Secrets (Secret Encryption)"
 	@echo "  make sealed-secrets-status  - Check Sealed Secrets status"
 	@echo "  make seal-secrets           - Encrypt secrets from secrets.yml and commit to git"
+	@echo "  make external-dns-install   - Install External-DNS (DNS Automation)"
+	@echo "  make external-dns-status    - Check External-DNS status"
+	@echo "  make external-dns-logs      - View External-DNS logs"
+	@echo "  make external-dns-records   - Show recent DNS operations"
+	@echo "  make kured-deploy           - Deploy Kured via ArgoCD (Automated Node Reboots)"
+	@echo "  make kured-status           - Check Kured status"
+	@echo "  make kured-logs             - View Kured logs"
 	@echo ""
 	@echo "ArgoCD GitOps Commands:"
 	@echo "  make root-app-deploy       - Deploy App-of-Apps (manages all applications)"
@@ -281,6 +288,66 @@ seal-secrets:
 	@echo "Sealing secrets from secrets.yml..."
 	ansible-playbook ansible/playbooks/seal-secrets.yml
 
+external-dns-install: inventory
+	@echo "Installing External-DNS (DNS Automation)..."
+	cd ansible && ansible-playbook playbooks/external-dns.yml
+
+external-dns-status:
+	@echo "External-DNS Status:"
+	@echo ""
+	@echo "Deployment:"
+	@kubectl get deployment -n external-dns external-dns
+	@echo ""
+	@echo "Pods:"
+	@kubectl get pods -n external-dns
+	@echo ""
+	@echo "💡 View logs: make external-dns-logs"
+	@echo "💡 Check DNS records: make external-dns-records"
+
+external-dns-logs:
+	@echo "External-DNS Logs (press Ctrl+C to exit):"
+	@kubectl logs -n external-dns -l app.kubernetes.io/name=external-dns --tail=100 -f
+
+external-dns-records:
+	@echo "Recent DNS operations from external-dns:"
+	@kubectl logs -n external-dns -l app.kubernetes.io/name=external-dns --tail=200 | grep -E "(CREATE|UPDATE|DELETE)" || echo "No recent DNS changes"
+
+kured-deploy:
+	@echo "Deploying Kured via ArgoCD..."
+	kubectl apply -f kubernetes/applications/kured/application.yaml
+	@echo ""
+	@echo "✅ Kured application deployed!"
+	@echo ""
+	@echo "Monitor sync status:"
+	@echo "  make apps-status"
+	@echo "  make kured-status"
+	@echo ""
+	@echo "💡 Maintenance Window: 04:00-08:00 UTC"
+	@echo "📖 Documentation: kubernetes/services/kured/README.md"
+
+kured-status:
+	@echo "Kured Status:"
+	@echo ""
+	@echo "DaemonSet:"
+	@kubectl get daemonset -n kube-system kured
+	@echo ""
+	@echo "Pods:"
+	@kubectl get pods -n kube-system -l app.kubernetes.io/name=kured
+	@echo ""
+	@echo "Configuration:"
+	@kubectl get daemonset -n kube-system kured -o jsonpath='{.spec.template.spec.containers[0].command}' | tr ',' '\n'
+	@echo ""
+	@echo ""
+	@echo "Pending Reboots:"
+	@kubectl get nodes -o custom-columns=NAME:.metadata.name,REBOOT:.metadata.annotations.weave\.works/kured-reboot-in-progress 2>/dev/null || echo "No pending reboots"
+	@echo ""
+	@echo "💡 Maintenance Window: 04:00-08:00 UTC"
+	@echo "📖 Documentation: kubernetes/services/kured/README.md"
+
+kured-logs:
+	@echo "Kured Logs (Press Ctrl+C to exit):"
+	kubectl logs -n kube-system -l app.kubernetes.io/name=kured -f --tail=50
+
 # ============================================================================
 # ArgoCD GitOps Commands
 # ============================================================================
@@ -495,6 +562,9 @@ deploy-all: deploy-services
 	@echo "Deploying monitoring stack via ArgoCD..."
 	$(MAKE) monitoring-deploy
 	@echo ""
+	@echo "Deploying Kured via ArgoCD..."
+	$(MAKE) kured-deploy
+	@echo ""
 	@echo "========================================"
 	@echo "✅ FULL STACK DEPLOYMENT COMPLETE!"
 	@echo "========================================"
@@ -531,6 +601,9 @@ deploy-apps:
 	@echo ""
 	@echo "Deploying monitoring stack via ArgoCD..."
 	$(MAKE) monitoring-deploy
+	@echo ""
+	@echo "Deploying Kured via ArgoCD..."
+	$(MAKE) kured-deploy
 	@echo ""
 	@echo "✅ Applications deployment complete!"
 	@echo ""

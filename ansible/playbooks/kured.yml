@@ -1,0 +1,194 @@
+---
+# Kured (Kubernetes Reboot Daemon) Installation Playbook
+# Installs Kured for automated, safe node reboots after system updates
+
+- name: Install Kured
+  hosts: k3s_masters[0]
+  become: true
+  gather_facts: true
+
+  vars:
+    kured_namespace: "kube-system"
+    kured_release: "kured"
+    kured_chart_version: "5.5.1"
+    helm_repo_name: "kubereboot"
+    helm_repo_url: "https://kubereboot.github.io/charts"
+
+  pre_tasks:
+    - name: Wait for K3s to be ready
+      ansible.builtin.command: /usr/local/bin/k3s kubectl get nodes
+      register: k3s_status
+      changed_when: false
+      retries: 10
+      delay: 5
+      until: k3s_status.rc == 0
+
+    - name: Check if Helm is available
+      ansible.builtin.command: which helm
+      register: helm_check
+      changed_when: false
+      failed_when: false
+
+    - name: Install Helm if not present
+      ansible.builtin.shell: |
+        curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+      when: helm_check.rc != 0
+
+  tasks:
+    - name: Add Kured Helm repository
+      ansible.builtin.command:
+        cmd: helm repo add {{ helm_repo_name }} {{ helm_repo_url }}
+      register: repo_add_result
+      changed_when: "'has been added' in repo_add_result.stdout"
+      failed_when: false
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    - name: Update Helm repositories
+      ansible.builtin.command:
+        cmd: helm repo update
+      changed_when: false
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    - name: Check if Kured is already installed
+      ansible.builtin.command:
+        cmd: helm list -n {{ kured_namespace }} -o json
+      register: helm_list
+      changed_when: false
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    - name: Parse Helm list output
+      ansible.builtin.set_fact:
+        kured_installed: "{{ (helm_list.stdout | from_json | selectattr('name', 'equalto', kured_release) | list | length) > 0 }}"
+
+    - name: Copy values.yaml to remote host
+      ansible.builtin.copy:
+        src: ../../kubernetes/services/kured/values.yaml
+        dest: /tmp/kured-values.yaml
+        mode: '0644'
+
+    - name: Install or upgrade Kured
+      ansible.builtin.command:
+        cmd: >
+          helm upgrade --install {{ kured_release }}
+          {{ helm_repo_name }}/kured
+          --namespace {{ kured_namespace }}
+          --version {{ kured_chart_version }}
+          --values /tmp/kured-values.yaml
+          --wait
+          --timeout 10m
+      register: helm_install
+      changed_when: "'has been upgraded' in helm_install.stdout or 'has been installed' in helm_install.stdout"
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    - name: Wait for Kured DaemonSet to be ready
+      ansible.builtin.command:
+        cmd: /usr/local/bin/k3s kubectl rollout status daemonset {{ kured_release }} -n {{ kured_namespace }} --timeout=300s
+      register: daemonset_wait
+      changed_when: false
+      retries: 3
+      delay: 10
+      until: daemonset_wait.rc == 0
+
+    - name: Get Kured DaemonSet status
+      ansible.builtin.command:
+        cmd: /usr/local/bin/k3s kubectl get daemonset -n {{ kured_namespace }} {{ kured_release }} -o json
+      register: kured_ds
+      changed_when: false
+
+    - name: Parse DaemonSet status
+      ansible.builtin.set_fact:
+        kured_ds_json: "{{ kured_ds.stdout | from_json }}"
+
+    - name: Get Kured configuration
+      ansible.builtin.command:
+        cmd: /usr/local/bin/k3s kubectl get daemonset -n {{ kured_namespace }} {{ kured_release }} -o jsonpath='{.spec.template.spec.containers[0].command}'
+      register: kured_config
+      changed_when: false
+
+    - name: Cleanup temporary files
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /tmp/kured-values.yaml
+
+    - name: Verify Kured pods are running
+      ansible.builtin.command:
+        cmd: /usr/local/bin/k3s kubectl get pods -n {{ kured_namespace }} -l app.kubernetes.io/name=kured --no-headers
+      register: kured_status
+      changed_when: false
+      failed_when: "'Running' not in kured_status.stdout"
+
+  post_tasks:
+    - name: Build completion message
+      ansible.builtin.set_fact:
+        completion_message: |
+
+          ==========================================
+          ✅ Kured Installation Complete!
+          ==========================================
+
+          Configuration:
+            Namespace: {{ kured_namespace }}
+            Release: {{ kured_release }}
+            Chart Version: {{ kured_chart_version }}
+
+          DaemonSet Status:
+            Desired: {{ kured_ds_json.status.desiredNumberScheduled }}
+            Current: {{ kured_ds_json.status.currentNumberScheduled }}
+            Ready: {{ kured_ds_json.status.numberReady }}
+
+          Maintenance Window:
+            Time: 04:00-08:00 UTC (configured in values.yaml)
+            Concurrency: 1 node at a time
+            Check Period: Every 15 minutes
+            Reboot Delay: 60 seconds
+
+          Reboot Sentinel:
+            File: /var/run/reboot-required (Ubuntu/Debian)
+            Created automatically by: apt upgrade
+
+          How It Works:
+            1. System updates create /var/run/reboot-required
+            2. Kured detects the file (checks every 15 min)
+            3. Waits for maintenance window (04:00-08:00 UTC)
+            4. Acquires reboot lock (ensures single node)
+            5. Cordons node (prevents new pods)
+            6. Drains node (evicts pods gracefully)
+            7. Reboots node (systemctl reboot)
+            8. Uncordons node when back online
+
+          Verify Installation:
+            kubectl get daemonset -n {{ kured_namespace }} {{ kured_release }}
+            kubectl get pods -n {{ kured_namespace }} -l app.kubernetes.io/name=kured
+            kubectl logs -n {{ kured_namespace }} -l app.kubernetes.io/name=kured
+
+          Test Kured (creates reboot sentinel on one node):
+            ssh ubuntu@192.168.10.22 'sudo touch /var/run/reboot-required'
+            # Kured will reboot node during next maintenance window
+
+          Check Pending Reboots:
+            kubectl get nodes -o custom-columns=NAME:.metadata.name,REBOOT:.metadata.annotations.weave\.works/kured-reboot-in-progress
+
+          Configuration:
+            Edit: kubernetes/services/kured/values.yaml
+            Apply: make kured-install
+
+          Documentation:
+            kubernetes/services/kured/README.md
+
+          Next Steps:
+          1. Monitor first automated reboot during maintenance window
+          2. Configure Slack notifications (optional)
+          3. Enable Prometheus metrics (when monitoring is ready)
+          4. Set up PodDisruptionBudgets for critical applications
+
+          ==========================================
+
+    - name: Display completion message
+      ansible.builtin.debug:
+        msg: "{{ completion_message.split('\n') }}"
