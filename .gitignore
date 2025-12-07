@@ -21,6 +21,12 @@ ansible/**/vault/*.yml.bak
 sealed-secrets-private-key.pem
 sealed-secrets-public-key.pem
 
+# Plain secrets file (NEVER commit this!)
+secrets.yml
+secrets.yaml
+ansible/secrets.yml
+ansible/secrets.yaml
+
 # Cursor IDE files
 .cursor/
 
