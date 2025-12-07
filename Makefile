@@ -492,8 +492,8 @@ deploy-all: deploy-services
 	@echo "Creating monitoring secrets..."
 	$(MAKE) monitoring-secrets
 	@echo ""
-	@echo "Deploying monitoring stack..."
-	$(MAKE) monitoring-install
+	@echo "Deploying monitoring stack via ArgoCD..."
+	$(MAKE) monitoring-deploy
 	@echo ""
 	@echo "========================================"
 	@echo "✅ FULL STACK DEPLOYMENT COMPLETE!"
@@ -511,6 +511,10 @@ deploy-all: deploy-services
 	@echo "  kubectl get pods -A"
 	@echo "  make argocd-ui"
 	@echo "  make grafana-ui"
+	@echo ""
+	@echo "💡 Monitor ArgoCD sync:"
+	@echo "  make apps-status"
+	@echo "  make monitoring-sync"
 
 # Alias: deploy = deploy-services (most common use case)
 deploy: deploy-services
@@ -525,10 +529,14 @@ deploy-apps:
 	@echo "Creating monitoring secrets..."
 	$(MAKE) monitoring-secrets
 	@echo ""
-	@echo "Deploying monitoring stack..."
-	$(MAKE) monitoring-install
+	@echo "Deploying monitoring stack via ArgoCD..."
+	$(MAKE) monitoring-deploy
 	@echo ""
 	@echo "✅ Applications deployment complete!"
 	@echo ""
 	@echo "Access Points:"
 	@echo "  Grafana: https://grafana.silverseekers.org"
+	@echo ""
+	@echo "💡 Monitor ArgoCD sync:"
+	@echo "  make apps-status"
+	@echo "  make monitoring-sync"

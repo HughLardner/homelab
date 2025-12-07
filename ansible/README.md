@@ -49,38 +49,60 @@ make inventory         # Generate Ansible inventory from Terraform
 make k3s-install       # Install K3s cluster
 make k3s-status        # Check K3s service status
 make k3s-destroy       # Uninstall K3s from all nodes
-make metallb-install   # Install MetalLB LoadBalancer
-make metallb-test      # Install MetalLB with test LoadBalancer
+
+# Core Services
+make metallb-install         # Install MetalLB LoadBalancer
+make longhorn-install        # Install Longhorn storage
+make cert-manager-install    # Install cert-manager for TLS
+make traefik-install         # Install Traefik ingress controller
+make argocd-install          # Install ArgoCD GitOps platform
+make sealed-secrets-install  # Install Sealed Secrets controller
+make seal-secrets            # Encrypt secrets from secrets.yml
+
+# Full Stack Deployment
+make deploy-all        # Deploy everything (infra + platform + services + apps)
+make deploy-services   # Deploy infrastructure + K3s + all core services
+make deploy-platform   # Deploy infrastructure + K3s cluster
+make deploy-infra      # Deploy infrastructure only (Terraform VMs)
+make deploy            # Alias for deploy-services
+
+# Utilities
 make ping              # Test connectivity to all nodes
 make ssh-node1         # SSH to first node
-make deploy            # Full stack: terraform apply + inventory + k3s install
 ```
 
 ## Project Structure
 
 ```
 ansible/
-├── ansible.cfg                    # Simplified Ansible configuration
+├── ansible.cfg                      # Simplified Ansible configuration
 ├── inventory/
-│   ├── generate_inventory.py     # Auto-generate from Terraform
-│   └── hosts.yml                  # Generated inventory (not committed)
+│   ├── generate_inventory.py       # Auto-generate from Terraform
+│   └── hosts.yml                    # Generated inventory (not committed)
 ├── playbooks/
-│   ├── k3s-cluster-setup.yml     # Main K3s installation playbook
-│   ├── metallb.yml                # MetalLB LoadBalancer setup
-│   └── node-prep.yml              # Node preparation tasks
+│   ├── k3s-cluster-setup.yml       # Main K3s installation playbook
+│   ├── node-prep.yml                # Node preparation tasks
+│   ├── metallb.yml                  # MetalLB LoadBalancer setup
+│   ├── longhorn.yml                 # Longhorn storage setup
+│   ├── cert-manager.yml             # Cert-manager for TLS certificates
+│   ├── traefik.yml                  # Traefik ingress controller
+│   ├── argocd.yml                   # ArgoCD GitOps platform
+│   ├── sealed-secrets.yml           # Sealed Secrets controller
+│   ├── seal-secrets.yml             # Encrypt secrets for GitOps
+│   ├── seal-secret-task.yml         # Individual secret processing
+│   ├── monitoring.yml               # Prometheus + Grafana stack
+│   └── monitoring-secrets.yml       # Create monitoring secrets
 └── roles/
     ├── k3s/
-    │   ├── defaults/main.yml      # Default variables
-    │   ├── vars/main.yml          # Internal variables
-    │   ├── handlers/main.yml      # Service handlers
+    │   ├── defaults/main.yml        # Default variables
+    │   ├── vars/main.yml            # Internal variables
+    │   ├── handlers/main.yml        # Service handlers
     │   └── tasks/
-    │       ├── main.yml           # Core installation logic
-    │       └── kubeconfig.yml     # Kubeconfig management
+    │       ├── main.yml             # Core installation logic
+    │       └── kubeconfig.yml       # Kubeconfig management
     └── node-prep/
-        ├── defaults/main.yml      # Node prep defaults
-        └── tasks/main.yml         # System preparation tasks
-
-Total: ~450 lines of Ansible code
+        ├── defaults/main.yml        # Node prep defaults
+        └── tasks/main.yml           # System preparation tasks
 ```
 
 ## Configuration
@@ -253,13 +275,41 @@ kubectl delete deployment nginx-test
 kubectl delete service nginx-test
 ```
 
+## Secrets Management
+
+This project uses **Sealed Secrets** to encrypt Kubernetes secrets for safe storage in Git:
+
+```bash
+# 1. Create your secrets file from the template
+cp ../secrets.example.yml ../secrets.yml
+vim ../secrets.yml
+
+# 2. Encrypt secrets and commit to git
+make seal-secrets
+
+# 3. The playbook will:
+#    - Validate secrets.yml format
+#    - Encrypt each secret with kubeseal
+#    - Save sealed secrets to kubernetes/ directories
+#    - Git add and commit the sealed secrets
+```
+
+See [SECRETS.md](../SECRETS.md) for comprehensive secrets management documentation.
+
 ## Next Steps
 
-After K3s and MetalLB are installed, you can:
+After K3s and core services are installed, you can:
 
-1. Deploy applications with LoadBalancer services
-2. Install ArgoCD for GitOps
-3. Deploy Ingress Controller (nginx-ingress)
-4. Deploy monitoring stack (Prometheus/Grafana)
+1. **Deploy Applications**: Use ArgoCD or kubectl to deploy workloads
+2. **Configure Secrets**: Use Sealed Secrets for GitOps-safe secret management
+3. **Add Monitoring**: Deploy Prometheus/Grafana stack (`make monitoring-install`)
+4. **Set up GitOps**: Configure ArgoCD applications for continuous delivery
 
-See the main project documentation for application deployment guides.
+## Documentation
+
+- [Main README](../README.md) - Complete homelab guide
+- [SECRETS.md](../SECRETS.md) - Secrets management with Sealed Secrets
+- [Kubernetes README](../kubernetes/README.md) - Services and applications
+- [Terraform README](../terraform/README.md) - Infrastructure provisioning
+
+See the main project documentation for detailed deployment guides.
