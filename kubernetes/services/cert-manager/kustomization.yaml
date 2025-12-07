@@ -1,0 +1,21 @@
+---
+# Kustomize configuration for Cert-Manager
+# Apply ClusterIssuers with: kubectl apply -k kubernetes/services/cert-manager/
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: cert-manager
+
+# ClusterIssuers (apply after cert-manager is installed)
+resources:
+  - cluster-issuer-letsencrypt-staging.yaml
+  - cluster-issuer-letsencrypt-prod.yaml
+  - cluster-issuer-selfsigned.yaml
+
+commonLabels:
+  app.kubernetes.io/name: cert-manager
+  app.kubernetes.io/managed-by: kustomize
+
+commonAnnotations:
+  documentation: "https://cert-manager.io/docs/"

@@ -1,0 +1,204 @@
+---
+# Networking Setup Playbook
+# Installs MetalLB for LoadBalancer services
+
+- name: Install MetalLB
+  hosts: k3s_masters[0]
+  become: true
+  gather_facts: true
+
+  vars:
+    metallb_version: "v0.14.9"
+    metallb_namespace: "metallb-system"
+    metallb_test_loadbalancer: false
+
+  pre_tasks:
+    - name: Verify metallb_ipv4_pools is defined
+      ansible.builtin.fail:
+        msg: "metallb_ipv4_pools is not defined in inventory"
+      when: metallb_ipv4_pools is not defined or metallb_ipv4_pools == ""
+
+    - name: Wait for K3s to be ready
+      ansible.builtin.command: /usr/local/bin/k3s kubectl get nodes
+      register: k3s_status
+      changed_when: false
+      failed_when: false
+      retries: 10
+      delay: 5
+      until: k3s_status.rc == 0
+
+  tasks:
+    - name: Create MetalLB namespace
+      ansible.builtin.command:
+        cmd: /usr/local/bin/k3s kubectl create namespace {{ metallb_namespace }}
+      register: namespace_result
+      changed_when: "'created' in namespace_result.stdout"
+      failed_when: false
+
+    - name: Check if MetalLB is already installed
+      ansible.builtin.command:
+        cmd: /usr/local/bin/k3s kubectl get deployment -n {{ metallb_namespace }} controller
+      register: metallb_check
+      changed_when: false
+      failed_when: false
+
+    - name: Check if MetalLB CRDs exist
+      ansible.builtin.command:
+        cmd: /usr/local/bin/k3s kubectl get crd ipaddresspools.metallb.io
+      register: crd_precheck
+      changed_when: false
+      failed_when: false
+
+    - name: Apply MetalLB manifests
+      ansible.builtin.command:
+        cmd: /usr/local/bin/k3s kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/{{ metallb_version }}/config/manifests/metallb-native.yaml
+      when: metallb_check.rc != 0 or crd_precheck.rc != 0
+      register: metallb_install
+      changed_when: "'created' in metallb_install.stdout or 'configured' in metallb_install.stdout"
+
+    - name: Wait for MetalLB controller to be ready
+      ansible.builtin.command:
+        cmd: /usr/local/bin/k3s kubectl wait --namespace {{ metallb_namespace }} --for=condition=ready pod --selector=app=metallb --timeout=300s
+      register: wait_result
+      changed_when: false
+      retries: 3
+      delay: 10
+      until: wait_result.rc == 0
+
+    - name: Wait for MetalLB CRDs to be available
+      ansible.builtin.command:
+        cmd: /usr/local/bin/k3s kubectl get crd ipaddresspools.metallb.io
+      register: crd_check
+      changed_when: false
+      retries: 30
+      delay: 2
+      until: crd_check.rc == 0
+
+    - name: Template MetalLB IPAddressPool configuration
+      ansible.builtin.template:
+        src: ../../kubernetes/services/metallb/ipaddresspool.yaml
+        dest: /tmp/metallb-ippool.yaml
+        mode: '0644'
+
+    - name: Apply IPAddressPool
+      ansible.builtin.command:
+        cmd: /usr/local/bin/k3s kubectl apply -f /tmp/metallb-ippool.yaml
+      register: ippool_result
+      changed_when: "'created' in ippool_result.stdout or 'configured' in ippool_result.stdout"
+
+    - name: Copy MetalLB L2Advertisement configuration
+      ansible.builtin.copy:
+        src: ../../kubernetes/services/metallb/l2advertisement.yaml
+        dest: /tmp/metallb-l2advertisement.yaml
+        mode: '0644'
+
+    - name: Apply L2Advertisement
+      ansible.builtin.command:
+        cmd: /usr/local/bin/k3s kubectl apply -f /tmp/metallb-l2advertisement.yaml
+      register: l2adv_result
+      changed_when: "'created' in l2adv_result.stdout or 'configured' in l2adv_result.stdout"
+
+    - name: Cleanup temporary files
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /tmp/metallb-ippool.yaml
+        - /tmp/metallb-l2advertisement.yaml
+
+    - name: Verify MetalLB pods are running
+      ansible.builtin.command:
+        cmd: /usr/local/bin/k3s kubectl get pods -n {{ metallb_namespace }} --no-headers
+      register: metallb_status
+      changed_when: false
+      failed_when: "'Running' not in metallb_status.stdout"
+
+  post_tasks:
+    - name: Create test LoadBalancer service
+      when: metallb_test_loadbalancer | bool
+      block:
+        - name: Deploy test nginx service
+          ansible.builtin.copy:
+            content: |
+              ---
+              apiVersion: apps/v1
+              kind: Deployment
+              metadata:
+                name: nginx-test
+                namespace: default
+              spec:
+                replicas: 1
+                selector:
+                  matchLabels:
+                    app: nginx-test
+                template:
+                  metadata:
+                    labels:
+                      app: nginx-test
+                  spec:
+                    containers:
+                    - name: nginx
+                      image: nginx:alpine
+                      ports:
+                      - containerPort: 80
+              ---
+              apiVersion: v1
+              kind: Service
+              metadata:
+                name: nginx-test
+                namespace: default
+              spec:
+                type: LoadBalancer
+                selector:
+                  app: nginx-test
+                ports:
+                - protocol: TCP
+                  port: 80
+                  targetPort: 80
+            dest: /tmp/nginx-test-lb.yaml
+            mode: '0644'
+
+        - name: Apply test LoadBalancer
+          ansible.builtin.command:
+            cmd: /usr/local/bin/k3s kubectl apply -f /tmp/nginx-test-lb.yaml
+          register: test_lb_result
+          changed_when: "'created' in test_lb_result.stdout or 'configured' in test_lb_result.stdout"
+
+        - name: Wait for LoadBalancer IP assignment
+          ansible.builtin.shell: |
+            /usr/local/bin/k3s kubectl get service nginx-test -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
+          register: lb_ip
+          changed_when: false
+          retries: 30
+          delay: 5
+          until: lb_ip.stdout != ""
+
+        - name: Display test LoadBalancer info
+          ansible.builtin.debug:
+            msg:
+              - "Test LoadBalancer deployed successfully!"
+              - "Service IP: {{ lb_ip.stdout }}"
+              - "Test with: curl http://{{ lb_ip.stdout }}"
+              - ""
+              - "To remove test service:"
+              - "  kubectl delete -f /tmp/nginx-test-lb.yaml"
+
+        - name: Cleanup test manifest
+          ansible.builtin.file:
+            path: /tmp/nginx-test-lb.yaml
+            state: absent
+
+    - name: Display completion message
+      ansible.builtin.debug:
+        msg:
+          - "✅ MetalLB installation complete!"
+          - ""
+          - "Configuration:"
+          - "  Namespace: {{ metallb_namespace }}"
+          - "  IP Pool: {{ metallb_ipv4_pools }}"
+          - "  Mode: L2 (Layer 2)"
+          - ""
+          - "Verify with:"
+          - "  kubectl get ipaddresspool -n {{ metallb_namespace }}"
+          - "  kubectl get l2advertisement -n {{ metallb_namespace }}"
+          - "  kubectl get pods -n {{ metallb_namespace }}"

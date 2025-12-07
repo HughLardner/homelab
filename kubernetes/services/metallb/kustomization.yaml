@@ -1,0 +1,21 @@
+---
+# Kustomize configuration for MetalLB
+# Apply all MetalLB configurations with: kubectl apply -k kubernetes/services/metallb/
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: metallb-system
+
+resources:
+  - ipaddresspool.yaml
+  - l2advertisement.yaml
+
+# Optional: Add common labels to all resources
+commonLabels:
+  app.kubernetes.io/name: metallb
+  app.kubernetes.io/managed-by: kustomize
+
+# Optional: Add annotations
+commonAnnotations:
+  documentation: "https://metallb.universe.tf/configuration/"

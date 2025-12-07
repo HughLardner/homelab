@@ -1,0 +1,33 @@
+---
+# Node Preparation Playbook
+# Prepares nodes for Kubernetes deployment
+
+- name: Prepare Nodes for Kubernetes
+  hosts: k3s_cluster
+  become: true
+  gather_facts: true
+
+  pre_tasks:
+    - name: Verify connectivity
+      ansible.builtin.ping:
+
+    - name: Display preparation info
+      ansible.builtin.debug:
+        msg:
+          - "Preparing {{ groups['k3s_cluster'] | length }} nodes"
+          - "Upgrade packages: {{ node_prep_upgrade_packages | default(true) }}"
+          - "Reboot after upgrade: {{ node_prep_reboot_after_upgrade | default(false) }}"
+      run_once: true
+
+  roles:
+    - role: node-prep
+
+  post_tasks:
+    - name: Display summary
+      ansible.builtin.debug:
+        msg:
+          - "✅ Node preparation complete!"
+          - ""
+          - "Next step: Install K3s"
+          - "  make k3s-install"
+      run_once: true

@@ -1,0 +1,237 @@
+---
+# Traefik Ingress Controller Installation Playbook
+# Installs Traefik for HTTP/HTTPS routing and load balancing
+
+- name: Install Traefik Ingress Controller
+  hosts: k3s_masters[0]
+  become: true
+  gather_facts: true
+
+  vars:
+    traefik_version: "v28.0.0"  # Helm chart version
+    traefik_namespace: "traefik"
+    # Variables from inventory (no need to redefine):
+    # - traefik_replicas
+    # - traefik_service_type
+    # - traefik_loadbalancer_ip
+    # - traefik_storage_class
+    # - traefik_dashboard_domain
+    # - traefik_cert_issuer
+    # - traefik_dashboard_username
+    # - traefik_dashboard_password
+
+  pre_tasks:
+    - name: Verify required variables are defined
+      ansible.builtin.fail:
+        msg: "Required variable '{{ item }}' is not defined in inventory"
+      when: vars[item] is not defined or vars[item] == ""
+      loop:
+        - traefik_dashboard_domain
+        - traefik_dashboard_password
+
+    - name: Wait for K3s to be ready
+      ansible.builtin.command: /usr/local/bin/k3s kubectl get nodes
+      register: k3s_status
+      changed_when: false
+      retries: 10
+      delay: 5
+      until: k3s_status.rc == 0
+
+    - name: Check if Helm is installed
+      ansible.builtin.command: helm version
+      register: helm_check
+      changed_when: false
+      failed_when: false
+
+    - name: Install Helm if not present
+      ansible.builtin.shell: |
+        curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+      when: helm_check.rc != 0
+      register: helm_install
+      changed_when: "'helm installed' in helm_install.stdout"
+
+  tasks:
+    - name: Create Traefik namespace
+      ansible.builtin.command:
+        cmd: /usr/local/bin/k3s kubectl create namespace {{ traefik_namespace }}
+      register: namespace_result
+      changed_when: "'created' in namespace_result.stdout"
+      failed_when: false
+
+    - name: Add Traefik Helm repository
+      ansible.builtin.command:
+        cmd: helm repo add traefik https://traefik.github.io/charts
+      register: helm_repo_add
+      changed_when: "'has been added' in helm_repo_add.stdout"
+      failed_when: false
+
+    - name: Update Helm repositories
+      ansible.builtin.command:
+        cmd: helm repo update
+      register: helm_repo_update
+      changed_when: "'Update Complete' in helm_repo_update.stdout"
+
+    - name: Check if Traefik is already installed
+      ansible.builtin.command:
+        cmd: helm list -n {{ traefik_namespace }} -o json
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      register: helm_list
+      changed_when: false
+
+    - name: Parse Helm list output
+      ansible.builtin.set_fact:
+        traefik_installed: "{{ (helm_list.stdout | from_json | selectattr('name', 'equalto', 'traefik') | list | length) > 0 }}"
+
+    - name: Template Traefik Helm values
+      ansible.builtin.template:
+        src: ../../kubernetes/services/traefik/values.yaml
+        dest: /tmp/traefik-values.yaml
+        mode: '0644'
+
+    - name: Install or upgrade Traefik via Helm
+      ansible.builtin.command:
+        cmd: >
+          helm upgrade --install traefik traefik/traefik
+          --namespace {{ traefik_namespace }}
+          --version {{ traefik_version }}
+          --values /tmp/traefik-values.yaml
+          --wait
+          --timeout=5m
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      register: helm_install_result
+      changed_when: "'has been upgraded' in helm_install_result.stdout or 'has been installed' in helm_install_result.stdout"
+
+    - name: Wait for Traefik deployment to be ready
+      ansible.builtin.command:
+        cmd: /usr/local/bin/k3s kubectl wait --namespace {{ traefik_namespace }} --for=condition=ready pod --selector=app.kubernetes.io/name=traefik --timeout=300s
+      register: traefik_wait
+      changed_when: false
+      retries: 3
+      delay: 10
+      until: traefik_wait.rc == 0
+
+    - name: Generate htpasswd for dashboard authentication
+      ansible.builtin.shell: |
+        htpasswd -nbB {{ traefik_dashboard_username | default('admin') }} '{{ traefik_dashboard_password }}'
+      register: htpasswd_result
+      changed_when: false
+      no_log: true
+
+    - name: Create dashboard authentication secret
+      ansible.builtin.shell: |
+        /usr/local/bin/k3s kubectl delete secret traefik-dashboard-auth --namespace {{ traefik_namespace }} --ignore-not-found=true
+        /usr/local/bin/k3s kubectl create secret generic traefik-dashboard-auth \
+          --from-literal=users='{{ htpasswd_result.stdout }}' \
+          --namespace {{ traefik_namespace }}
+      register: auth_secret_result
+      changed_when: "'created' in auth_secret_result.stdout"
+      no_log: true
+
+    - name: Template Traefik dashboard IngressRoute
+      ansible.builtin.template:
+        src: ../../kubernetes/services/traefik/dashboard-ingressroute.yaml
+        dest: /tmp/traefik-dashboard-ingressroute.yaml
+        mode: '0644'
+
+    - name: Wait for Traefik CRDs to be available
+      ansible.builtin.command:
+        cmd: /usr/local/bin/k3s kubectl get crd ingressroutes.traefik.io
+      register: crd_check
+      changed_when: false
+      retries: 30
+      delay: 2
+      until: crd_check.rc == 0
+
+    - name: Apply Traefik dashboard IngressRoute
+      ansible.builtin.command:
+        cmd: /usr/local/bin/k3s kubectl apply -f /tmp/traefik-dashboard-ingressroute.yaml
+      register: dashboard_result
+      changed_when: "'created' in dashboard_result.stdout or 'configured' in dashboard_result.stdout"
+
+    - name: Copy Traefik middlewares
+      ansible.builtin.copy:
+        src: ../../kubernetes/services/traefik/middlewares.yaml
+        dest: /tmp/traefik-middlewares.yaml
+        mode: '0644'
+
+    - name: Apply Traefik middlewares
+      ansible.builtin.command:
+        cmd: /usr/local/bin/k3s kubectl apply -f /tmp/traefik-middlewares.yaml
+      register: middlewares_result
+      changed_when: "'created' in middlewares_result.stdout or 'configured' in middlewares_result.stdout"
+
+    - name: Wait for dashboard certificate to be ready
+      ansible.builtin.shell: |
+        /usr/local/bin/k3s kubectl get certificate -n {{ traefik_namespace }} traefik-dashboard-tls -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}'
+      register: cert_status
+      changed_when: false
+      retries: 20
+      delay: 15
+      until: cert_status.stdout == "True"
+      failed_when: false
+
+    - name: Get Traefik LoadBalancer IP
+      ansible.builtin.shell: |
+        /usr/local/bin/k3s kubectl get svc -n {{ traefik_namespace }} traefik -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
+      register: traefik_lb_ip
+      changed_when: false
+      retries: 30
+      delay: 5
+      until: traefik_lb_ip.stdout != ""
+      failed_when: false
+
+    - name: Verify Traefik pods are running
+      ansible.builtin.command:
+        cmd: /usr/local/bin/k3s kubectl get pods -n {{ traefik_namespace }} --no-headers
+      register: traefik_status
+      changed_when: false
+      failed_when: "'Running' not in traefik_status.stdout"
+
+    - name: Cleanup temporary files
+      ansible.builtin.file:
+        path: "/tmp/{{ item }}"
+        state: absent
+      loop:
+        - traefik-values.yaml
+        - traefik-dashboard-ingressroute.yaml
+        - traefik-middlewares.yaml
+
+  post_tasks:
+    - name: Build completion message
+      ansible.builtin.set_fact:
+        completion_message: |
+
+          ========================================
+          ✅ Traefik Installation Complete!
+          ========================================
+
+          Configuration:
+            Namespace: {{ traefik_namespace }}
+            Replicas: {{ traefik_replicas | default(2) }}
+            LoadBalancer IP: {{ traefik_lb_ip.stdout | default('Pending') }}
+
+          Dashboard Access:
+            URL: https://{{ traefik_dashboard_domain }}
+            Username: {{ traefik_dashboard_username | default('admin') }}
+            Certificate: {{ cert_status.stdout | default('Pending') }}
+
+          Middlewares Available:
+            • traefik-dashboard-auth
+            • security-headers
+            • rate-limit
+            • compress
+            • https-redirect
+            • ip-whitelist-local
+
+          Next Steps:
+            1. Add DNS: {{ traefik_dashboard_domain }} → {{ traefik_lb_ip.stdout | default('LoadBalancer IP') }}
+            2. Access dashboard: https://{{ traefik_dashboard_domain }}
+            3. Check status: make traefik-status
+
+          ========================================
+
+    - name: Display completion message
+      ansible.builtin.debug:
+        msg: "{{ completion_message.split('\n') }}"

@@ -1,0 +1,182 @@
+---
+# Node Preparation Role
+# Prepares Ubuntu nodes for Kubernetes deployment
+
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+  when: ansible_os_family == "Debian"
+
+- name: Upgrade all packages
+  ansible.builtin.apt:
+    upgrade: dist
+    autoremove: true
+    autoclean: true
+  when: node_prep_upgrade_packages | bool
+  register: upgrade_result
+
+- name: Install essential system packages
+  ansible.builtin.apt:
+    name: "{{ node_prep_essential_packages }}"
+    state: present
+    update_cache: false
+
+- name: Install storage packages (for Longhorn)
+  ansible.builtin.apt:
+    name: "{{ node_prep_storage_packages }}"
+    state: present
+    update_cache: false
+
+- name: Install optional packages
+  ansible.builtin.apt:
+    name: "{{ node_prep_optional_packages }}"
+    state: present
+    update_cache: false
+  when: node_prep_optional_packages | length > 0
+
+- name: Enable and start open-iscsi service
+  ansible.builtin.systemd:
+    name: open-iscsi
+    enabled: true
+    state: started
+  when: node_prep_enable_iscsi | bool
+
+- name: Enable and start iscsid service
+  ansible.builtin.systemd:
+    name: iscsid
+    enabled: true
+    state: started
+  when: node_prep_enable_iscsi | bool
+
+- name: Verify iSCSI services are active
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    state: started
+  loop:
+    - open-iscsi
+    - iscsid
+  when: node_prep_enable_iscsi | bool
+  register: iscsi_status
+  changed_when: false
+
+- name: Check if multipathd service exists
+  ansible.builtin.systemd:
+    name: multipathd
+  register: multipathd_check
+  failed_when: false
+  changed_when: false
+
+- name: Configure multipath blacklist
+  ansible.builtin.blockinfile:
+    path: /etc/multipath.conf
+    create: true
+    mode: '0644'
+    block: |
+      # Blacklist local disks to prevent multipath from claiming them
+      blacklist {
+          devnode "^sd[a-z0-9]+"
+      }
+    marker: "# {mark} ANSIBLE MANAGED BLOCK - Local disk blacklist"
+  when:
+    - node_prep_configure_multipath | bool
+    - multipathd_check.status is defined
+    - multipathd_check.status.LoadState == "loaded"
+  register: multipath_config
+
+- name: Restart multipathd service
+  ansible.builtin.systemd:
+    name: multipathd
+    state: restarted
+  when:
+    - node_prep_configure_multipath | bool
+    - multipath_config is defined
+    - multipath_config.changed
+
+- name: Configure system settings for Kubernetes
+  ansible.builtin.sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    state: present
+    reload: true
+  loop:
+    - { key: 'net.ipv4.ip_forward', value: '1' }
+    - { key: 'net.bridge.bridge-nf-call-iptables', value: '1' }
+    - { key: 'net.bridge.bridge-nf-call-ip6tables', value: '1' }
+  when: node_prep_configure_sysctl | bool
+
+- name: Load required kernel modules
+  community.general.modprobe:
+    name: "{{ item }}"
+    state: present
+    persistent: present
+  loop:
+    - overlay
+    - br_netfilter
+  when: node_prep_load_kernel_modules | bool
+
+- name: Disable swap
+  ansible.builtin.command: swapoff -a
+  when:
+    - node_prep_disable_swap | bool
+    - ansible_swaptotal_mb > 0
+  changed_when: true
+
+- name: Remove swap from /etc/fstab
+  ansible.builtin.lineinfile:
+    path: /etc/fstab
+    regexp: '\sswap\s'
+    state: absent
+  when: node_prep_disable_swap | bool
+
+- name: Set timezone
+  community.general.timezone:
+    name: "{{ node_prep_timezone }}"
+  when: node_prep_configure_timezone | bool
+
+- name: Set locale
+  ansible.builtin.locale_gen:
+    name: "{{ node_prep_locale }}"
+    state: present
+  when: node_prep_configure_locale | bool
+
+- name: Set default locale
+  ansible.builtin.command: update-locale LANG={{ node_prep_locale }}
+  when:
+    - node_prep_configure_locale | bool
+    - ansible_env.LANG is not defined or ansible_env.LANG != node_prep_locale
+  changed_when: true
+
+- name: Set hostname
+  ansible.builtin.hostname:
+    name: "{{ inventory_hostname }}"
+  when: node_prep_set_hostname | bool
+
+- name: Update /etc/hosts with cluster nodes
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    line: "{{ hostvars[item]['ansible_host'] }} {{ item }}"
+    state: present
+  loop: "{{ groups['k3s_cluster'] }}"
+  when: node_prep_update_hosts | bool
+
+- name: Reboot if packages were upgraded
+  ansible.builtin.reboot:
+    reboot_timeout: 300
+    msg: "Reboot initiated by Ansible after package upgrade"
+  when:
+    - node_prep_reboot_after_upgrade | bool
+    - upgrade_result is defined
+    - upgrade_result.changed
+
+- name: Display node preparation summary
+  ansible.builtin.debug:
+    msg:
+      - "✅ Node preparation complete!"
+      - "Node: {{ inventory_hostname }}"
+      - "Timezone: {{ node_prep_timezone }}"
+      - "Locale: {{ node_prep_locale }}"
+      - "Packages upgraded: {{ upgrade_result.changed | default(false) }}"
+      - "iSCSI services enabled: {{ node_prep_enable_iscsi }}"
+      - "Multipath configured: {{ multipath_config.changed | default(false) }}"
+      - "Reboot performed: {{ upgrade_result.changed and node_prep_reboot_after_upgrade }}"

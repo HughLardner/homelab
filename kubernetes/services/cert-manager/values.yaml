@@ -1,0 +1,79 @@
+---
+# Cert-Manager Helm Values
+# ⚠️  SINGLE SOURCE OF TRUTH: This file is used by both Ansible and manual operations
+#
+# Deployment Methods:
+# 1. Automated (Ansible): make cert-manager-install
+#    - Templates variables from inventory
+#    - Applies to cluster automatically
+#
+# 2. Manual (Helm): helm upgrade --install cert-manager jetstack/cert-manager --values values.yaml
+#    - Apply configuration changes directly
+
+# Install CRDs with this chart
+installCRDs: true
+
+# Global settings
+global:
+  # Leader election namespace
+  leaderElection:
+    namespace: cert-manager
+
+  # Log level
+  logLevel: 2
+
+# Resource limits for controller
+resources:
+  limits:
+    cpu: 100m
+    memory: 128Mi
+  requests:
+    cpu: 10m
+    memory: 32Mi
+
+# Webhook resource limits
+webhook:
+  resources:
+    limits:
+      cpu: 50m
+      memory: 64Mi
+    requests:
+      cpu: 10m
+      memory: 32Mi
+
+# CA Injector resource limits
+cainjector:
+  resources:
+    limits:
+      cpu: 100m
+      memory: 128Mi
+    requests:
+      cpu: 10m
+      memory: 32Mi
+
+# Prometheus metrics
+prometheus:
+  enabled: false  # Enable when Prometheus is deployed
+  servicemonitor:
+    enabled: false
+
+# Security context
+securityContext:
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
+
+# Pod security
+podSecurityPolicy:
+  enabled: false
+
+# Enable startupapicheck
+startupapicheck:
+  enabled: true
+  resources:
+    limits:
+      cpu: 50m
+      memory: 64Mi
+    requests:
+      cpu: 10m
+      memory: 32Mi

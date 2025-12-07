@@ -1,0 +1,20 @@
+---
+# Kustomize configuration for Traefik
+# Apply with: kubectl apply -k kubernetes/services/traefik/
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: traefik
+
+# Traefik dashboard and middlewares (apply after Traefik is installed)
+resources:
+  - dashboard-ingressroute.yaml
+  - middlewares.yaml
+
+commonLabels:
+  app.kubernetes.io/name: traefik
+  app.kubernetes.io/managed-by: kustomize
+
+commonAnnotations:
+  documentation: "https://doc.traefik.io/traefik/"
