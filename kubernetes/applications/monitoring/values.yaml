@@ -37,6 +37,8 @@ alertmanager:
   enabled: true
 
   alertmanagerSpec:
+    replicas: 3
+
     storage:
       volumeClaimTemplate:
         spec:
@@ -57,6 +59,9 @@ alertmanager:
 # Grafana configuration
 grafana:
   enabled: true
+
+  # Replicas for high availability
+  replicas: 2
 
   # Use existing secret for admin credentials
   admin:
@@ -144,6 +149,9 @@ prometheus:
   enabled: true
 
   prometheusSpec:
+    # Replicas for high availability
+    replicas: 2
+
     # Retention
     retention: 15d
     retentionSize: 9GB

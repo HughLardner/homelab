@@ -1,0 +1,10 @@
+---
+# Patch to enable HA for MetalLB controller
+# This scales the controller deployment to 2 replicas for high availability
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: controller
+  namespace: metallb-system
+spec:
+  replicas: 2

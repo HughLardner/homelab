@@ -13,6 +13,9 @@
 # Install CRDs with this chart
 installCRDs: true
 
+# Replicas for high availability
+replicaCount: 2
+
 # Global settings
 global:
   # Leader election namespace
@@ -33,6 +36,8 @@ resources:
 
 # Webhook resource limits
 webhook:
+  replicaCount: 2
+
   resources:
     limits:
       cpu: 50m
@@ -43,6 +48,8 @@ webhook:
 
 # CA Injector resource limits
 cainjector:
+  replicaCount: 2
+
   resources:
     limits:
       cpu: 100m
