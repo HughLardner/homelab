@@ -20,11 +20,13 @@ Production-ready Kubernetes (K3s) platform on Proxmox VE with complete GitOps wo
 - **ArgoCD** GitOps continuous delivery platform
 - **Sealed Secrets** encrypted secrets for GitOps workflow
 
-### Monitoring (ArgoCD/Helm)
-- **Grafana** metrics visualization (https://grafana.silverseekers.org)
-- **Prometheus** metrics collection and alerting
-- **Node exporters** on all cluster nodes
-- **Kube-state-metrics** for cluster state monitoring
+### Applications (ArgoCD/GitOps)
+- **Monitoring Stack** (Prometheus + Grafana)
+  - Grafana metrics visualization (https://grafana.silverseekers.org)
+  - Prometheus metrics collection and alerting
+  - Node exporters on all cluster nodes
+  - Kube-state-metrics for cluster state monitoring
+- **Kured** automated node reboots during maintenance window (04:00-08:00 UTC)
 
 ## Quick Start
 
@@ -106,12 +108,14 @@ make sealed-secrets-install # Install Sealed Secrets
 make sealed-secrets-status  # Check Sealed Secrets status
 make seal-secrets          # Encrypt secrets from secrets.yml
 
-# Monitoring (ArgoCD/Ansible)
+# Applications (ArgoCD/GitOps)
 make monitoring-secrets    # Create monitoring secrets (required first)
-make monitoring-deploy     # Deploy via ArgoCD (GitOps)
-make monitoring-install    # Deploy via Ansible (legacy)
+make monitoring-deploy     # Deploy monitoring via ArgoCD (GitOps)
 make monitoring-status     # Check monitoring stack status
 make grafana-ui            # Open Grafana dashboard
+make kured-deploy          # Deploy Kured via ArgoCD (automated node reboots)
+make kured-status          # Check Kured status
+make kured-logs            # View Kured logs
 
 # GitOps (ArgoCD)
 make root-app-deploy   # Deploy App-of-Apps pattern
@@ -146,6 +150,7 @@ make help              # Show all commands
 - [Traefik README](kubernetes/services/traefik/README.md) - Ingress controller
 - [ArgoCD README](kubernetes/services/argocd/README.md) - GitOps platform
 - [Sealed Secrets README](kubernetes/services/sealed-secrets/README.md) - Secret encryption
+- [Kured README](kubernetes/services/kured/README.md) - Automated node reboots
 
 ### Monitoring
 - [Monitoring README](kubernetes/applications/monitoring/README.md) - Prometheus + Grafana stack
@@ -175,15 +180,14 @@ make help              # Show all commands
 └─────────────────────────────────────────────┘
                      ↓
 ┌─────────────────────────────────────────────┐
-│ Monitoring Stack (ArgoCD/Helm)              │
-│  • Grafana: https://grafana.silverseekers.org│
-│  • Prometheus + Alertmanager                │
-└─────────────────────────────────────────────┘
-                     ↓
-┌─────────────────────────────────────────────┐
-│ Your Applications (ArgoCD)                  │
-│  • Deployed via GitOps workflow             │
-│  • Secrets encrypted with Sealed Secrets    │
+│ Applications (ArgoCD/GitOps)                │
+│  • Monitoring Stack (Prometheus + Grafana)  │
+│    - Grafana: https://grafana.silverseekers.org
+│    - Prometheus + Alertmanager              │
+│  • Kured (Automated Node Reboots)           │
+│  • Your Applications                        │
+│    - Deployed via GitOps workflow           │
+│    - Secrets encrypted with Sealed Secrets  │
 └─────────────────────────────────────────────┘
 ```
 

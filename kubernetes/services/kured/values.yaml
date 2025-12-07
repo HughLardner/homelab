@@ -1,0 +1,120 @@
+---
+# Kured (Kubernetes Reboot Daemon) Helm Values
+# Safely reboots nodes after system updates during maintenance windows
+
+# Configuration
+configuration:
+  # Reboot one node at a time
+  concurrency: 1
+
+  # Maintenance window (UTC time)
+  # Only reboot nodes during this window
+  startTime: "04:00"
+  endTime: "08:00"
+  timezone: "UTC"
+
+  # Period between reboot checks
+  period: "15m"
+
+  # Delay before reboot after signaling
+  rebootDelay: "60s"
+
+  # Prometheus metrics
+  metricsHost: "0.0.0.0"
+  metricsPort: 8080
+
+  # Annotations to set on nodes before reboot
+  annotateNodes: true
+
+  # Lock mechanism (k8s API-based)
+  lockTtl: 0
+  lockReleaseDelay: 0
+
+  # Drain settings
+  drainGracePeriod: -1
+  drainPodSelector: ""
+  drainTimeout: 0
+  skipWaitForDeleteTimeout: 0
+
+  # Notification settings
+  slackHookUrl: ""  # Set via environment variable or secret if using Slack
+  slackChannel: ""
+  slackUsername: "Kured"
+  messageTemplateDrain: "Node %s is being drained for reboot"
+  messageTemplateReboot: "Node %s is being rebooted"
+  messageTemplateUncordon: "Node %s has been uncordoned after reboot"
+
+  # Reboot sentinel file to monitor
+  # Default: /var/run/reboot-required (Ubuntu/Debian)
+  # Alternative for RHEL/CentOS: /var/run/reboot-required
+  rebootSentinel: "/var/run/reboot-required"
+  rebootSentinelCommand: ""
+
+  # Prefer no schedule (use sentinel file)
+  preferNoScheduleTaintValue: ""
+
+  # Force reboot (testing only)
+  forceReboot: false
+
+  # Additional reboot command
+  rebootCommand: "/bin/systemctl reboot"
+
+# Service account
+serviceAccount:
+  create: true
+  name: kured
+
+# RBAC
+rbac:
+  create: true
+
+# Pod security
+securityContext:
+  privileged: true
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: true
+
+# Tolerations - allow scheduling on all nodes including control plane
+tolerations:
+  - effect: NoSchedule
+    key: node-role.kubernetes.io/control-plane
+  - effect: NoSchedule
+    key: node-role.kubernetes.io/master
+
+# Update strategy
+updateStrategy: RollingUpdate
+
+# Priority class
+priorityClassName: "system-node-critical"
+
+# Resource limits
+resources:
+  limits:
+    cpu: 100m
+    memory: 128Mi
+  requests:
+    cpu: 10m
+    memory: 32Mi
+
+# Metrics
+metrics:
+  create: true
+
+# Service monitor for Prometheus
+podMonitor:
+  enabled: false  # Enable when Prometheus is operational
+  # namespace: monitoring
+  # labels:
+  #   release: kube-prometheus-stack
+
+# Image
+image:
+  repository: ghcr.io/kubereboot/kured
+  tag: ""  # Uses chart appVersion by default
+  pullPolicy: IfNotPresent
+
+# Host path volumes (required for node reboot)
+hostPathVolumes:
+  - name: sentinel
+    path: /var/run
+    mountPath: /var/run

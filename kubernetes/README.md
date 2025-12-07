@@ -291,25 +291,30 @@ data:
 
 ## Deployed Services
 
-### Core Platform ✅
+### Core Platform ✅ (Ansible Bootstrap)
+Infrastructure services required before GitOps can function:
 - [x] **MetalLB** - LoadBalancer IP assignment (192.168.10.150-159)
 - [x] **Longhorn** - Distributed block storage with replication
 - [x] **Cert-Manager** - Automated TLS certificates via Let's Encrypt
 - [x] **Traefik** - Ingress controller with HTTPS (192.168.10.146)
 - [x] **ArgoCD** - GitOps continuous delivery platform
 - [x] **Sealed Secrets** - Encrypt secrets for safe storage in Git
+- [x] **External-DNS** - Automated DNS record management for Cloudflare
 
-### Monitoring ⚠️
-- [x] **Grafana** - Metrics dashboards (https://grafana.silverseekers.org)
-- [ ] **Prometheus** - Metrics collection (pending node recovery)
-- [ ] **Alertmanager** - Alert routing (pending node recovery)
-- [x] **Node Exporters** - Node metrics on all nodes
-- [x] **Kube-state-metrics** - Cluster state metrics
+### Applications ✅ (ArgoCD GitOps)
+Applications managed via GitOps after bootstrap services are ready:
+- [x] **Kured** - Automated node reboots during maintenance window (04:00-08:00 UTC)
+- [x] **Monitoring Stack** (kube-prometheus-stack)
+  - [x] **Grafana** - Metrics dashboards (https://grafana.silverseekers.org)
+  - [ ] **Prometheus** - Metrics collection (pending node recovery)
+  - [ ] **Alertmanager** - Alert routing (pending node recovery)
+  - [x] **Node Exporters** - Node metrics on all nodes
+  - [x] **Kube-state-metrics** - Cluster state metrics
 
 ## Future Additions
 
 ### Networking
-- [ ] **external-dns** - Automatic DNS record creation
+- [x] **external-dns** - Automatic DNS record creation (IMPLEMENTED)
 
 ### Storage
 - [ ] **minio** - S3-compatible object storage
