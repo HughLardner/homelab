@@ -1,4 +1,4 @@
-.PHONY: help init plan apply destroy ssh-* k3s-* metallb-* longhorn-* cert-manager-* traefik-* argocd-* monitoring-* sealed-secrets-* seal-secrets root-app-deploy apps-list apps-status monitoring-secrets inventory clean
+.PHONY: help init plan apply destroy ssh-* k3s-* metallb-* longhorn-* cert-manager-* traefik-* argocd-* monitoring-* sealed-secrets-* seal-secrets root-app-deploy apps-list apps-status monitoring-secrets inventory clean deploy-infra deploy-platform deploy-services deploy-all deploy deploy-apps
 
 # Default target
 help:
@@ -47,6 +47,14 @@ help:
 	@echo "  make grafana-ui            - Open Grafana dashboard"
 	@echo "  make prometheus-ui         - Port-forward Prometheus UI"
 	@echo "  make ping                 - Test connectivity to all nodes"
+	@echo ""
+	@echo "Full Stack Deployment:"
+	@echo "  make deploy-infra      - Deploy infrastructure only (Terraform VMs)"
+	@echo "  make deploy-platform   - Deploy infrastructure + K3s cluster"
+	@echo "  make deploy-services   - Deploy infrastructure + K3s + all core services"
+	@echo "  make deploy-all        - Deploy everything (infra + platform + services + apps)"
+	@echo "  make deploy            - Alias for deploy-services (most common)"
+	@echo "  make deploy-apps       - Deploy only applications (assumes services exist)"
 	@echo ""
 	@echo "SSH Commands:"
 	@echo "  make ssh-node1     - SSH to node 1"
@@ -408,15 +416,119 @@ logs:
 	fi
 
 # ============================================================================
-# Quick Deploy (Full Stack)
+# Full Stack Deployment
 # ============================================================================
 
-deploy: apply inventory node-prep k3s-install
+# Deploy infrastructure only (Terraform VMs)
+deploy-infra:
+	@echo "========================================"
+	@echo "🚀 Deploying Infrastructure (Terraform)"
+	@echo "========================================"
+	$(MAKE) apply
 	@echo ""
-	@echo "✅ Full deployment complete!"
+	@echo "✅ Infrastructure deployment complete!"
+	@echo ""
+	@echo "Next: make deploy-platform"
+
+# Deploy infrastructure + K3s platform
+deploy-platform: deploy-infra
+	@echo ""
+	@echo "========================================"
+	@echo "🚀 Deploying K3s Platform"
+	@echo "========================================"
+	$(MAKE) inventory
+	$(MAKE) node-prep
+	$(MAKE) k3s-install
+	@echo ""
+	@echo "✅ Platform deployment complete!"
 	@echo ""
 	@echo "Set kubeconfig:"
 	@echo "  export KUBECONFIG=~/.kube/config-homelab"
 	@echo ""
 	@echo "Verify cluster:"
 	@echo "  kubectl get nodes"
+	@echo ""
+	@echo "Next: make deploy-services"
+
+# Deploy infrastructure + K3s + all core services
+deploy-services: deploy-platform
+	@echo ""
+	@echo "========================================"
+	@echo "🚀 Deploying Core Services"
+	@echo "========================================"
+	@echo "Installing MetalLB (LoadBalancer)..."
+	$(MAKE) metallb-install
+	@echo ""
+	@echo "Installing Longhorn (Storage)..."
+	$(MAKE) longhorn-install
+	@echo ""
+	@echo "Installing Cert-Manager (TLS)..."
+	$(MAKE) cert-manager-install
+	@echo ""
+	@echo "Installing Traefik (Ingress)..."
+	$(MAKE) traefik-install
+	@echo ""
+	@echo "Installing ArgoCD (GitOps)..."
+	$(MAKE) argocd-install
+	@echo ""
+	@echo "Installing Sealed Secrets (Secret Encryption)..."
+	$(MAKE) sealed-secrets-install
+	@echo ""
+	@echo "✅ Core services deployment complete!"
+	@echo ""
+	@echo "Access Points:"
+	@echo "  Traefik:  https://traefik.silverseekers.org"
+	@echo "  ArgoCD:   https://argocd.silverseekers.org"
+	@echo "  Longhorn: kubectl port-forward -n longhorn-system svc/longhorn-frontend 8080:80"
+	@echo ""
+	@echo "Next: make deploy-apps"
+
+# Deploy everything including applications
+deploy-all: deploy-services
+	@echo ""
+	@echo "========================================"
+	@echo "🚀 Deploying Applications"
+	@echo "========================================"
+	@echo "Creating monitoring secrets..."
+	$(MAKE) monitoring-secrets
+	@echo ""
+	@echo "Deploying monitoring stack..."
+	$(MAKE) monitoring-install
+	@echo ""
+	@echo "========================================"
+	@echo "✅ FULL STACK DEPLOYMENT COMPLETE!"
+	@echo "========================================"
+	@echo ""
+	@echo "🎉 Your homelab is ready!"
+	@echo ""
+	@echo "Access Points:"
+	@echo "  Grafana:  https://grafana.silverseekers.org"
+	@echo "  ArgoCD:   https://argocd.silverseekers.org"
+	@echo "  Traefik:  https://traefik.silverseekers.org"
+	@echo ""
+	@echo "Check status:"
+	@echo "  kubectl get nodes"
+	@echo "  kubectl get pods -A"
+	@echo "  make argocd-ui"
+	@echo "  make grafana-ui"
+
+# Alias: deploy = deploy-services (most common use case)
+deploy: deploy-services
+	@echo ""
+	@echo "💡 TIP: To deploy applications too, run: make deploy-all"
+
+# Deploy only applications (assumes services are already deployed)
+deploy-apps:
+	@echo "========================================"
+	@echo "🚀 Deploying Applications"
+	@echo "========================================"
+	@echo "Creating monitoring secrets..."
+	$(MAKE) monitoring-secrets
+	@echo ""
+	@echo "Deploying monitoring stack..."
+	$(MAKE) monitoring-install
+	@echo ""
+	@echo "✅ Applications deployment complete!"
+	@echo ""
+	@echo "Access Points:"
+	@echo "  Grafana: https://grafana.silverseekers.org"
