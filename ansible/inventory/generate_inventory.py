@@ -64,7 +64,18 @@ def generate_inventory(cluster_name="homelab"):
                         "argocd_domain": config.get("argocd_domain", ""),
                         "argocd_password": config.get("argocd_password", ""),
                         "argocd_replicas": config.get("argocd_replicas", 1),
-                        "argocd_cert_issuer": config.get("argocd_cert_issuer", "letsencrypt-staging")
+                        "argocd_cert_issuer": config.get("argocd_cert_issuer", "letsencrypt-staging"),
+                        "argocd_github_repo_url": config.get("argocd_github_repo_url", ""),
+                        "argocd_github_token": config.get("argocd_github_token", ""),
+                        # Monitoring configuration
+                        "grafana_domain": config.get("grafana_domain", ""),
+                        "grafana_admin_password": config.get("grafana_admin_password", ""),
+                        "grafana_cert_issuer": config.get("grafana_cert_issuer", "letsencrypt-staging"),
+                        "monitoring_storage_class": config.get("monitoring_storage_class", "longhorn"),
+                        "prometheus_storage_size": config.get("prometheus_storage_size", "10Gi"),
+                        "prometheus_retention": config.get("prometheus_retention", "15d"),
+                        "grafana_storage_size": config.get("grafana_storage_size", "5Gi"),
+                        "alertmanager_storage_size": config.get("alertmanager_storage_size", "2Gi")
                     }
                 }
             },

@@ -1,4 +1,4 @@
-.PHONY: help init plan apply destroy ssh-* k3s-* metallb-* longhorn-* cert-manager-* traefik-* argocd-* inventory clean
+.PHONY: help init plan apply destroy ssh-* k3s-* metallb-* longhorn-* cert-manager-* traefik-* argocd-* monitoring-* root-app-deploy apps-list apps-status inventory clean
 
 # Default target
 help:
@@ -31,6 +31,17 @@ help:
 	@echo "  make argocd-status        - Check ArgoCD status"
 	@echo "  make argocd-password      - Get ArgoCD admin password"
 	@echo "  make argocd-ui            - Open ArgoCD web UI"
+	@echo ""
+	@echo "ArgoCD GitOps Commands:"
+	@echo "  make root-app-deploy      - Deploy App-of-Apps (manages all applications)"
+	@echo "  make apps-list            - List all ArgoCD applications"
+	@echo "  make apps-status          - Show status of all applications"
+	@echo "  make monitoring-deploy    - Deploy monitoring via ArgoCD (GitOps)"
+	@echo "  make monitoring-sync      - Sync monitoring application"
+	@echo "  make monitoring-install   - Install monitoring via Ansible (legacy)"
+	@echo "  make monitoring-status    - Check monitoring stack status"
+	@echo "  make grafana-ui           - Open Grafana dashboard"
+	@echo "  make prometheus-ui        - Port-forward Prometheus UI"
 	@echo "  make ping                 - Test connectivity to all nodes"
 	@echo ""
 	@echo "SSH Commands:"
@@ -222,6 +233,98 @@ argocd-ui:
 		echo "ArgoCD UI: https://$$ARGOCD_DOMAIN"; \
 		open "https://$$ARGOCD_DOMAIN" 2>/dev/null || xdg-open "https://$$ARGOCD_DOMAIN" 2>/dev/null || echo "Open https://$$ARGOCD_DOMAIN in your browser"; \
 	fi
+
+# ============================================================================
+# ArgoCD GitOps Commands
+# ============================================================================
+
+root-app-deploy:
+	@echo "Deploying App-of-Apps (root-app)..."
+	kubectl apply -f kubernetes/applications/root-app.yaml
+	@echo ""
+	@echo "✅ Root app deployed!"
+	@echo ""
+	@echo "The root-app will automatically deploy all applications in kubernetes/applications/*/"
+	@echo ""
+	@echo "View applications:"
+	@echo "  make apps-list"
+	@echo "  make apps-status"
+
+apps-list:
+	@echo "ArgoCD Applications:"
+	@echo ""
+	@kubectl get applications -n argocd 2>/dev/null || echo "No applications found. Deploy root-app first: make root-app-deploy"
+
+apps-status:
+	@echo "ArgoCD Applications Status:"
+	@echo ""
+	@if command -v argocd >/dev/null 2>&1; then \
+		argocd app list; \
+	else \
+		kubectl get applications -n argocd -o wide; \
+	fi
+
+monitoring-deploy:
+	@echo "Deploying Monitoring Stack via ArgoCD..."
+	kubectl apply -f kubernetes/applications/monitoring/application.yaml
+	@echo ""
+	@echo "✅ Monitoring application deployed!"
+	@echo ""
+	@echo "Monitor sync status:"
+	@echo "  make monitoring-sync"
+	@echo "  make apps-status"
+	@echo ""
+	@echo "Or watch in ArgoCD UI:"
+	@echo "  make argocd-ui"
+
+monitoring-sync:
+	@echo "Syncing monitoring application..."
+	@if command -v argocd >/dev/null 2>&1; then \
+		argocd app sync monitoring; \
+		argocd app wait monitoring --health; \
+	else \
+		echo "ArgoCD CLI not installed. Install with:"; \
+		echo "  brew install argocd"; \
+		echo ""; \
+		echo "Or manually sync via kubectl:"; \
+		echo "  kubectl -n argocd patch app monitoring --type merge -p '{\"operation\":{\"initiatedBy\":{\"username\":\"admin\"},\"sync\":{\"revision\":\"HEAD\"}}}'"; \
+	fi
+
+monitoring-install: inventory
+	@echo "Installing Monitoring Stack (Prometheus + Grafana)..."
+	cd ansible && ansible-playbook playbooks/monitoring.yml
+
+monitoring-status:
+	@echo "Monitoring Stack Status:"
+	@echo ""
+	@echo "Pods:"
+	@kubectl get pods -n monitoring
+	@echo ""
+	@echo "PVCs:"
+	@kubectl get pvc -n monitoring
+	@echo ""
+	@echo "Services:"
+	@kubectl get svc -n monitoring
+	@echo ""
+	@echo "IngressRoute:"
+	@kubectl get ingressroute -n monitoring
+
+grafana-ui:
+	@echo "Accessing Grafana Dashboard..."
+	@GRAFANA_DOMAIN=$$(kubectl get ingressroute -n monitoring grafana -o jsonpath='{.spec.routes[0].match}' 2>/dev/null | grep -oP 'Host\(\K[^)]+' | tr -d '`' || echo ""); \
+	if [ -z "$$GRAFANA_DOMAIN" ]; then \
+		echo "IngressRoute not found. Use port-forward:"; \
+		echo "  kubectl port-forward -n monitoring svc/kube-prometheus-grafana 3000:80"; \
+		echo "  Then open: http://localhost:3000"; \
+	else \
+		echo "Grafana: https://$$GRAFANA_DOMAIN"; \
+		open "https://$$GRAFANA_DOMAIN" 2>/dev/null || xdg-open "https://$$GRAFANA_DOMAIN" 2>/dev/null || echo "Open https://$$GRAFANA_DOMAIN in your browser"; \
+	fi
+
+prometheus-ui:
+	@echo "Port-forwarding Prometheus UI..."
+	@echo "Prometheus will be available at: http://localhost:9090"
+	kubectl port-forward -n monitoring svc/kube-prometheus-prometheus 9090:9090
 
 ping:
 	cd ansible && ansible all -m ping

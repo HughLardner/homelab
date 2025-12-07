@@ -1,0 +1,276 @@
+---
+# Monitoring Stack Installation Playbook
+# Installs kube-prometheus-stack (Prometheus + Grafana + Alertmanager)
+#
+# Prerequisites:
+#   - K3s cluster running
+#   - Longhorn installed (for persistent storage)
+#   - Traefik installed (for ingress)
+#   - cert-manager installed (for TLS certificates)
+#
+# Usage:
+#   ansible-playbook playbooks/monitoring.yml
+#
+# Variables (from Terraform via inventory):
+#   - grafana_domain: Domain for Grafana UI (required)
+#   - grafana_admin_password: Admin password (required)
+#   - monitoring_storage_class: StorageClass (default: longhorn)
+#   - prometheus_storage_size: Prometheus PVC size (default: 10Gi)
+#   - grafana_storage_size: Grafana PVC size (default: 5Gi)
+
+- name: Install Monitoring Stack (Prometheus + Grafana)
+  hosts: k3s_masters[0]
+  become: true
+  gather_facts: true
+
+  vars:
+    monitoring_namespace: monitoring
+    monitoring_helm_repo: https://prometheus-community.github.io/helm-charts
+    monitoring_helm_chart: kube-prometheus-stack
+    monitoring_helm_version: "67.6.1"  # Latest stable version
+    monitoring_manifests_path: "{{ playbook_dir }}/../../kubernetes/services/monitoring"
+
+  tasks:
+    # =========================================================================
+    # Pre-flight Checks
+    # =========================================================================
+    - name: Verify required variables
+      ansible.builtin.assert:
+        that:
+          - grafana_domain is defined and grafana_domain | length > 0
+          - grafana_admin_password is defined and grafana_admin_password | length > 0
+        fail_msg: "Required variables grafana_domain and grafana_admin_password must be set"
+        success_msg: "All required variables are set"
+
+    - name: Check if Longhorn is installed
+      ansible.builtin.command:
+        cmd: /usr/local/bin/k3s kubectl get namespace longhorn-system
+      register: longhorn_ns_check
+      changed_when: false
+      failed_when: false
+
+    - name: Warn if Longhorn not installed
+      ansible.builtin.debug:
+        msg: "⚠️  WARNING: Longhorn namespace not found. Persistent storage may not work."
+      when: longhorn_ns_check.rc != 0
+
+    - name: Check if Traefik is installed
+      ansible.builtin.command:
+        cmd: /usr/local/bin/k3s kubectl get namespace traefik
+      register: traefik_ns_check
+      changed_when: false
+      failed_when: false
+
+    - name: Warn if Traefik not installed
+      ansible.builtin.debug:
+        msg: "⚠️  WARNING: Traefik namespace not found. IngressRoute may not work."
+      when: traefik_ns_check.rc != 0
+
+    # =========================================================================
+    # Namespace Setup
+    # =========================================================================
+    - name: Create monitoring namespace
+      ansible.builtin.command:
+        cmd: /usr/local/bin/k3s kubectl create namespace {{ monitoring_namespace }} --dry-run=client -o yaml
+      register: namespace_yaml
+      changed_when: false
+
+    - name: Apply monitoring namespace
+      ansible.builtin.shell: |
+        echo '{{ namespace_yaml.stdout }}' | /usr/local/bin/k3s kubectl apply -f -
+      changed_when: "'created' in namespace_result.stdout or 'configured' in namespace_result.stdout"
+      register: namespace_result
+
+    # =========================================================================
+    # Helm Repository Setup
+    # =========================================================================
+    - name: Add Prometheus Community Helm repository
+      kubernetes.core.helm_repository:
+        name: prometheus-community
+        repo_url: "{{ monitoring_helm_repo }}"
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    - name: Update Helm repositories
+      ansible.builtin.command:
+        cmd: helm repo update
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      changed_when: false
+
+    # =========================================================================
+    # Template Helm Values
+    # =========================================================================
+    - name: Create temporary directory for templated values
+      ansible.builtin.tempfile:
+        state: directory
+        prefix: monitoring_
+      register: temp_dir
+
+    - name: Template monitoring Helm values
+      ansible.builtin.template:
+        src: "{{ monitoring_manifests_path }}/values.yaml"
+        dest: "{{ temp_dir.path }}/values.yaml"
+        mode: "0644"
+
+    # =========================================================================
+    # Install Kube-Prometheus-Stack via Helm
+    # =========================================================================
+    - name: Install or upgrade kube-prometheus-stack via Helm
+      kubernetes.core.helm:
+        name: kube-prometheus-stack
+        chart_ref: prometheus-community/{{ monitoring_helm_chart }}
+        chart_version: "{{ monitoring_helm_version }}"
+        release_namespace: "{{ monitoring_namespace }}"
+        create_namespace: true
+        wait: true
+        wait_timeout: 600s
+        values_files:
+          - "{{ temp_dir.path }}/values.yaml"
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    # =========================================================================
+    # Wait for Components
+    # =========================================================================
+    - name: Wait for Prometheus Operator deployment
+      ansible.builtin.command:
+        cmd: >
+          /usr/local/bin/k3s kubectl rollout status deployment/kube-prometheus-kube-prome-operator
+          -n {{ monitoring_namespace }} --timeout=300s
+      changed_when: false
+
+    - name: Wait for Grafana deployment
+      ansible.builtin.command:
+        cmd: >
+          /usr/local/bin/k3s kubectl rollout status deployment/kube-prometheus-grafana
+          -n {{ monitoring_namespace }} --timeout=300s
+      changed_when: false
+
+    - name: Wait for Prometheus StatefulSet
+      ansible.builtin.command:
+        cmd: >
+          /usr/local/bin/k3s kubectl rollout status statefulset/prometheus-kube-prometheus-kube-prome-prometheus
+          -n {{ monitoring_namespace }} --timeout=300s
+      changed_when: false
+
+    # =========================================================================
+    # Apply IngressRoute for Grafana
+    # =========================================================================
+    - name: Template IngressRoute manifests
+      ansible.builtin.template:
+        src: "{{ monitoring_manifests_path }}/ingressroute.yaml"
+        dest: "{{ temp_dir.path }}/ingressroute.yaml"
+        mode: "0644"
+
+    - name: Apply IngressRoute for Grafana
+      ansible.builtin.command:
+        cmd: /usr/local/bin/k3s kubectl apply -f {{ temp_dir.path }}/ingressroute.yaml
+      register: ingressroute_result
+      changed_when: "'created' in ingressroute_result.stdout or 'configured' in ingressroute_result.stdout"
+
+    # =========================================================================
+    # Cleanup and Verification
+    # =========================================================================
+    - name: Clean up temporary directory
+      ansible.builtin.file:
+        path: "{{ temp_dir.path }}"
+        state: absent
+      when: temp_dir.path is defined
+
+    - name: Get monitoring pods status
+      ansible.builtin.command:
+        cmd: /usr/local/bin/k3s kubectl get pods -n {{ monitoring_namespace }} -o wide
+      register: monitoring_pods
+      changed_when: false
+
+    - name: Get PVCs status
+      ansible.builtin.command:
+        cmd: /usr/local/bin/k3s kubectl get pvc -n {{ monitoring_namespace }}
+      register: monitoring_pvcs
+      changed_when: false
+
+    - name: Get services
+      ansible.builtin.command:
+        cmd: /usr/local/bin/k3s kubectl get svc -n {{ monitoring_namespace }}
+      register: monitoring_svc
+      changed_when: false
+
+    - name: Get IngressRoute status
+      ansible.builtin.command:
+        cmd: /usr/local/bin/k3s kubectl get ingressroute -n {{ monitoring_namespace }}
+      register: monitoring_ingressroute
+      changed_when: false
+
+    - name: Get certificate status
+      ansible.builtin.command:
+        cmd: /usr/local/bin/k3s kubectl get certificate -n {{ monitoring_namespace }}
+      register: monitoring_cert
+      changed_when: false
+      failed_when: false
+
+    # =========================================================================
+    # Display Completion Message
+    # =========================================================================
+    - name: Build completion message
+      ansible.builtin.set_fact:
+        completion_message: |
+          ========================================
+          ✅ Monitoring Stack Installation Complete!
+          ========================================
+
+          📊 Pods Status:
+          {{ monitoring_pods.stdout }}
+
+          💾 Persistent Volumes:
+          {{ monitoring_pvcs.stdout }}
+
+          🔗 Services:
+          {{ monitoring_svc.stdout }}
+
+          🌐 IngressRoute:
+          {{ monitoring_ingressroute.stdout }}
+
+          🔐 Certificate:
+          {{ monitoring_cert.stdout | default('Not found - check cert-manager') }}
+
+          ========================================
+          📝 Access Information:
+          ========================================
+          Grafana URL:      https://{{ grafana_domain }}
+          Grafana Username: admin
+          Grafana Password: (configured via Terraform)
+
+          Prometheus (internal): http://kube-prometheus-prometheus:9090
+          Alertmanager (internal): http://kube-prometheus-alertmanager:9093
+
+          ========================================
+          📚 Quick Start:
+          ========================================
+          # Port-forward Prometheus (if needed):
+          kubectl port-forward -n monitoring svc/kube-prometheus-prometheus 9090:9090
+
+          # Port-forward Alertmanager (if needed):
+          kubectl port-forward -n monitoring svc/kube-prometheus-alertmanager 9093:9093
+
+          # View all ServiceMonitors:
+          kubectl get servicemonitor -A
+
+          # View alerts:
+          kubectl port-forward -n monitoring svc/kube-prometheus-alertmanager 9093:9093
+          # Then open http://localhost:9093
+
+          ========================================
+          🎨 Pre-loaded Grafana Dashboards:
+          ========================================
+          - Kubernetes Cluster Monitoring (ID: 7249)
+          - Node Exporter Full (ID: 1860)
+          - Persistent Volumes (ID: 13646)
+
+          Access: Home → Dashboards
+
+          ========================================
+
+    - name: Display completion message
+      ansible.builtin.debug:
+        msg: "{{ completion_message.split('\n') }}"

@@ -1,0 +1,63 @@
+---
+# ArgoCD Application for Monitoring Stack (Prometheus + Grafana)
+# This Application deploys the kube-prometheus-stack via Helm
+#
+# Deploy this Application:
+#   kubectl apply -f kubernetes/applications/monitoring.yaml
+#
+# Or let the App-of-Apps manage it:
+#   kubectl apply -f kubernetes/applications/root-app.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: monitoring
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+
+  # Multiple sources (requires ArgoCD 2.6+)
+  sources:
+    # Helm chart source
+    - repoURL: https://prometheus-community.github.io/helm-charts
+      targetRevision: 67.6.1
+      chart: kube-prometheus-stack
+      helm:
+        valueFiles:
+          - $values/kubernetes/services/monitoring/values.yaml
+
+    # Values source (this repo)
+    - repoURL: https://github.com/HughLardner/homelab.git
+      targetRevision: HEAD
+      ref: values
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+
+  # Ignore differences in these fields (common with CRDs)
+  ignoreDifferences:
+    - group: admissionregistration.k8s.io
+      kind: ValidatingWebhookConfiguration
+      jqPathExpressions:
+        - .webhooks[].clientConfig.caBundle
+    - group: admissionregistration.k8s.io
+      kind: MutatingWebhookConfiguration
+      jqPathExpressions:
+        - .webhooks[].clientConfig.caBundle
