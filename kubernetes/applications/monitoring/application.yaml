@@ -25,7 +25,7 @@ spec:
       chart: kube-prometheus-stack
       helm:
         valueFiles:
-          - $values/kubernetes/services/monitoring/values.yaml
+          - $values/kubernetes/applications/monitoring/values.yaml
 
     # Values source (this repo)
     - repoURL: https://github.com/HughLardner/homelab.git

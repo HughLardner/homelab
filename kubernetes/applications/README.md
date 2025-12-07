@@ -72,13 +72,44 @@ open https://argocd.silverseekers.org
 
 ### Adding New Applications
 
-1. **Create Application directory and manifest**
+1. **Create Application directory and files**
    ```bash
    mkdir -p kubernetes/applications/my-app
+   cd kubernetes/applications/my-app
    ```
 
+   **Option A: Helm chart-based application**
    ```yaml
-   # kubernetes/applications/my-app/application.yaml
+   # application.yaml
+   apiVersion: argoproj.io/v1alpha1
+   kind: Application
+   metadata:
+     name: my-app
+     namespace: argocd
+   spec:
+     project: default
+     sources:
+       - repoURL: https://example.com/helm-charts
+         targetRevision: 1.0.0
+         chart: my-app
+         helm:
+           valueFiles:
+             - $values/kubernetes/applications/my-app/values.yaml
+       - repoURL: https://github.com/HughLardner/homelab.git
+         targetRevision: HEAD
+         ref: values
+     destination:
+       server: https://kubernetes.default.svc
+       namespace: my-app
+     syncPolicy:
+       automated:
+         prune: true
+         selfHeal: true
+   ```
+
+   **Option B: Plain manifests**
+   ```yaml
+   # application.yaml
    apiVersion: argoproj.io/v1alpha1
    kind: Application
    metadata:
@@ -89,7 +120,7 @@ open https://argocd.silverseekers.org
      source:
        repoURL: https://github.com/HughLardner/homelab.git
        targetRevision: HEAD
-       path: kubernetes/services/my-app
+       path: kubernetes/applications/my-app
      destination:
        server: https://kubernetes.default.svc
        namespace: my-app
@@ -130,16 +161,17 @@ Each application follows this structure:
 
 ```
 kubernetes/
-├── applications/
-│   └── my-app/
-│       └── application.yaml  # ArgoCD Application (points to below)
-└── services/
+└── applications/
     └── my-app/
-        ├── values.yaml       # Helm values (may have {{ ansible_vars }})
-        ├── manifests.yaml    # Plain manifests
-        ├── kustomization.yaml
-        └── README.md
+        ├── application.yaml   # ArgoCD Application manifest
+        ├── values.yaml        # Helm values (no templating!)
+        ├── ingressroute.yaml  # Traefik IngressRoute
+        ├── manifests.yaml     # Plain Kubernetes manifests
+        ├── kustomization.yaml # Kustomize config
+        └── README.md          # Application documentation
 ```
+
+All application files are kept together in one directory for easier management.
 
 ## Secrets Management
 
