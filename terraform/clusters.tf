@@ -22,11 +22,13 @@ variable "cluster" {
     cert_manager_domain       = string
     cloudflare_email          = string
     traefik_dashboard_domain  = string
+    longhorn_domain           = string
+    longhorn_cert_issuer      = string
     # ArgoCD configuration
-    argocd_domain   = string
-    argocd_github_repo_url = string
+    argocd_domain             = string
+    argocd_github_repo_url    = string
     # Monitoring configuration
-    grafana_domain = string
+    grafana_domain            = string
   })
 
   default = {
@@ -50,6 +52,8 @@ variable "cluster" {
     cert_manager_domain        = "silverseekers.org"
     cloudflare_email           = "hughlardner@gmail.com"
     traefik_dashboard_domain   = "traefik.silverseekers.org"
+    longhorn_domain            = "longhorn.silverseekers.org"
+    longhorn_cert_issuer       = "letsencrypt-prod"
     # ArgoCD GitOps
     argocd_domain   = "argocd.silverseekers.org"
     argocd_github_repo_url = "https://github.com/HughLardner/homelab.git"
@@ -58,22 +62,4 @@ variable "cluster" {
   }
 }
 
-# Secrets (defined in secrets.tf)
-variable "traefik_dashboard_password" {
-  description = "Password for Traefik dashboard basic auth"
-  type        = string
-  sensitive   = true
-}
-
-variable "argocd_password" {
-  description = "Admin password for ArgoCD"
-  type        = string
-  sensitive   = true
-}
-
-variable "grafana_admin_password" {
-  description = "Admin password for Grafana"
-  type        = string
-  sensitive   = true
-}
 
