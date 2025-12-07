@@ -6,12 +6,21 @@ This directory contains Kubernetes manifest files for deploying and managing ser
 
 ```
 kubernetes/
-├── README.md           # This file
-├── apps/               # Application deployments (workloads)
-│   └── (empty)         # Your custom applications go here
-└── services/           # Infrastructure services (networking, storage, etc.)
-    ├── metallb/        # MetalLB LoadBalancer configuration
-    └── traefik/        # Traefik ingress controller configuration
+├── README.md              # This file
+├── applications/          # Applications managed by ArgoCD
+│   ├── README.md          # Applications documentation
+│   ├── root-app.yaml      # App-of-Apps pattern
+│   └── monitoring/        # Prometheus + Grafana stack
+│       ├── application.yaml
+│       ├── values.yaml
+│       ├── ingressroute.yaml
+│       └── README.md
+└── services/              # Infrastructure services
+    ├── metallb/           # MetalLB LoadBalancer
+    ├── longhorn/          # Distributed block storage
+    ├── cert-manager/      # TLS certificate automation
+    ├── traefik/           # Ingress controller
+    └── argocd/            # GitOps platform
 ```
 
 ## Purpose and Philosophy
@@ -279,34 +288,42 @@ data:
 - Ingress rules
 - Everything else
 
+## Deployed Services
+
+### Core Platform ✅
+- [x] **MetalLB** - LoadBalancer IP assignment (192.168.10.150-159)
+- [x] **Longhorn** - Distributed block storage with replication
+- [x] **Cert-Manager** - Automated TLS certificates via Let's Encrypt
+- [x] **Traefik** - Ingress controller with HTTPS (192.168.10.146)
+- [x] **ArgoCD** - GitOps continuous delivery platform
+
+### Monitoring ⚠️
+- [x] **Grafana** - Metrics dashboards (https://grafana.silverseekers.org)
+- [ ] **Prometheus** - Metrics collection (pending node recovery)
+- [ ] **Alertmanager** - Alert routing (pending node recovery)
+- [x] **Node Exporters** - Node metrics on all nodes
+- [x] **Kube-state-metrics** - Cluster state metrics
+
 ## Future Additions
 
-Services to add:
-
 ### Networking
-- [ ] **cert-manager** - Automated TLS certificates
 - [ ] **external-dns** - Automatic DNS record creation
-- [ ] **ingress-nginx** - Alternative ingress controller
 
 ### Storage
-- [ ] **longhorn** - Distributed block storage
 - [ ] **minio** - S3-compatible object storage
 - [ ] **nfs-client-provisioner** - NFS storage class
+- [ ] **velero** - Backup and restore
 
 ### Observability
-- [ ] **kube-prometheus-stack** - Metrics and alerting
-- [ ] **grafana** - Dashboards and visualization
 - [ ] **loki** - Log aggregation
 - [ ] **tempo** - Distributed tracing
+- [ ] **jaeger** - Distributed tracing UI
 
 ### Security
 - [ ] **sealed-secrets** - Encrypted secrets in git
 - [ ] **vault** - Secret management
 - [ ] **falco** - Runtime security
-
-### GitOps
-- [ ] **argocd** - Declarative continuous delivery
-- [ ] **flux** - GitOps toolkit
+- [ ] **trivy** - Vulnerability scanning
 
 ## References
 
