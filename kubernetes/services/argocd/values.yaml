@@ -1,0 +1,129 @@
+---
+# ArgoCD Helm Values Configuration
+# Install with: helm upgrade --install argocd argo/argo-cd --namespace argocd --values values.yaml
+
+# Global settings
+global:
+  # Domain for the ArgoCD server
+  domain: {{ argocd_domain }}
+
+# Server configuration
+server:
+  # Replicas for high availability
+  replicas: {{ argocd_replicas | default(1) }}
+
+  # Extra args for the server
+  extraArgs:
+    - --insecure  # TLS termination at Traefik ingress
+
+  # Service configuration
+  service:
+    type: ClusterIP
+    servicePortHttp: 80
+    servicePortHttps: 443
+
+  # Resource limits
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "256Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+
+# Controller configuration
+controller:
+  replicas: {{ argocd_controller_replicas | default(1) }}
+
+  resources:
+    requests:
+      cpu: "250m"
+      memory: "256Mi"
+    limits:
+      cpu: "1000m"
+      memory: "1Gi"
+
+# Repo server configuration
+repoServer:
+  replicas: {{ argocd_repo_replicas | default(1) }}
+
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+
+# ApplicationSet controller
+applicationSet:
+  replicas: {{ argocd_appset_replicas | default(1) }}
+
+  resources:
+    requests:
+      cpu: "50m"
+      memory: "64Mi"
+    limits:
+      cpu: "200m"
+      memory: "256Mi"
+
+# Redis configuration (used for caching)
+redis:
+  resources:
+    requests:
+      cpu: "50m"
+      memory: "64Mi"
+    limits:
+      cpu: "200m"
+      memory: "256Mi"
+
+# Dex configuration (OIDC provider - disabled, using local auth)
+dex:
+  enabled: false
+
+# Notifications controller (optional)
+notifications:
+  enabled: {{ argocd_notifications_enabled | default('false') }}
+
+# Configs
+configs:
+  # Secret configuration
+  secret:
+    # Create the argocd-secret (password will be set by Ansible)
+    createSecret: true
+
+  # ConfigMap configuration
+  cm:
+    # Admin account enabled
+    admin.enabled: "true"
+
+    # URL for the ArgoCD server (used in notifications and webhooks)
+    url: "https://{{ argocd_domain }}"
+
+    # Disable anonymous access
+    users.anonymous.enabled: "false"
+
+    # Enable status badge
+    statusbadge.enabled: "true"
+
+    # Resource tracking method
+    application.resourceTrackingMethod: annotation
+
+  # RBAC configuration
+  rbac:
+    # Policy for admin role
+    policy.default: role:readonly
+    policy.csv: |
+      g, admin, role:admin
+
+  # Repository credentials (add your repos here)
+  repositories: {}
+
+  # Credential templates
+  credentialTemplates: {}
+
+# Metrics for Prometheus
+metrics:
+  enabled: true
+  serviceMonitor:
+    enabled: false  # Enable if using Prometheus Operator

@@ -1,0 +1,273 @@
+.PHONY: help init plan apply destroy ssh-* k3s-* metallb-* longhorn-* cert-manager-* traefik-* argocd-* inventory clean
+
+# Default target
+help:
+	@echo "Homelab Infrastructure Makefile"
+	@echo ""
+	@echo "Terraform Commands:"
+	@echo "  make init          - Initialize Terraform"
+	@echo "  make plan          - Plan infrastructure changes"
+	@echo "  make apply         - Apply infrastructure changes"
+	@echo "  make destroy       - Destroy infrastructure"
+	@echo "  make output        - Show Terraform outputs"
+	@echo ""
+	@echo "Ansible Commands:"
+	@echo "  make inventory         - Generate Ansible inventory from Terraform"
+	@echo "  make node-prep         - Prepare nodes (update packages, configure system)"
+	@echo "  make node-prep-reboot  - Prepare nodes with auto-reboot after upgrade"
+	@echo "  make k3s-install       - Install K3s cluster"
+	@echo "  make k3s-status        - Check K3s cluster status"
+	@echo "  make k3s-destroy       - Uninstall K3s from all nodes"
+	@echo "  make metallb-install   - Install MetalLB (LoadBalancer)"
+	@echo "  make metallb-test      - Install MetalLB with LoadBalancer testing"
+	@echo "  make longhorn-install     - Install Longhorn (Storage)"
+	@echo "  make longhorn-ui          - Open Longhorn UI"
+	@echo "  make cert-manager-install - Install cert-manager (TLS)"
+	@echo "  make cert-manager-status  - Check cert-manager status"
+	@echo "  make traefik-install      - Install Traefik (Ingress Controller)"
+	@echo "  make traefik-status       - Check Traefik status"
+	@echo "  make traefik-dashboard    - Open Traefik dashboard"
+	@echo "  make argocd-install       - Install ArgoCD (GitOps)"
+	@echo "  make argocd-status        - Check ArgoCD status"
+	@echo "  make argocd-password      - Get ArgoCD admin password"
+	@echo "  make argocd-ui            - Open ArgoCD web UI"
+	@echo "  make ping                 - Test connectivity to all nodes"
+	@echo ""
+	@echo "SSH Commands:"
+	@echo "  make ssh-node1     - SSH to node 1"
+	@echo "  make ssh-node2     - SSH to node 2"
+	@echo "  make ssh-node3     - SSH to node 3"
+	@echo ""
+	@echo "Workspace Commands:"
+	@echo "  make workspace-list    - List all workspaces"
+	@echo "  make workspace-show    - Show current workspace"
+	@echo "  make workspace WS=name - Switch to workspace"
+	@echo ""
+	@echo "Utility Commands:"
+	@echo "  make clean         - Clean temporary files"
+	@echo "  make logs          - Show Ansible logs"
+
+# ============================================================================
+# Terraform Commands
+# ============================================================================
+
+init:
+	cd terraform && terraform init
+
+plan:
+	cd terraform && terraform plan
+
+apply:
+	cd terraform && terraform apply -auto-approve
+
+destroy:
+	cd terraform && terraform destroy -auto-approve
+
+output:
+	cd terraform && terraform output
+
+# ============================================================================
+# Workspace Management
+# ============================================================================
+
+workspace-list:
+	cd terraform && terraform workspace list
+
+workspace-show:
+	cd terraform && terraform workspace show
+
+workspace:
+ifndef WS
+	@echo "Error: WS variable not set. Usage: make workspace WS=<workspace-name>"
+	@exit 1
+endif
+	cd terraform && terraform workspace select $(WS) || terraform workspace new $(WS)
+
+# ============================================================================
+# Ansible Commands
+# ============================================================================
+
+inventory:
+	@echo "Generating Ansible inventory from Terraform..."
+	@cd ansible/inventory && python3 generate_inventory.py --format yaml > hosts.yml
+	@echo "✅ Inventory generated: ansible/inventory/hosts.yml"
+
+node-prep: inventory
+	@echo "Preparing nodes..."
+	cd ansible && ansible-playbook playbooks/node-prep.yml
+
+node-prep-reboot: inventory
+	@echo "Preparing nodes (with reboot after upgrade)..."
+	cd ansible && ansible-playbook playbooks/node-prep.yml \
+	  -e node_prep_reboot_after_upgrade=true
+
+k3s-install: inventory
+	@echo "Installing K3s cluster..."
+	cd ansible && ansible-playbook playbooks/k3s-cluster-setup.yml
+
+k3s-status:
+	cd ansible && ansible k3s_cluster -m shell -a "systemctl status k3s --no-pager"
+
+k3s-destroy:
+	@echo "⚠️  WARNING: This will uninstall K3s from all nodes!"
+	@read -p "Are you sure? [y/N] " -n 1 -r; \
+	echo; \
+	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
+		cd ansible && ansible k3s_cluster -m shell -a "/usr/local/bin/k3s-uninstall.sh" -b; \
+	fi
+
+metallb-install: inventory
+	@echo "Installing MetalLB..."
+	cd ansible && ansible-playbook playbooks/metallb.yml
+
+metallb-test: inventory
+	@echo "Installing MetalLB with LoadBalancer testing..."
+	cd ansible && ansible-playbook playbooks/metallb.yml \
+	  -e metallb_test_loadbalancer=true
+
+longhorn-install: inventory
+	@echo "Installing Longhorn storage..."
+	cd ansible && ansible-playbook playbooks/longhorn.yml
+
+longhorn-ui:
+	@echo "Accessing Longhorn UI..."
+	@LONGHORN_IP=$$(kubectl get svc -n longhorn-system longhorn-frontend -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo ""); \
+	if [ -z "$$LONGHORN_IP" ]; then \
+		echo "Longhorn UI not exposed via LoadBalancer. Use port-forward:"; \
+		echo "  kubectl port-forward -n longhorn-system svc/longhorn-frontend 8080:80"; \
+		echo "  Then open: http://localhost:8080"; \
+	else \
+		echo "Longhorn UI: http://$$LONGHORN_IP"; \
+		open "http://$$LONGHORN_IP" 2>/dev/null || xdg-open "http://$$LONGHORN_IP" 2>/dev/null || echo "Open http://$$LONGHORN_IP in your browser"; \
+	fi
+
+cert-manager-install: inventory
+	@echo "Installing cert-manager..."
+	cd ansible && ansible-playbook playbooks/cert-manager.yml
+
+cert-manager-status:
+	@echo "Cert-Manager Status:"
+	@echo ""
+	@echo "Pods:"
+	@kubectl get pods -n cert-manager
+	@echo ""
+	@echo "ClusterIssuers:"
+	@kubectl get clusterissuer
+
+traefik-install: inventory
+	@echo "Installing Traefik ingress controller..."
+	cd ansible && ansible-playbook playbooks/traefik.yml
+
+traefik-status:
+	@echo "Traefik Status:"
+	@echo ""
+	@echo "Pods:"
+	@kubectl get pods -n traefik
+	@echo ""
+	@echo "Service:"
+	@kubectl get svc -n traefik
+	@echo ""
+	@echo "IngressClass:"
+	@kubectl get ingressclass
+	@echo ""
+	@echo "IngressRoutes:"
+	@kubectl get ingressroute -A
+
+traefik-dashboard:
+	@echo "Accessing Traefik Dashboard..."
+	@TRAEFIK_DOMAIN=$$(kubectl get ingressroute -n traefik traefik-dashboard -o jsonpath='{.spec.routes[0].match}' 2>/dev/null | grep -oP 'Host\(\K[^)]+' | tr -d '`' || echo ""); \
+	if [ -z "$$TRAEFIK_DOMAIN" ]; then \
+		echo "Dashboard IngressRoute not found. Use port-forward:"; \
+		echo "  kubectl port-forward -n traefik svc/traefik 9000:9000"; \
+		echo "  Then open: http://localhost:9000/dashboard/"; \
+	else \
+		echo "Traefik Dashboard: https://$$TRAEFIK_DOMAIN"; \
+		open "https://$$TRAEFIK_DOMAIN" 2>/dev/null || xdg-open "https://$$TRAEFIK_DOMAIN" 2>/dev/null || echo "Open https://$$TRAEFIK_DOMAIN in your browser"; \
+	fi
+
+argocd-install: inventory
+	@echo "Installing ArgoCD GitOps platform..."
+	cd ansible && ansible-playbook playbooks/argocd.yml
+
+argocd-status:
+	@echo "ArgoCD Status:"
+	@echo ""
+	@echo "Pods:"
+	@kubectl get pods -n argocd
+	@echo ""
+	@echo "Services:"
+	@kubectl get svc -n argocd
+	@echo ""
+	@echo "IngressRoute:"
+	@kubectl get ingressroute -n argocd
+	@echo ""
+	@echo "Applications:"
+	@kubectl get applications -n argocd 2>/dev/null || echo "No applications found"
+
+argocd-password:
+	@echo "ArgoCD Admin Password:"
+	@echo "(Password is set via Terraform configuration)"
+	@echo ""
+	@echo "If you need to reset the password, use:"
+	@echo "  kubectl -n argocd patch secret argocd-secret -p '{\"stringData\": {\"admin.password\": \"<bcrypt-hash>\"}}'"
+
+argocd-ui:
+	@echo "Accessing ArgoCD Web UI..."
+	@ARGOCD_DOMAIN=$$(kubectl get ingressroute -n argocd argocd-server -o jsonpath='{.spec.routes[0].match}' 2>/dev/null | grep -oP 'Host\(\K[^)]+' | tr -d '`' || echo ""); \
+	if [ -z "$$ARGOCD_DOMAIN" ]; then \
+		echo "IngressRoute not found. Use port-forward:"; \
+		echo "  kubectl port-forward -n argocd svc/argocd-server 8080:80"; \
+		echo "  Then open: http://localhost:8080"; \
+	else \
+		echo "ArgoCD UI: https://$$ARGOCD_DOMAIN"; \
+		open "https://$$ARGOCD_DOMAIN" 2>/dev/null || xdg-open "https://$$ARGOCD_DOMAIN" 2>/dev/null || echo "Open https://$$ARGOCD_DOMAIN in your browser"; \
+	fi
+
+ping:
+	cd ansible && ansible all -m ping
+
+# ============================================================================
+# SSH Access
+# ============================================================================
+
+ssh-node1:
+	ssh ubuntu@$$(cd terraform && terraform output -json | jq -r '.vm_ip_addresses.value[0]' | cut -d'/' -f1)
+
+ssh-node2:
+	ssh ubuntu@$$(cd terraform && terraform output -json | jq -r '.vm_ip_addresses.value[1]' | cut -d'/' -f1)
+
+ssh-node3:
+	ssh ubuntu@$$(cd terraform && terraform output -json | jq -r '.vm_ip_addresses.value[2]' | cut -d'/' -f1)
+
+# ============================================================================
+# Utility Commands
+# ============================================================================
+
+clean:
+	find . -type d -name ".terraform" -exec rm -rf {} + 2>/dev/null || true
+	find . -type f -name "*.tfstate.backup" -delete
+	find . -type f -name ".DS_Store" -delete
+	rm -f ansible/inventory/hosts.yml
+	rm -rf ansible/.cache
+	@echo "✅ Cleaned temporary files"
+
+logs:
+	@if [ -f ansible/logs/ansible.log ]; then \
+		tail -f ansible/logs/ansible.log; \
+	else \
+		echo "No Ansible logs found"; \
+	fi
+
+# ============================================================================
+# Quick Deploy (Full Stack)
+# ============================================================================
+
+deploy: apply inventory node-prep k3s-install
+	@echo ""
+	@echo "✅ Full deployment complete!"
+	@echo ""
+	@echo "Set kubeconfig:"
+	@echo "  export KUBECONFIG=~/.kube/config-homelab"
+	@echo ""
+	@echo "Verify cluster:"
+	@echo "  kubectl get nodes"

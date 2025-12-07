@@ -1,0 +1,52 @@
+---
+# Node Preparation Role Defaults
+
+# Package management
+node_prep_upgrade_packages: true
+node_prep_reboot_after_upgrade: false # Set to true if you want automatic reboot
+
+# Essential packages (always installed)
+node_prep_essential_packages:
+  - curl
+  - wget
+  - ca-certificates
+  - apt-transport-https
+  - gnupg
+  - lsb-release
+  - software-properties-common
+
+# Storage-related packages (required for Longhorn)
+node_prep_storage_packages:
+  - open-iscsi # iSCSI initiator (critical for Longhorn)
+  - nfs-common # NFS client support (for NFS backups)
+  - apparmor-utils # AppArmor profile management
+
+# Optional packages (installed if list is not empty)
+node_prep_optional_packages:
+  - htop
+  - vim
+  - jq
+  - net-tools
+  - dnsutils
+  - iotop
+  - tmux
+  - iperf # Network performance testing
+
+# Kubernetes preparation
+node_prep_configure_sysctl: true
+node_prep_load_kernel_modules: true
+node_prep_disable_swap: true
+
+# Timezone and locale
+node_prep_configure_timezone: true
+node_prep_timezone: "Europe/Dublin" # Change to your timezone
+node_prep_configure_locale: true
+node_prep_locale: "en_IE.UTF-8"
+
+# Hostname and hosts
+node_prep_set_hostname: true
+node_prep_update_hosts: true
+
+# Storage configuration
+node_prep_enable_iscsi: true # Enable iSCSI services (required for Longhorn)
+node_prep_configure_multipath: true # Configure multipath blacklist (prevents conflicts)

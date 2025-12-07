@@ -1,0 +1,17 @@
+---
+# Internal variables for K3s role
+# These are computed values, not user-configurable
+
+# Node IP address
+node_ip: "{{ ansible_default_ipv4.address }}"
+
+# First master node hostname
+k3s_first_master: "{{ groups['k3s_masters'][0] }}"
+
+# First master node IP address
+# Note: This is computed dynamically in prerequisites.yml for additional masters
+# to avoid issues with serial execution and hostvars availability
+k3s_first_master_ip: "{{ hostvars[k3s_first_master]['ansible_default_ipv4']['address'] | default('') }}"
+
+# Determine if this is the first master node
+is_first_master: "{{ inventory_hostname == k3s_first_master }}"

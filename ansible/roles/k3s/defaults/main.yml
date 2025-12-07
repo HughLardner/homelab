@@ -1,0 +1,33 @@
+---
+# K3s Installation Role Defaults
+# Most cluster-wide variables are in group_vars/k3s_cluster/main.yml
+# These are role-specific defaults that can be overridden
+
+# K3s version (default if not in group_vars)
+k3s_version: "v1.33.5+k3s1"
+
+# K3s installation URL
+k3s_install_url: "https://get.k3s.io"
+
+# K3s server configuration
+k3s_disable_traefik: true
+k3s_disable_servicelb: true
+k3s_write_kubeconfig_mode: 644
+
+# Node taint for control plane nodes
+k3s_node_taint: "" # Empty = no taint, allows all workloads
+
+# Cluster configuration
+k3s_cluster_init: true
+k3s_server_port: 6443
+
+# Installation timeout (seconds)
+k3s_install_timeout: 300
+k3s_ready_timeout: 120
+
+# Kubeconfig location
+k3s_kubeconfig_path: "/etc/rancher/k3s/k3s.yaml"
+k3s_node_token_path: "/var/lib/rancher/k3s/server/node-token"
+
+# Local kubeconfig file name
+k3s_local_kubeconfig_name: "config-homelab"

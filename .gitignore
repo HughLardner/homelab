@@ -1,0 +1,28 @@
+.idea
+.terraform*
+terraform/secrets.tf
+terraform/terraform.tfstate*
+terraform/terraform.tfvars
+ansible/tmp
+*.DS_Store
+scripts/.env
+env/
+
+# Ansible generated files
+ansible/inventory/hosts.yml
+ansible/.cache/
+ansible/logs/
+
+# Ansible Vault files (unencrypted backups)
+ansible/**/vault/*.yaml.bak
+ansible/**/vault/*.yml.bak
+
+# Sealed Secrets private keys (if accidentally committed)
+sealed-secrets-private-key.pem
+sealed-secrets-public-key.pem
+
+# Cursor IDE files
+.cursor/
+
+# Claude Code files (may contain MCP secrets)
+.claude/

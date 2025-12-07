@@ -1,0 +1,108 @@
+---
+# Simplified K3s Installation
+# Installs K3s on first master, then additional masters
+
+- name: Set first master facts
+  ansible.builtin.set_fact:
+    k3s_first_master: "{{ groups['k3s_masters'][0] }}"
+    is_first_master: "{{ inventory_hostname == groups['k3s_masters'][0] }}"
+    node_ip: "{{ ansible_default_ipv4.address }}"
+
+- name: Install required packages
+  ansible.builtin.apt:
+    name:
+      - curl
+      - ca-certificates
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+  when: ansible_os_family == "Debian"
+
+# First Master Installation
+- name: Install k3s on first master
+  ansible.builtin.shell: |
+    curl -sfL {{ k3s_install_url }} | sh -s - server \
+      --cluster-init \
+      --disable traefik \
+      --disable servicelb \
+      --write-kubeconfig-mode {{ k3s_write_kubeconfig_mode }} \
+      --tls-san {{ node_ip }} \
+      {{ '--node-taint ' + k3s_node_taint if k3s_node_taint | length > 0 else '' }}
+  environment:
+    INSTALL_K3S_VERSION: "{{ k3s_version }}"
+  args:
+    creates: /usr/local/bin/k3s
+    executable: /bin/bash
+  when: is_first_master
+  register: k3s_install_first
+
+- name: Wait for k3s API to be ready (first master)
+  ansible.builtin.uri:
+    url: "https://{{ node_ip }}:{{ k3s_server_port }}/healthz"
+    method: GET
+    validate_certs: false
+    status_code: [200, 401, 403]
+  register: k3s_health
+  until: k3s_health.status in [200, 401, 403]
+  retries: 24
+  delay: 5
+  when: is_first_master
+
+# Additional Masters Installation
+- name: Get node token from first master
+  ansible.builtin.slurp:
+    src: "{{ k3s_node_token_path }}"
+  register: node_token
+  delegate_to: "{{ k3s_first_master }}"
+  when: not is_first_master
+
+- name: Install k3s on additional masters
+  ansible.builtin.shell: |
+    curl -sfL {{ k3s_install_url }} | sh -s - server \
+      --server https://{{ hostvars[k3s_first_master]['ansible_default_ipv4']['address'] }}:{{ k3s_server_port }} \
+      --token {{ node_token.content | b64decode | trim }} \
+      --disable traefik \
+      --disable servicelb \
+      --write-kubeconfig-mode {{ k3s_write_kubeconfig_mode }} \
+      --tls-san {{ node_ip }} \
+      {{ '--node-taint ' + k3s_node_taint if k3s_node_taint | length > 0 else '' }}
+  environment:
+    INSTALL_K3S_VERSION: "{{ k3s_version }}"
+  args:
+    creates: /usr/local/bin/k3s
+    executable: /bin/bash
+  when:
+    - not is_first_master
+    - node_token.content is defined
+
+# Verification
+- name: Verify k3s service is running
+  ansible.builtin.systemd:
+    name: k3s
+    state: started
+    enabled: true
+
+- name: Wait for node to be ready
+  ansible.builtin.shell: |
+    /usr/local/bin/k3s kubectl get nodes -o json | jq -r '.items[0].status.conditions[] | select(.type=="Ready") | .status'
+  register: node_ready
+  until: node_ready.stdout == "True"
+  retries: 30
+  delay: 5
+  changed_when: false
+  failed_when: false
+  args:
+    executable: /bin/bash
+
+# Kubeconfig Management (first master only)
+- name: Include kubeconfig tasks
+  ansible.builtin.include_tasks: kubeconfig.yml
+  when: is_first_master
+
+- name: Display installation summary
+  ansible.builtin.debug:
+    msg:
+      - "✅ K3s installation complete!"
+      - "Node: {{ inventory_hostname }}"
+      - "IP: {{ node_ip }}"
+      - "Role: {{ 'First Master' if is_first_master else 'Additional Master' }}"

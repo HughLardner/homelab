@@ -1,0 +1,72 @@
+---
+# K3s Cluster Setup Playbook (Optimized)
+# First master installed serially, additional masters in parallel
+
+- name: Install K3s First Master
+  hosts: k3s_masters[0]
+  become: true
+  gather_facts: true
+
+  # Note: k3s_version is defined in roles/k3s/defaults/main.yml
+  # Override with: ansible-playbook ... -e k3s_version=v1.34.0+k3s1
+
+  pre_tasks:
+    - name: Verify connectivity
+      ansible.builtin.ping:
+
+    - name: Display cluster info
+      ansible.builtin.debug:
+        msg:
+          - "Installing K3s {{ k3s_version }}"
+          - "First master: {{ groups['k3s_masters'][0] }}"
+          - "Total nodes: {{ groups['k3s_masters'] | length }}"
+
+  roles:
+    - role: k3s
+
+- name: Install K3s Additional Masters (Parallel)
+  hosts: k3s_masters[1:]
+  become: true
+  gather_facts: true
+  # No serial limit - all additional masters install in parallel
+
+  roles:
+    - role: k3s
+
+  post_tasks:
+    - name: Wait for all nodes to join
+      ansible.builtin.shell: |
+        /usr/local/bin/k3s kubectl get nodes --no-headers | wc -l
+      register: node_count
+      changed_when: false
+      failed_when: false
+      delegate_to: "{{ groups['k3s_masters'][0] }}"
+      until: node_count.stdout | int >= groups['k3s_masters'] | length
+      retries: 30
+      delay: 5
+      run_once: true
+
+    - name: Display cluster status
+      ansible.builtin.shell: |
+        /usr/local/bin/k3s kubectl get nodes -o wide
+      register: cluster_status
+      changed_when: false
+      delegate_to: "{{ groups['k3s_masters'][0] }}"
+      run_once: true
+
+    - name: Show cluster nodes
+      ansible.builtin.debug:
+        var: cluster_status.stdout_lines
+      run_once: true
+
+    - name: Display next steps
+      ansible.builtin.debug:
+        msg:
+          - "✅ K3s cluster installation complete!"
+          - ""
+          - "Kubeconfig saved to: ~/.kube/{{ k3s_local_kubeconfig_name }}"
+          - ""
+          - "Next steps:"
+          - "  export KUBECONFIG=~/.kube/{{ k3s_local_kubeconfig_name }}"
+          - "  kubectl get nodes"
+      run_once: true

@@ -1,0 +1,11 @@
+---
+# Self-Signed Certificate Issuer
+# Use for internal services that don't need public trust
+# No external dependencies or rate limits
+
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: selfsigned
+spec:
+  selfSigned: {}

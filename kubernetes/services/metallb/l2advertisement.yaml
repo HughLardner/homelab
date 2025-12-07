@@ -1,0 +1,47 @@
+---
+# MetalLB L2 Advertisement Configuration
+# This configures how MetalLB advertises IP addresses using Layer 2 (ARP/NDP)
+#
+# L2 Mode: Simple ARP-based load balancing
+# - Works on any network without special routing configuration
+# - LoadBalancer IPs must be on the same subnet as cluster nodes
+# - One node owns the IP at a time (failover on node failure)
+#
+# To apply changes: kubectl apply -f l2advertisement.yaml
+
+apiVersion: metallb.io/v1beta1
+kind: L2Advertisement
+metadata:
+  name: default-l2-advertisement
+  namespace: metallb-system
+spec:
+  # Advertise IPs from these pools
+  ipAddressPools:
+  - default-pool
+
+  # Optional: Restrict to specific nodes
+  # nodeSelectors:
+  # - matchLabels:
+  #     node-role.kubernetes.io/worker: ""
+
+  # Optional: Restrict to specific network interfaces
+  # interfaces:
+  # - eth0
+  # - ens18
+
+---
+# Example: Separate L2 advertisement for production pool
+# Uncomment and modify as needed
+#
+# apiVersion: metallb.io/v1beta1
+# kind: L2Advertisement
+# metadata:
+#   name: production-l2-advertisement
+#   namespace: metallb-system
+# spec:
+#   ipAddressPools:
+#   - production-pool
+#   # Only advertise from edge/ingress nodes
+#   nodeSelectors:
+#   - matchLabels:
+#       node-role.kubernetes.io/edge: ""

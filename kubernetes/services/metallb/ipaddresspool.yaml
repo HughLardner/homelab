@@ -1,0 +1,74 @@
+---
+# MetalLB IP Address Pool Configuration
+#
+# ⚠️  SINGLE SOURCE OF TRUTH: This file is used by both Ansible and manual operations
+#
+# This defines the pool of IP addresses that MetalLB can assign to LoadBalancer services
+#
+# Deployment Methods:
+# 1. Automated (Ansible): make metallb-install
+#    - Templates {{ metallb_ipv4_pools }} from inventory
+#    - Applies to cluster automatically
+#
+# 2. Manual (kubectl): kubectl apply -k kubernetes/services/metallb/
+#    - Apply configuration changes directly
+#    - Useful for day-2 operations
+#
+# To modify the IP range:
+# - Change addresses below and apply with: kubectl apply -f ipaddresspool.yaml
+# - Or change metallb_ipv4_pools in inventory and run: make metallb-install
+
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: default-pool
+  namespace: metallb-system
+spec:
+  addresses:
+  # IP pool configured from Terraform (via Ansible inventory: metallb_ipv4_pools)
+  # Ansible will template this value during deployment
+  - {{ metallb_ipv4_pools | default('192.168.10.150/28') }}
+
+  # Alternative formats (commented out):
+  # - 192.168.10.150-192.168.10.159  # Range notation
+  # - 192.168.10.150/32              # Single IP
+
+  # Auto-assign IPs to services automatically
+  autoAssign: true
+
+---
+# Example: Additional IP Pool for production services
+# Uncomment and modify as needed
+#
+# apiVersion: metallb.io/v1beta1
+# kind: IPAddressPool
+# metadata:
+#   name: production-pool
+#   namespace: metallb-system
+# spec:
+#   addresses:
+#   - 192.168.10.160-192.168.10.169
+#   autoAssign: false  # Require manual selection via service annotation
+#   # Services can request this pool with:
+#   # metadata:
+#   #   annotations:
+#   #     metallb.universe.tf/address-pool: production-pool
+
+---
+# Example: Reserved IP pool for specific services
+# Uncomment and modify as needed
+#
+# apiVersion: metallb.io/v1beta1
+# kind: IPAddressPool
+# metadata:
+#   name: ingress-pool
+#   namespace: metallb-system
+# spec:
+#   addresses:
+#   - 192.168.10.100/32  # Single IP for ingress controller
+#   autoAssign: false
+#   # Restrict to specific namespace (optional)
+#   serviceAllocation:
+#     priority: 100
+#     namespaces:
+#       - ingress-nginx

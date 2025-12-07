@@ -1,0 +1,183 @@
+---
+# Cert-Manager Installation Playbook
+# Installs cert-manager for automated TLS certificate management
+
+- name: Install Cert-Manager
+  hosts: k3s_masters[0]
+  become: true
+  gather_facts: true
+
+  vars:
+    cert_manager_version: "v1.14.0"
+    cert_manager_namespace: "cert-manager"
+    # Variables from inventory (no need to redefine):
+    # - cert_manager_email
+    # - cert_manager_domain
+    # - cloudflare_email
+    # - cloudflare_api_token
+
+  pre_tasks:
+    - name: Verify required variables are defined
+      ansible.builtin.fail:
+        msg: "Required variable '{{ item }}' is not defined in inventory"
+      when: vars[item] is not defined or vars[item] == ""
+      loop:
+        - cert_manager_email
+        - cert_manager_domain
+        - cloudflare_email
+        - cloudflare_api_token
+
+    - name: Wait for K3s to be ready
+      ansible.builtin.command: /usr/local/bin/k3s kubectl get nodes
+      register: k3s_status
+      changed_when: false
+      retries: 10
+      delay: 5
+      until: k3s_status.rc == 0
+
+  tasks:
+    - name: Create cert-manager namespace
+      ansible.builtin.command:
+        cmd: /usr/local/bin/k3s kubectl create namespace {{ cert_manager_namespace }}
+      register: namespace_result
+      changed_when: "'created' in namespace_result.stdout"
+      failed_when: false
+
+    - name: Check if cert-manager is already installed
+      ansible.builtin.command:
+        cmd: /usr/local/bin/k3s kubectl get deployment -n {{ cert_manager_namespace }} cert-manager
+      register: certmanager_check
+      changed_when: false
+      failed_when: false
+
+    - name: Install cert-manager CRDs
+      ansible.builtin.command:
+        cmd: /usr/local/bin/k3s kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/{{ cert_manager_version }}/cert-manager.crds.yaml
+      when: certmanager_check.rc != 0
+      register: crds_install
+      changed_when: "'created' in crds_install.stdout or 'configured' in crds_install.stdout"
+
+    - name: Install cert-manager
+      ansible.builtin.command:
+        cmd: /usr/local/bin/k3s kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/{{ cert_manager_version }}/cert-manager.yaml
+      when: certmanager_check.rc != 0
+      register: certmanager_install
+      changed_when: "'created' in certmanager_install.stdout or 'configured' in certmanager_install.stdout"
+
+    - name: Wait for cert-manager controller to be ready
+      ansible.builtin.command:
+        cmd: /usr/local/bin/k3s kubectl wait --namespace {{ cert_manager_namespace }} --for=condition=ready pod --selector=app.kubernetes.io/component=controller --timeout=300s
+      register: controller_wait
+      changed_when: false
+      retries: 3
+      delay: 10
+      until: controller_wait.rc == 0
+
+    - name: Wait for cert-manager webhook to be ready
+      ansible.builtin.command:
+        cmd: /usr/local/bin/k3s kubectl wait --namespace {{ cert_manager_namespace }} --for=condition=ready pod --selector=app.kubernetes.io/component=webhook --timeout=300s
+      register: webhook_wait
+      changed_when: false
+      retries: 3
+      delay: 10
+      until: webhook_wait.rc == 0
+
+    - name: Wait for cert-manager cainjector to be ready
+      ansible.builtin.command:
+        cmd: /usr/local/bin/k3s kubectl wait --namespace {{ cert_manager_namespace }} --for=condition=ready pod --selector=app.kubernetes.io/component=cainjector --timeout=300s
+      register: cainjector_wait
+      changed_when: false
+      retries: 3
+      delay: 10
+      until: cainjector_wait.rc == 0
+
+    - name: Create Cloudflare API token secret
+      ansible.builtin.shell: |
+        /usr/local/bin/k3s kubectl create secret generic cloudflare-api-token \
+          --from-literal=api-token='{{ cloudflare_api_token }}' \
+          --namespace {{ cert_manager_namespace }} \
+          --dry-run=client -o yaml | /usr/local/bin/k3s kubectl apply -f -
+      register: cf_secret_result
+      changed_when: "'created' in cf_secret_result.stdout or 'configured' in cf_secret_result.stdout"
+      no_log: true
+
+    - name: Template ClusterIssuer manifests
+      ansible.builtin.template:
+        src: "../../kubernetes/services/cert-manager/{{ item }}"
+        dest: "/tmp/{{ item }}"
+        mode: '0644'
+      loop:
+        - cluster-issuer-letsencrypt-staging.yaml
+        - cluster-issuer-letsencrypt-prod.yaml
+        - cluster-issuer-selfsigned.yaml
+
+    - name: Apply ClusterIssuers
+      ansible.builtin.command:
+        cmd: /usr/local/bin/k3s kubectl apply -f /tmp/{{ item }}
+      loop:
+        - cluster-issuer-letsencrypt-staging.yaml
+        - cluster-issuer-letsencrypt-prod.yaml
+        - cluster-issuer-selfsigned.yaml
+      register: issuer_result
+      changed_when: "'created' in issuer_result.stdout or 'configured' in issuer_result.stdout"
+
+    - name: Wait for ClusterIssuers to be ready
+      ansible.builtin.shell: |
+        /usr/local/bin/k3s kubectl get clusterissuer {{ item }} -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}'
+      register: issuer_status
+      changed_when: false
+      retries: 10
+      delay: 5
+      until: issuer_status.stdout == "True"
+      loop:
+        - letsencrypt-staging
+        - letsencrypt-prod
+        - selfsigned
+      failed_when: false
+
+    - name: Cleanup temporary files
+      ansible.builtin.file:
+        path: "/tmp/{{ item }}"
+        state: absent
+      loop:
+        - cluster-issuer-letsencrypt-staging.yaml
+        - cluster-issuer-letsencrypt-prod.yaml
+        - cluster-issuer-selfsigned.yaml
+
+    - name: Verify cert-manager pods are running
+      ansible.builtin.command:
+        cmd: /usr/local/bin/k3s kubectl get pods -n {{ cert_manager_namespace }} --no-headers
+      register: certmanager_status
+      changed_when: false
+      failed_when: "'Running' not in certmanager_status.stdout"
+
+  post_tasks:
+    - name: Build completion message
+      ansible.builtin.set_fact:
+        completion_message: |
+
+          ==========================================
+          ✅ Cert-Manager Installation Complete!
+          ==========================================
+
+          Configuration:
+            Namespace: {{ cert_manager_namespace }}
+            Version: {{ cert_manager_version }}
+            Email: {{ cert_manager_email }}
+            Domain: {{ cert_manager_domain }}
+
+          ClusterIssuers:
+            ✓ letsencrypt-staging (for testing)
+            ✓ letsencrypt-prod (for production)
+            ✓ selfsigned (for internal services)
+
+          Verify Installation:
+            kubectl get pods -n {{ cert_manager_namespace }}
+            kubectl get clusterissuer
+            kubectl describe clusterissuer letsencrypt-prod
+
+          ==========================================
+
+    - name: Display completion message
+      ansible.builtin.debug:
+        msg: "{{ completion_message.split('\n') }}"

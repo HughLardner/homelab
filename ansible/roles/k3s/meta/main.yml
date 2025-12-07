@@ -1,0 +1,26 @@
+---
+# K3s Role Metadata
+galaxy_info:
+  author: HomelabV2
+  description: Install and configure K3s Kubernetes cluster
+  license: MIT
+  min_ansible_version: "2.12"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - focal
+        - jammy
+        - noble
+    - name: Debian
+      versions:
+        - bullseye
+        - bookworm
+  galaxy_tags:
+    - kubernetes
+    - k3s
+    - container
+    - orchestration
+
+dependencies: []
+
+

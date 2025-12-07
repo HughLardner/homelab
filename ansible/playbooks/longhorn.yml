@@ -1,0 +1,172 @@
+---
+# Longhorn Storage Installation Playbook
+# Installs Longhorn distributed block storage for persistent volumes
+
+- name: Install Longhorn Storage
+  hosts: k3s_masters[0]
+  become: true
+  gather_facts: true
+
+  vars:
+    longhorn_version: "v1.6.0"
+    longhorn_namespace: "longhorn-system"
+    longhorn_replica_count: 2
+    longhorn_data_path: "/var/lib/longhorn"
+    longhorn_ui_service_type: "LoadBalancer"
+
+  pre_tasks:
+    - name: Wait for K3s to be ready
+      ansible.builtin.command: /usr/local/bin/k3s kubectl get nodes
+      register: k3s_status
+      changed_when: false
+      retries: 10
+      delay: 5
+      until: k3s_status.rc == 0
+
+    - name: Check node storage availability
+      ansible.builtin.shell: |
+        /usr/local/bin/k3s kubectl get nodes -o json | \
+        jq -r '.items[] | "\(.metadata.name): \(.status.allocatable.storage // "unknown")"'
+      register: node_storage
+      changed_when: false
+
+    - name: Display storage availability
+      ansible.builtin.debug:
+        msg: "{{ node_storage.stdout_lines }}"
+
+  tasks:
+    - name: Create Longhorn namespace
+      ansible.builtin.command:
+        cmd: /usr/local/bin/k3s kubectl create namespace {{ longhorn_namespace }}
+      register: namespace_result
+      changed_when: "'created' in namespace_result.stdout"
+      failed_when: false
+
+    - name: Check if Longhorn is already installed
+      ansible.builtin.command:
+        cmd: /usr/local/bin/k3s kubectl get deployment -n {{ longhorn_namespace }} longhorn-driver-deployer
+      register: longhorn_check
+      changed_when: false
+      failed_when: false
+
+    - name: Install Longhorn prerequisites
+      ansible.builtin.command:
+        cmd: /usr/local/bin/k3s kubectl apply -f https://raw.githubusercontent.com/longhorn/longhorn/{{ longhorn_version }}/deploy/prerequisite/longhorn-iscsi-installation.yaml
+      when: longhorn_check.rc != 0
+      register: prereq_install
+      changed_when: "'created' in prereq_install.stdout or 'configured' in prereq_install.stdout"
+
+    - name: Wait for prerequisites to be installed
+      ansible.builtin.pause:
+        seconds: 10
+      when: longhorn_check.rc != 0
+
+    - name: Install Longhorn
+      ansible.builtin.command:
+        cmd: /usr/local/bin/k3s kubectl apply -f https://raw.githubusercontent.com/longhorn/longhorn/{{ longhorn_version }}/deploy/longhorn.yaml
+      when: longhorn_check.rc != 0
+      register: longhorn_install
+      changed_when: "'created' in longhorn_install.stdout or 'configured' in longhorn_install.stdout"
+
+    - name: Wait for Longhorn manager to be ready
+      ansible.builtin.command:
+        cmd: /usr/local/bin/k3s kubectl wait --namespace {{ longhorn_namespace }} --for=condition=ready pod --selector=app=longhorn-manager --timeout=600s
+      register: manager_wait
+      changed_when: false
+      retries: 3
+      delay: 10
+      until: manager_wait.rc == 0
+
+    - name: Wait for Longhorn driver deployer to be ready
+      ansible.builtin.command:
+        cmd: /usr/local/bin/k3s kubectl wait --namespace {{ longhorn_namespace }} --for=condition=ready pod --selector=app=longhorn-driver-deployer --timeout=300s
+      register: driver_wait
+      changed_when: false
+      retries: 3
+      delay: 10
+      until: driver_wait.rc == 0
+
+    - name: Patch Longhorn frontend service to LoadBalancer
+      ansible.builtin.command:
+        cmd: /usr/local/bin/k3s kubectl patch svc longhorn-frontend -n {{ longhorn_namespace }} -p '{"spec":{"type":"{{ longhorn_ui_service_type }}"}}'
+      register: patch_result
+      changed_when: "'patched' in patch_result.stdout or 'no change' not in patch_result.stderr"
+      failed_when: false
+
+    - name: Wait for LoadBalancer IP (if LoadBalancer type)
+      ansible.builtin.shell: |
+        /usr/local/bin/k3s kubectl get svc -n {{ longhorn_namespace }} longhorn-frontend -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
+      register: longhorn_lb_ip
+      changed_when: false
+      retries: 30
+      delay: 5
+      until: longhorn_lb_ip.stdout != ""
+      when: longhorn_ui_service_type == "LoadBalancer"
+      failed_when: false
+
+    - name: Configure Longhorn default settings
+      ansible.builtin.shell: |
+        /usr/local/bin/k3s kubectl patch settings.longhorn.io -n {{ longhorn_namespace }} default-replica-count \
+          --type=merge -p '{"value":"{{ longhorn_replica_count }}"}'
+      register: replica_config
+      changed_when: "'patched' in replica_config.stdout"
+      failed_when: false
+
+    - name: Verify Longhorn pods are running
+      ansible.builtin.command:
+        cmd: /usr/local/bin/k3s kubectl get pods -n {{ longhorn_namespace }} --no-headers
+      register: longhorn_status
+      changed_when: false
+      failed_when: "'Running' not in longhorn_status.stdout"
+
+    - name: Verify StorageClass exists
+      ansible.builtin.command:
+        cmd: /usr/local/bin/k3s kubectl get storageclass longhorn
+      register: sc_check
+      changed_when: false
+      failed_when: sc_check.rc != 0
+
+  post_tasks:
+    - name: Get Longhorn UI access information
+      ansible.builtin.set_fact:
+        ui_access: >-
+          {%- if longhorn_ui_service_type == 'LoadBalancer' and longhorn_lb_ip.stdout != '' -%}
+          http://{{ longhorn_lb_ip.stdout }}
+          {%- elif longhorn_ui_service_type == 'NodePort' -%}
+          http://<node-ip>:<node-port>
+          {%- else -%}
+          kubectl port-forward -n {{ longhorn_namespace }} svc/longhorn-frontend 8080:80
+          {%- endif -%}
+
+    - name: Build completion message
+      ansible.builtin.set_fact:
+        completion_message: |
+
+          ========================================
+          ✅ Longhorn Installation Complete!
+          ========================================
+
+          Configuration:
+            Namespace: {{ longhorn_namespace }}
+            Version: {{ longhorn_version }}
+            Replica Count: {{ longhorn_replica_count }}
+            Data Path: {{ longhorn_data_path }}
+            UI Service Type: {{ longhorn_ui_service_type }}
+
+          Access Longhorn UI:
+            {{ ui_access }}
+
+          StorageClass:
+            Name: longhorn (default)
+            Provisioner: driver.longhorn.io
+
+          Verify Installation:
+            kubectl get pods -n {{ longhorn_namespace }}
+            kubectl get storageclass
+            kubectl get pv
+
+          ========================================
+
+    - name: Display completion message
+      ansible.builtin.debug:
+        msg: "{{ completion_message.split('\n') }}"
