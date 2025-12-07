@@ -205,7 +205,7 @@ traefik-status:
 
 traefik-dashboard:
 	@echo "Accessing Traefik Dashboard..."
-	@TRAEFIK_DOMAIN=$$(kubectl get ingressroute -n traefik traefik-dashboard -o jsonpath='{.spec.routes[0].match}' 2>/dev/null | grep -oP 'Host\(\K[^)]+' | tr -d '`' || echo ""); \
+	@TRAEFIK_DOMAIN=$$(kubectl get ingressroute -n traefik traefik-dashboard -o jsonpath='{.spec.routes[0].match}' 2>/dev/null | sed 's/.*Host(`\([^`]*\)`).*/\1/' || echo ""); \
 	if [ -z "$$TRAEFIK_DOMAIN" ]; then \
 		echo "Dashboard IngressRoute not found. Use port-forward:"; \
 		echo "  kubectl port-forward -n traefik svc/traefik 9000:9000"; \
@@ -243,7 +243,7 @@ argocd-password:
 
 argocd-ui:
 	@echo "Accessing ArgoCD Web UI..."
-	@ARGOCD_DOMAIN=$$(kubectl get ingressroute -n argocd argocd-server -o jsonpath='{.spec.routes[0].match}' 2>/dev/null | grep -oP 'Host\(\K[^)]+' | tr -d '`' || echo ""); \
+	@ARGOCD_DOMAIN=$$(kubectl get ingressroute -n argocd argocd-server -o jsonpath='{.spec.routes[0].match}' 2>/dev/null | sed 's/.*Host(`\([^`]*\)`).*/\1/' || echo ""); \
 	if [ -z "$$ARGOCD_DOMAIN" ]; then \
 		echo "IngressRoute not found. Use port-forward:"; \
 		echo "  kubectl port-forward -n argocd svc/argocd-server 8080:80"; \
@@ -432,7 +432,7 @@ monitoring-status:
 
 grafana-ui:
 	@echo "Accessing Grafana Dashboard..."
-	@GRAFANA_DOMAIN=$$(kubectl get ingressroute -n monitoring grafana -o jsonpath='{.spec.routes[0].match}' 2>/dev/null | grep -oP 'Host\(\K[^)]+' | tr -d '`' || echo ""); \
+	@GRAFANA_DOMAIN=$$(kubectl get ingressroute -n monitoring grafana -o jsonpath='{.spec.routes[0].match}' 2>/dev/null | sed 's/.*Host(`\([^`]*\)`).*/\1/' || echo ""); \
 	if [ -z "$$GRAFANA_DOMAIN" ]; then \
 		echo "IngressRoute not found. Use port-forward:"; \
 		echo "  kubectl port-forward -n monitoring svc/kube-prometheus-grafana 3000:80"; \
