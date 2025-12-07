@@ -1,0 +1,62 @@
+---
+# Sealed Secrets Helm Values
+# Controller for encrypting secrets that can be safely stored in Git
+
+# Controller configuration
+fullnameOverride: sealed-secrets-controller
+
+# Security context
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1001
+  fsGroup: 65534
+
+# Service account
+serviceAccount:
+  create: true
+  name: sealed-secrets-controller
+
+# RBAC
+rbac:
+  create: true
+  pspEnabled: false
+
+# Controller settings
+commandArgs:
+  - --update-status
+  - --key-renew-period=720h  # Renew encryption keys every 30 days
+
+# Resource limits
+resources:
+  limits:
+    cpu: 200m
+    memory: 256Mi
+  requests:
+    cpu: 50m
+    memory: 64Mi
+
+# High availability (optional, for production)
+# replicas: 2
+
+# Pod disruption budget
+podDisruptionBudget:
+  enabled: false
+  # minAvailable: 1
+
+# Metrics
+metrics:
+  serviceMonitor:
+    enabled: false  # Enable when Prometheus is operational
+    # namespace: monitoring
+    # labels:
+    #   release: kube-prometheus-stack
+
+# Namespace
+namespace: kube-system
+
+# Ingress (not needed, controller is accessed via kubeseal CLI)
+ingress:
+  enabled: false
+
+# Priority class
+priorityClassName: ""
