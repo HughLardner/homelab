@@ -40,11 +40,11 @@ alertmanager:
     storage:
       volumeClaimTemplate:
         spec:
-          storageClassName: {{ monitoring_storage_class | default('longhorn') }}
+          storageClassName: longhorn
           accessModes: ["ReadWriteOnce"]
           resources:
             requests:
-              storage: {{ alertmanager_storage_size | default('2Gi') }}
+              storage: 2Gi
 
     resources:
       requests:
@@ -58,13 +58,17 @@ alertmanager:
 grafana:
   enabled: true
 
-  adminPassword: {{ grafana_admin_password }}
+  # Use existing secret for admin credentials
+  admin:
+    existingSecret: grafana-admin-secret
+    userKey: admin-user
+    passwordKey: admin-password
 
   # Persistence for dashboards
   persistence:
     enabled: true
-    storageClassName: {{ monitoring_storage_class | default('longhorn') }}
-    size: {{ grafana_storage_size | default('5Gi') }}
+    storageClassName: longhorn
+    size: 5Gi
 
   # Service configuration
   service:
@@ -87,15 +91,14 @@ grafana:
   # Grafana configuration
   grafana.ini:
     server:
-      root_url: "https://{{ grafana_domain }}"
+      # root_url will be set via environment variable from secret
       serve_from_sub_path: false
 
     auth.anonymous:
       enabled: false
 
-    security:
-      admin_user: admin
-      admin_password: {{ grafana_admin_password }}
+  # Environment variables from secrets
+  envFromSecret: grafana-admin-secret
 
   # Datasources
   datasources:
@@ -151,18 +154,18 @@ prometheus:
 
   prometheusSpec:
     # Retention
-    retention: {{ prometheus_retention | default('15d') }}
-    retentionSize: {{ prometheus_retention_size | default('9GB') }}
+    retention: 15d
+    retentionSize: 9GB
 
     # Storage
     storageSpec:
       volumeClaimTemplate:
         spec:
-          storageClassName: {{ monitoring_storage_class | default('longhorn') }}
+          storageClassName: longhorn
           accessModes: ["ReadWriteOnce"]
           resources:
             requests:
-              storage: {{ prometheus_storage_size | default('10Gi') }}
+              storage: 10Gi
 
     # Resources
     resources:
