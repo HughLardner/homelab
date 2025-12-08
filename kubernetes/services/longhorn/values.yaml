@@ -57,6 +57,7 @@ service:
     # nodePort: 30000
     # External-DNS annotations for automatic DNS record creation
     annotations:
+      metallb.universe.tf/loadBalancerIPs: "192.168.10.144"  # Lock static IP
       external-dns.alpha.kubernetes.io/hostname: "longhorn.{{ traefik_domain | default('silverseekers.org') }}"
       external-dns.alpha.kubernetes.io/ttl: "300"
 
