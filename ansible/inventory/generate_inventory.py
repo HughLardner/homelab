@@ -75,7 +75,9 @@ def generate_inventory(cluster_name="homelab"):
                         "prometheus_storage_size": config.get("prometheus_storage_size", "10Gi"),
                         "prometheus_retention": config.get("prometheus_retention", "15d"),
                         "grafana_storage_size": config.get("grafana_storage_size", "5Gi"),
-                        "alertmanager_storage_size": config.get("alertmanager_storage_size", "2Gi")
+                        "alertmanager_storage_size": config.get("alertmanager_storage_size", "2Gi"),
+                        # External-DNS configuration
+                        "external_dns_domain": config.get("external_dns_domain", "silverseekers.org")
                     }
                 }
             },
