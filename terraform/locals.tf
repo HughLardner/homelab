@@ -45,6 +45,8 @@ resource "local_file" "cluster_config_json" {
     # Monitoring configuration
     grafana_domain = var.cluster.grafana_domain
     grafana_admin_password = var.grafana_admin_password
+    # External-DNS configuration
+    external_dns_domain = var.cluster.external_dns_domain
   })
   filename = "../ansible/tmp/${var.cluster.cluster_name}/cluster_config.json"
 }
