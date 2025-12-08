@@ -29,6 +29,7 @@ variable "cluster" {
     argocd_github_repo_url    = string
     # Monitoring configuration
     grafana_domain            = string
+    external_dns_domain       = string
   })
 
   default = {
@@ -38,7 +39,7 @@ variable "cluster" {
     node_start_ip     = 20
     cores             = 2           # 2 cores per node (6 total out of N150's cores)
     cpu_type          = "host"      # Use host CPU for best performance
-    memory            = 4096        # 4GB per node (12GB total out of 16GB)
+    memory            = 8192        # 8GB per node (24GB total - requires 32GB+ host RAM)
     disk_size         = 50
     vlan_id           = null        # No VLAN tag - handled by Unifi switch port
     subnet_prefix     = "192.168.10"
@@ -59,6 +60,7 @@ variable "cluster" {
     argocd_github_repo_url = "https://github.com/HughLardner/homelab.git"
     # Monitoring
     grafana_domain = "grafana.silverseekers.org"
+    external_dns_domain = "silverseekers.org"
   }
 }
 

@@ -152,9 +152,9 @@ prometheus:
     # Replicas for high availability
     replicas: 2
 
-    # Retention
-    retention: 15d
-    retentionSize: 9GB
+    # Retention (reduced from 15d/9GB to save memory on 8GB nodes)
+    retention: 7d
+    retentionSize: 5GB
 
     # Storage
     storageSpec:
