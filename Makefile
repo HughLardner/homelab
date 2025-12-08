@@ -1,4 +1,4 @@
-.PHONY: help init plan apply destroy ssh-* k3s-* metallb-* longhorn-* cert-manager-* traefik-* argocd-* monitoring-* sealed-secrets-* seal-secrets external-dns-* kured-* root-app-deploy apps-list apps-status monitoring-secrets inventory clean deploy-infra deploy-platform deploy-services deploy-all deploy deploy-apps
+.PHONY: help init plan apply destroy ssh-* k3s-* metallb-* longhorn-* cert-manager-* traefik-* argocd-* monitoring-* sealed-secrets-* seal-secrets external-dns-* coredns-local-* kured-* root-app-deploy apps-list apps-status monitoring-secrets inventory clean deploy-infra deploy-platform deploy-services deploy-all deploy deploy-apps
 
 # Default target
 help:
@@ -38,6 +38,11 @@ help:
 	@echo "  make external-dns-status    - Check External-DNS status"
 	@echo "  make external-dns-logs      - View External-DNS logs"
 	@echo "  make external-dns-records   - Show recent DNS operations"
+	@echo "  make coredns-local-install  - Install CoreDNS Local DNS Server"
+	@echo "  make coredns-local-status   - Check CoreDNS Local DNS status"
+	@echo "  make coredns-local-test     - Test DNS resolution"
+	@echo "  make coredns-local-logs     - View CoreDNS logs"
+	@echo "  make coredns-local-etcd-shell - Open etcd shell"
 	@echo "  make kured-deploy           - Deploy Kured via ArgoCD (Automated Node Reboots)"
 	@echo "  make kured-status           - Check Kured status"
 	@echo "  make kured-logs             - View Kured logs"
@@ -311,6 +316,55 @@ external-dns-logs:
 external-dns-records:
 	@echo "Recent DNS operations from external-dns:"
 	@kubectl logs -n external-dns -l app.kubernetes.io/name=external-dns --tail=200 | grep -E "(CREATE|UPDATE|DELETE)" || echo "No recent DNS changes"
+
+coredns-local-install: inventory
+	@echo "Installing CoreDNS Local DNS Server..."
+	cd ansible && ansible-playbook playbooks/coredns-local.yml
+
+coredns-local-status:
+	@echo "CoreDNS Local DNS Status:"
+	@echo ""
+	@echo "etcd Cluster:"
+	@kubectl get statefulset -n coredns-local coredns-etcd
+	@kubectl get pods -n coredns-local -l app=coredns-etcd
+	@echo ""
+	@echo "CoreDNS:"
+	@kubectl get deployment -n coredns-local coredns
+	@kubectl get svc -n coredns-local coredns
+	@echo ""
+	@echo "External-DNS (Local):"
+	@kubectl get deployment -n external-dns-local external-dns-local 2>/dev/null || echo "Not deployed"
+	@echo ""
+	@echo "💡 Test DNS: make coredns-local-test"
+	@echo "💡 View logs: make coredns-local-logs"
+	@echo "💡 Inspect etcd: make coredns-local-etcd-shell"
+
+coredns-local-test:
+	@echo "Testing DNS Resolution..."
+	@COREDNS_IP=$$(kubectl get svc -n coredns-local coredns -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null); \
+	if [ -z "$$COREDNS_IP" ]; then \
+		echo "❌ CoreDNS LoadBalancer IP not assigned yet"; \
+		exit 1; \
+	fi; \
+	echo "CoreDNS Server: $$COREDNS_IP"; \
+	echo ""; \
+	echo "Testing query for kubernetes.default.svc.cluster.local..."; \
+	nslookup kubernetes.default.svc.cluster.local $$COREDNS_IP || echo "❌ DNS query failed"; \
+	echo ""; \
+	echo "Testing query for argocd.silverseekers.org..."; \
+	nslookup argocd.silverseekers.org $$COREDNS_IP || echo "❌ DNS query failed (service may not be annotated yet)"
+
+coredns-local-logs:
+	@echo "CoreDNS Logs (press Ctrl+C to exit):"
+	kubectl logs -n coredns-local -l app=coredns --tail=100 -f
+
+coredns-local-etcd-shell:
+	@echo "Opening etcd shell..."
+	@echo "Useful commands:"
+	@echo "  etcdctl get /skydns --prefix --keys-only    # List all DNS records"
+	@echo "  etcdctl get /skydns/org/silverseekers/argocd  # Get specific record"
+	@echo ""
+	kubectl exec -it -n coredns-local coredns-etcd-0 -- sh
 
 kured-deploy:
 	@echo "Deploying Kured via ArgoCD..."

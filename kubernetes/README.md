@@ -300,6 +300,7 @@ Infrastructure services required before GitOps can function:
 - [x] **ArgoCD** - GitOps continuous delivery platform
 - [x] **Sealed Secrets** - Encrypt secrets for safe storage in Git
 - [x] **External-DNS** - Automated DNS record management for Cloudflare
+- [x] **CoreDNS Local** - Local DNS server with automatic updates (192.168.10.150)
 
 ### Applications ✅ (ArgoCD GitOps)
 Applications managed via GitOps after bootstrap services are ready:
@@ -314,7 +315,7 @@ Applications managed via GitOps after bootstrap services are ready:
 ## Future Additions
 
 ### Networking
-- [x] **external-dns** - Automatic DNS record creation (IMPLEMENTED)
+- [x] **external-dns** - Automatic DNS record creation (IMPLEMENTED - both Cloudflare and local CoreDNS)
 
 ### Storage
 - [ ] **minio** - S3-compatible object storage

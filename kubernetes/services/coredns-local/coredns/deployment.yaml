@@ -1,0 +1,149 @@
+---
+# CoreDNS Deployment
+# DNS server that serves local network queries from etcd backend
+#
+# HA Configuration:
+# - 2 replicas for availability
+# - Pod anti-affinity to spread across nodes
+# - Pod Disruption Budget to tolerate 1 node failure
+# - LoadBalancer service on 192.168.10.150
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: coredns
+  namespace: coredns-local
+  labels:
+    app: coredns
+    app.kubernetes.io/name: coredns
+    app.kubernetes.io/component: dns-server
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: coredns
+
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+
+  template:
+    metadata:
+      labels:
+        app: coredns
+        app.kubernetes.io/name: coredns
+        app.kubernetes.io/component: dns-server
+    spec:
+      # Security context
+      securityContext:
+        fsGroup: 1000
+        runAsUser: 1000
+        runAsNonRoot: true
+
+      # Anti-affinity: Spread replicas across different nodes
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app: coredns
+                topologyKey: kubernetes.io/hostname
+
+      # Service account for RBAC
+      serviceAccountName: coredns
+
+      containers:
+      - name: coredns
+        image: coredns/coredns:1.11.1
+        imagePullPolicy: IfNotPresent
+
+        args:
+          - -conf
+          - /etc/coredns/Corefile
+
+        ports:
+        - containerPort: 53
+          name: dns
+          protocol: UDP
+        - containerPort: 53
+          name: dns-tcp
+          protocol: TCP
+        - containerPort: 9153
+          name: metrics
+          protocol: TCP
+
+        # Health checks
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 60
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 5
+
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8181
+            scheme: HTTP
+          initialDelaySeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
+
+        # Resource limits
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 200m
+            memory: 256Mi
+
+        # Security context
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            add:
+              - NET_BIND_SERVICE  # Allow binding to port 53
+            drop:
+              - ALL
+          readOnlyRootFilesystem: true
+
+        # Mount Corefile configuration
+        volumeMounts:
+        - name: config-volume
+          mountPath: /etc/coredns
+          readOnly: true
+        - name: tmp
+          mountPath: /tmp
+
+      volumes:
+      - name: config-volume
+        configMap:
+          name: coredns-config
+          items:
+            - key: Corefile
+              path: Corefile
+      - name: tmp
+        emptyDir: {}
+
+---
+# Pod Disruption Budget for CoreDNS
+# Ensures at least 1 replica is available during voluntary disruptions
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: coredns-pdb
+  namespace: coredns-local
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: coredns
