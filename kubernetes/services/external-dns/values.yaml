@@ -85,8 +85,9 @@ affinity:
           topologyKey: kubernetes.io/hostname
 
 # Prometheus metrics (for monitoring stack)
+# Disabled until Prometheus Operator is installed
 serviceMonitor:
-  enabled: true
+  enabled: false
   namespace: monitoring
   labels:
     release: kube-prometheus-stack
