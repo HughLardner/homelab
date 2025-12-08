@@ -606,6 +606,9 @@ deploy-services: deploy-platform
 	@echo "Installing Traefik (Ingress)..."
 	$(MAKE) traefik-install
 	@echo ""
+	@echo "Installing CoreDNS Local (DNS Server)..."
+	$(MAKE) coredns-local-install
+	@echo ""
 	@echo "Installing ArgoCD (GitOps)..."
 	$(MAKE) argocd-install
 	@echo ""
@@ -617,7 +620,11 @@ deploy-services: deploy-platform
 	@echo "Access Points:"
 	@echo "  Traefik:  https://traefik.silverseekers.org"
 	@echo "  ArgoCD:   https://argocd.silverseekers.org"
-	@echo "  Longhorn: kubectl port-forward -n longhorn-system svc/longhorn-frontend 8080:80"
+	@echo "  Longhorn: https://longhorn.silverseekers.org"
+	@echo "  CoreDNS:  192.168.10.150 (Local DNS Server)"
+	@echo ""
+	@echo "DNS Testing:"
+	@echo "  make coredns-local-test"
 	@echo ""
 	@echo "Next: make deploy-apps"
 
@@ -646,12 +653,15 @@ deploy-all: deploy-services
 	@echo "  Grafana:  https://grafana.silverseekers.org"
 	@echo "  ArgoCD:   https://argocd.silverseekers.org"
 	@echo "  Traefik:  https://traefik.silverseekers.org"
+	@echo "  Longhorn: https://longhorn.silverseekers.org"
+	@echo "  CoreDNS:  192.168.10.150 (Local DNS)"
 	@echo ""
 	@echo "Check status:"
 	@echo "  kubectl get nodes"
 	@echo "  kubectl get pods -A"
 	@echo "  make argocd-ui"
 	@echo "  make grafana-ui"
+	@echo "  make coredns-local-test"
 	@echo ""
 	@echo "💡 Monitor ArgoCD sync:"
 	@echo "  make apps-status"
