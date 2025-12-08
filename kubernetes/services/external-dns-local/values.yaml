@@ -17,7 +17,7 @@ image:
   tag: v0.15.0
 
 # High Availability configuration
-replicas: {{ external_dns_local_replicas | default(2) }}
+replicas: 2
 
 # Sources to watch for DNS records (same as Cloudflare instance)
 sources:
@@ -38,21 +38,21 @@ extraArgs:
 
 # Domain filtering (same as Cloudflare instance)
 domainFilters:
-  - {{ external_dns_domain | default('silverseekers.org') }}
+  - silverseekers.org
 
 # TXT record ownership tracking (different from Cloudflare instance)
-txtOwnerId: "{{ cluster_name | default('k3s-cluster') }}-local"
+txtOwnerId: "k3s-cluster-local"
 txtPrefix: "_external-dns-local."
 
 # Policy: sync (full management) since this is local-only
 # No risk of deleting external DNS records
-policy: {{ external_dns_local_policy | default('sync') }}
+policy: sync
 
 # Synchronization interval
 interval: 1m
 
 # Logging configuration
-logLevel: {{ external_dns_local_log_level | default('info') }}
+logLevel: info
 logFormat: json
 
 # Resource limits
