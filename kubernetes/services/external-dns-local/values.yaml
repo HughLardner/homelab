@@ -14,7 +14,7 @@
 # Image configuration
 image:
   repository: registry.k8s.io/external-dns/external-dns
-  tag: v0.20.0  # Upgraded from v0.15.0 to fix CoreDNS etcd path formatting bug
+  tag: v0.19.0  # v0.20.0 has EndpointSlice sync bug causing crashloop
 
 # High Availability configuration
 replicas: 2
