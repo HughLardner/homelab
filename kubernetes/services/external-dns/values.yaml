@@ -101,4 +101,3 @@ registry: txt
 # Additional arguments
 extraArgs:
   - --txt-wildcard-replacement=wildcard
-  - --ignore-hostname-annotation
