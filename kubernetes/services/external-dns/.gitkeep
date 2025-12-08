@@ -1,0 +1,8 @@
+# Placeholder for cloudflare-api-token-sealed.yaml
+# This file will be created when you run the secret sealing command:
+#
+# kubectl create secret generic cloudflare-api-token \
+#   --namespace=external-dns \
+#   --from-literal=cloudflare_api_token="YOUR_TOKEN" \
+#   --dry-run=client -o yaml | \
+# kubeseal -o yaml > cloudflare-api-token-sealed.yaml

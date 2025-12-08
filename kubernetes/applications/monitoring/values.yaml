@@ -37,7 +37,7 @@ alertmanager:
   enabled: true
 
   alertmanagerSpec:
-    replicas: 3
+    replicas: 1  # Reduced from 3 - HA not needed for homelab
 
     storage:
       volumeClaimTemplate:
@@ -60,8 +60,8 @@ alertmanager:
 grafana:
   enabled: true
 
-  # Replicas for high availability
-  replicas: 2
+  # Replicas (reduced from 2 - HA not needed for homelab)
+  replicas: 1
 
   # Use existing secret for admin credentials
   admin:
@@ -149,14 +149,14 @@ prometheus:
   enabled: true
 
   prometheusSpec:
-    # Replicas for high availability
-    replicas: 2
+    # Replicas (reduced from 2 - HA not needed for homelab with 16GB host RAM)
+    replicas: 1
 
-    # Retention (reduced from 15d/9GB to save memory on 8GB nodes)
+    # Retention (reduced from 15d/9GB to save memory on 4GB nodes)
     retention: 7d
     retentionSize: 5GB
 
-    # Storage
+    # Storage (reduced from 10Gi to match 7d/5GB retention)
     storageSpec:
       volumeClaimTemplate:
         spec:
@@ -164,16 +164,16 @@ prometheus:
           accessModes: ["ReadWriteOnce"]
           resources:
             requests:
-              storage: 10Gi
+              storage: 5Gi
 
-    # Resources
+    # Resources (reduced memory from 2Gi - optimized for 4GB nodes)
     resources:
       requests:
         cpu: 250m
-        memory: 512Mi
+        memory: 384Mi
       limits:
         cpu: 1000m
-        memory: 2Gi
+        memory: 1Gi
 
     # Service monitors (auto-discover services with prometheus.io annotations)
     serviceMonitorSelectorNilUsesHelmValues: false
