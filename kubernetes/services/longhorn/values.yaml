@@ -55,6 +55,10 @@ service:
     type: {{ longhorn_ui_service_type | default('LoadBalancer') }}
     # NodePort (only if type is NodePort)
     # nodePort: 30000
+    # External-DNS annotations for automatic DNS record creation
+    annotations:
+      external-dns.alpha.kubernetes.io/hostname: "longhorn.{{ traefik_domain | default('silverseekers.org') }}"
+      external-dns.alpha.kubernetes.io/ttl: "300"
 
 # Ingress configuration (disabled by default - enable via ArgoCD later)
 ingress:
