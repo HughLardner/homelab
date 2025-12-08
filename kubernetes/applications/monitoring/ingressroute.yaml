@@ -32,7 +32,7 @@ spec:
     - match: Host(`grafana.silverseekers.org`)
       kind: Rule
       services:
-        - name: kube-prometheus-stack-grafana
+        - name: monitoring-grafana
           port: 80
   tls:
     secretName: grafana-tls
