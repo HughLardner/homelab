@@ -19,10 +19,11 @@ image:
 # High Availability configuration
 replicas: 2
 
-# Sources to watch for DNS records (same as Cloudflare instance)
+# Sources to watch for DNS records
+# Only watching services (not traefik-proxy) to avoid API version incompatibility
+# IngressRoutes expose LoadBalancer services anyway, so we'll pick them up
 sources:
   - service          # Watch Services with type: LoadBalancer
-  - traefik-proxy    # Watch Traefik IngressRoute CRDs
 
 # DNS provider: CoreDNS (via etcd)
 provider: coredns
