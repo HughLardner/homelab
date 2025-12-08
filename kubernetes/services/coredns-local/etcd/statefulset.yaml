@@ -1,0 +1,161 @@
+---
+# etcd StatefulSet for CoreDNS Backend
+# Provides persistent storage for DNS records using SkyDNS format
+#
+# HA Configuration:
+# - 3 replicas for quorum-based consensus
+# - Longhorn persistent volumes (1Gi per replica)
+# - Pod anti-affinity to spread across nodes
+# - Pod Disruption Budget to tolerate 1 node failure
+
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: coredns-etcd
+  namespace: coredns-local
+  labels:
+    app: coredns-etcd
+    app.kubernetes.io/name: etcd
+    app.kubernetes.io/component: database
+    app.kubernetes.io/part-of: coredns-local
+spec:
+  serviceName: coredns-etcd
+  replicas: 3
+  podManagementPolicy: Parallel  # Allow all pods to start simultaneously for etcd cluster formation
+  selector:
+    matchLabels:
+      app: coredns-etcd
+
+  # Update strategy: Rolling update one pod at a time
+  updateStrategy:
+    type: RollingUpdate
+
+  # Pod Disruption Budget inline (K8s 1.21+) or use separate PDB resource
+  # Ensures at least 2 replicas available during disruptions
+
+  template:
+    metadata:
+      labels:
+        app: coredns-etcd
+        app.kubernetes.io/name: etcd
+        app.kubernetes.io/component: database
+    spec:
+      # Security context
+      securityContext:
+        fsGroup: 1000
+        runAsUser: 1000
+        runAsNonRoot: true
+
+      # Anti-affinity: Spread replicas across different nodes
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app: coredns-etcd
+                topologyKey: kubernetes.io/hostname
+
+      containers:
+      - name: etcd
+        image: quay.io/coreos/etcd:v3.5.11
+        imagePullPolicy: IfNotPresent
+
+        ports:
+        - containerPort: 2379
+          name: client
+          protocol: TCP
+        - containerPort: 2380
+          name: peer
+          protocol: TCP
+
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: ETCD_NAME
+          value: "$(POD_NAME)"
+        - name: ETCD_DATA_DIR
+          value: /var/etcd/data
+        - name: ETCD_LISTEN_CLIENT_URLS
+          value: "http://0.0.0.0:2379"
+        - name: ETCD_ADVERTISE_CLIENT_URLS
+          value: "http://$(POD_NAME).coredns-etcd.$(POD_NAMESPACE).svc.cluster.local:2379"
+        - name: ETCD_LISTEN_PEER_URLS
+          value: "http://0.0.0.0:2380"
+        - name: ETCD_INITIAL_ADVERTISE_PEER_URLS
+          value: "http://$(POD_NAME).coredns-etcd.$(POD_NAMESPACE).svc.cluster.local:2380"
+        - name: ETCD_INITIAL_CLUSTER
+          value: "coredns-etcd-0=http://coredns-etcd-0.coredns-etcd.coredns-local.svc.cluster.local:2380,coredns-etcd-1=http://coredns-etcd-1.coredns-etcd.coredns-local.svc.cluster.local:2380,coredns-etcd-2=http://coredns-etcd-2.coredns-etcd.coredns-local.svc.cluster.local:2380"
+        - name: ETCD_INITIAL_CLUSTER_STATE
+          value: "new"
+        - name: ETCD_INITIAL_CLUSTER_TOKEN
+          value: "coredns-etcd-cluster"
+
+        # Health checks
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 2379
+            scheme: HTTP
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 2379
+            scheme: HTTP
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+
+        # Resource limits
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+
+        # Mount persistent volume
+        volumeMounts:
+        - name: data
+          mountPath: /var/etcd
+
+  # Persistent volume claim template
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+      labels:
+        app: coredns-etcd
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: longhorn
+      resources:
+        requests:
+          storage: 1Gi
+
+---
+# Pod Disruption Budget for etcd
+# Ensures at least 2 replicas are available during voluntary disruptions
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: coredns-etcd-pdb
+  namespace: coredns-local
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: coredns-etcd

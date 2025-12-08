@@ -121,7 +121,116 @@ podDisruptionBudget:
 - Protected from accidental disruption during cluster maintenance
 - GitOps workflows can proceed even during rolling updates
 
-### 6. Already HA-Configured Services
+### 6. External-DNS (DNS Automation)
+
+**File**: `kubernetes/services/external-dns/values.yaml`
+
+```yaml
+replicas: 2  # Was: unset (default 1)
+
+podDisruptionBudget:
+  enabled: true   # Ensures at least 1 replica available
+  minAvailable: 1
+
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: external-dns
+          topologyKey: kubernetes.io/hostname
+```
+
+**Impact**:
+- DNS record synchronization continues during node failures
+- LoadBalancer IP changes are automatically propagated to Cloudflare
+- Leader election ensures only one instance updates DNS at a time
+- Service DNS records remain accurate when MetalLB IPs change
+
+**Note**: External-DNS uses leader election internally, so only the active replica performs DNS updates while the standby remains ready for failover.
+
+### 7. CoreDNS Local DNS Server
+
+**Files**:
+- `kubernetes/services/coredns-local/etcd/statefulset.yaml`
+- `kubernetes/services/coredns-local/coredns/deployment.yaml`
+- `kubernetes/services/external-dns-local/values.yaml`
+
+#### etcd (DNS Record Storage)
+
+```yaml
+replicas: 3  # Quorum-based consensus
+
+podDisruptionBudget:
+  minAvailable: 2  # Can tolerate 1 node failure
+
+persistence:
+  storageClassName: longhorn
+  size: 1Gi  # Per replica
+
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchLabels:
+              app: coredns-etcd
+          topologyKey: kubernetes.io/hostname
+```
+
+**Impact**:
+- Raft consensus protocol ensures data consistency
+- 3 replicas provide quorum (can tolerate 1 failure)
+- Longhorn persistence ensures data survives pod restarts
+- Anti-affinity spreads replicas across nodes
+
+#### CoreDNS (DNS Server)
+
+```yaml
+replicas: 2  # High availability
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchLabels:
+              app: coredns
+          topologyKey: kubernetes.io/hostname
+```
+
+**Impact**:
+- Local DNS continues serving during node failures
+- LoadBalancer IP (192.168.10.150) remains accessible
+- DNS queries work even when one CoreDNS pod is down
+- Offline resilience - works without internet
+
+#### External-DNS Local (CoreDNS Provider)
+
+```yaml
+replicas: 2  # High availability
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+# Leader election enabled (only active instance updates DNS)
+```
+
+**Impact**:
+- Automatic DNS updates continue during node failures
+- Leader election ensures only one instance updates etcd
+- Standby replica takes over if leader fails
+
+### 8. Already HA-Configured Services
 
 These services were already properly configured for HA:
 
@@ -275,7 +384,8 @@ With these HA changes, the cluster resource usage increases:
 - Cert-manager: +30m (3 additional replicas)
 - Sealed-secrets: +50m (1 additional replica)
 - MetalLB: +10m (1 additional controller)
-- **Total: ~700m CPU**
+- CoreDNS Local: +600m (etcd 3x100m, CoreDNS 2x50m, external-dns-local 2x50m)
+- **Total: ~1.3 CPU (1300m)**
 
 ### Memory Requests (approximate increase)
 - ArgoCD: +384Mi
@@ -283,12 +393,16 @@ With these HA changes, the cluster resource usage increases:
 - Cert-manager: +96Mi
 - Sealed-secrets: +64Mi
 - MetalLB: +50Mi
-- **Total: ~1.5Gi Memory**
+- CoreDNS Local: +512Mi (etcd 3x128Mi, CoreDNS 2x64Mi, external-dns-local 2x64Mi)
+- **Total: ~2Gi Memory**
+
+### Storage (Longhorn)
+- CoreDNS Local (etcd): +3Gi (3 replicas x 1Gi each)
 
 ### Cluster Capacity
 With 3 nodes @ 2 CPU / 4Gi each:
 - Total capacity: 6 CPU / 12Gi
-- HA overhead: ~12% CPU / ~12% Memory
+- HA overhead: ~22% CPU / ~17% Memory
 - **Acceptable for production homelab**
 
 ## Anti-Affinity Considerations

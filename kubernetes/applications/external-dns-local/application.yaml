@@ -1,0 +1,65 @@
+---
+# ArgoCD Application for External-DNS (CoreDNS Provider)
+# Manages local DNS via CoreDNS/etcd
+#
+# This Application deploys the LOCAL DNS management instance of external-dns
+# that watches Kubernetes resources and updates etcd (CoreDNS backend).
+#
+# Deploy with:
+#   kubectl apply -f kubernetes/applications/external-dns-local/application.yaml
+#
+# Or via root-app (app-of-apps pattern):
+#   make root-app-deploy
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: external-dns-local
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  labels:
+    app.kubernetes.io/name: external-dns-local
+    app.kubernetes.io/component: dns
+    app.kubernetes.io/part-of: coredns-local
+spec:
+  project: default
+
+  sources:
+    # Helm chart from external-dns repository
+    - repoURL: https://kubernetes-sigs.github.io/external-dns
+      targetRevision: 1.15.0
+      chart: external-dns
+      helm:
+        releaseName: external-dns-local
+        valueFiles:
+          - $values/kubernetes/services/external-dns-local/values.yaml
+
+    # Values from this repository
+    - repoURL: https://github.com/HughLardner/homelab.git
+      targetRevision: HEAD
+      ref: values
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: external-dns-local
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+
+  # Health assessment
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas  # Ignore replica count changes (HPA may manage this)
