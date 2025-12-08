@@ -16,9 +16,9 @@ image:
 replicas: {{ external_dns_replicas | default(2) }}
 
 # Sources to watch for DNS records
+# Note: traefik-proxy disabled until Traefik CRDs are installed
 sources:
   - service          # Watch Services with type: LoadBalancer
-  - traefik-proxy    # Watch Traefik IngressRoute CRDs
 
 # DNS provider
 provider: cloudflare
