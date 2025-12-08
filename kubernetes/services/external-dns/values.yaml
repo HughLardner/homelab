@@ -10,7 +10,7 @@
 # Image configuration
 image:
   repository: registry.k8s.io/external-dns/external-dns
-  tag: v0.15.0
+  tag: v0.20.0  # Upgraded from v0.15.0 for bug fixes and stability
 
 # High Availability configuration
 replicas: {{ external_dns_replicas | default(2) }}

@@ -28,7 +28,7 @@ spec:
   sources:
     # Helm chart from external-dns repository
     - repoURL: https://kubernetes-sigs.github.io/external-dns
-      targetRevision: 1.15.0
+      targetRevision: 1.19.0  # Upgraded from 1.15.0 to fix CoreDNS etcd path bug
       chart: external-dns
       helm:
         releaseName: external-dns-local
