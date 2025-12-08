@@ -24,6 +24,7 @@ metadata:
   namespace: traefik
   annotations:
     kubernetes.io/ingress.class: traefik
+    external-dns.alpha.kubernetes.io/target: "traefik.{{ traefik_domain | default('silverseekers.org') }}"
 spec:
   entryPoints:
     - websecure

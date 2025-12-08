@@ -39,7 +39,7 @@ variable "cluster" {
     node_start_ip     = 20
     cores             = 2           # 2 cores per node (6 total out of N150's cores)
     cpu_type          = "host"      # Use host CPU for best performance
-    memory            = 8192        # 8GB per node (24GB total - requires 32GB+ host RAM)
+    memory            = 4096        # 4GB per node (12GB total out of 16GB host RAM)
     disk_size         = 50
     vlan_id           = null        # No VLAN tag - handled by Unifi switch port
     subnet_prefix     = "192.168.10"
