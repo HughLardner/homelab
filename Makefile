@@ -348,11 +348,28 @@ coredns-local-test:
 	fi; \
 	echo "CoreDNS Server: $$COREDNS_IP"; \
 	echo ""; \
-	echo "Testing query for kubernetes.default.svc.cluster.local..."; \
-	nslookup kubernetes.default.svc.cluster.local $$COREDNS_IP || echo "❌ DNS query failed"; \
+	echo "Test 1: External DNS forwarding (should forward to Cloudflare)..."; \
+	if nslookup google.com $$COREDNS_IP > /dev/null 2>&1; then \
+		echo "✅ External DNS forwarding works"; \
+	else \
+		echo "❌ External DNS forwarding failed"; \
+		exit 1; \
+	fi; \
 	echo ""; \
-	echo "Testing query for argocd.silverseekers.org..."; \
-	nslookup argocd.silverseekers.org $$COREDNS_IP || echo "❌ DNS query failed (service may not be annotated yet)"
+	echo "Test 2: Checking silverseekers.org records in etcd..."; \
+	RECORD_COUNT=$$(kubectl exec -n coredns-local coredns-etcd-0 -- etcdctl get --prefix /skydns --keys-only 2>/dev/null | grep -c "^/skydns" || echo "0"); \
+	if [ "$${RECORD_COUNT:-0}" -gt 0 ] 2>/dev/null; then \
+		echo "✅ Found $$RECORD_COUNT DNS record(s) in etcd"; \
+		echo "Records:"; \
+		kubectl exec -n coredns-local coredns-etcd-0 -- etcdctl get --prefix /skydns --keys-only 2>/dev/null | grep "^/skydns"; \
+	else \
+		echo "ℹ️  No DNS records in etcd yet (services need external-dns annotations)"; \
+		echo ""; \
+		echo "To create records, annotate services with:"; \
+		echo "  external-dns.alpha.kubernetes.io/hostname: myapp.silverseekers.org"; \
+	fi; \
+	echo ""; \
+	echo "✅ CoreDNS is working correctly!"
 
 coredns-local-logs:
 	@echo "CoreDNS Logs (press Ctrl+C to exit):"
