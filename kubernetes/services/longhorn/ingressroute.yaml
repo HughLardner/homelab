@@ -9,10 +9,10 @@ metadata:
 spec:
   secretName: longhorn-frontend-tls
   issuerRef:
-    name: {{ longhorn_cert_issuer | default('letsencrypt-staging') }}
+    name: "{{ longhorn_cert_issuer | default('letsencrypt-staging') }}"
     kind: ClusterIssuer
   dnsNames:
-    - {{ longhorn_domain }}
+    - "{{ longhorn_domain }}"
 
 ---
 # Longhorn Frontend IngressRoute
@@ -24,7 +24,6 @@ metadata:
   namespace: longhorn-system
   annotations:
     kubernetes.io/ingress.class: traefik
-    external-dns.alpha.kubernetes.io/target: "traefik.{{ traefik_domain | default('silverseekers.org') }}"
 spec:
   entryPoints:
     - websecure

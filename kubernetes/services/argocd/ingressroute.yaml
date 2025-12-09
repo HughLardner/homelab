@@ -9,10 +9,10 @@ metadata:
 spec:
   secretName: argocd-server-tls
   issuerRef:
-    name: {{ argocd_cert_issuer | default('letsencrypt-staging') }}
+    name: "{{ argocd_cert_issuer | default('letsencrypt-staging') }}"
     kind: ClusterIssuer
   dnsNames:
-    - {{ argocd_domain }}
+    - "{{ argocd_domain }}"
 
 ---
 # ArgoCD Server IngressRoute
@@ -24,7 +24,6 @@ metadata:
   namespace: argocd
   annotations:
     kubernetes.io/ingress.class: traefik
-    external-dns.alpha.kubernetes.io/target: "traefik.{{ traefik_domain | default('silverseekers.org') }}"
 spec:
   entryPoints:
     - websecure
@@ -37,7 +36,6 @@ spec:
           port: 80
   tls:
     secretName: argocd-server-tls
-
 # Note: gRPC route removed - ArgoCD server handles both HTTP and gRPC
 # on the same port when running with --insecure flag.
 # CLI access works via: argocd login <domain> --grpc-web
