@@ -94,25 +94,19 @@ grafana:
       memory: 512Mi
 
   # Sidecar resource limits (prevents memory bloat from watching all namespaces)
+  # Resources apply to ALL sidecars (dashboard + datasource)
   sidecar:
+    resources:
+      limits:
+        cpu: 100m
+        memory: 128Mi
+      requests:
+        cpu: 50m
+        memory: 64Mi
     dashboards:
       enabled: true
-      resources:
-        limits:
-          cpu: 100m
-          memory: 100Mi
-        requests:
-          cpu: 50m
-          memory: 50Mi
     datasources:
       enabled: true
-      resources:
-        limits:
-          cpu: 100m
-          memory: 100Mi
-        requests:
-          cpu: 50m
-          memory: 50Mi
 
   # Grafana configuration
   grafana.ini:
