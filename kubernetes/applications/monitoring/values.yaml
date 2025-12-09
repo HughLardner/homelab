@@ -84,7 +84,7 @@ grafana:
   ingress:
     enabled: false
 
-  # Resources
+  # Resources for main Grafana container
   resources:
     requests:
       cpu: 100m
@@ -92,6 +92,27 @@ grafana:
     limits:
       cpu: 500m
       memory: 512Mi
+
+  # Sidecar resource limits (prevents memory bloat from watching all namespaces)
+  sidecar:
+    dashboards:
+      enabled: true
+      resources:
+        limits:
+          cpu: 100m
+          memory: 100Mi
+        requests:
+          cpu: 50m
+          memory: 50Mi
+    datasources:
+      enabled: true
+      resources:
+        limits:
+          cpu: 100m
+          memory: 100Mi
+        requests:
+          cpu: 50m
+          memory: 50Mi
 
   # Grafana configuration
   grafana.ini:
@@ -152,15 +173,16 @@ prometheus:
     # Replicas (reduced from 2 - HA not needed for homelab with 16GB host RAM)
     replicas: 1
 
-    # Retention (reduced for homelab - 2d is sufficient for troubleshooting)
-    retention: 2d
-    retentionSize: 2GB
+    # Retention (optimized for homelab - 1d is sufficient for troubleshooting)
+    # Reduced from 2d to save ~200-300Mi memory
+    retention: 1d
+    retentionSize: 1GB
 
-    # Scrape interval (increased from default 30s to reduce CPU usage)
+    # Scrape interval (increased from default 30s to reduce CPU/memory usage)
     scrapeInterval: 1m
     evaluationInterval: 1m
 
-    # Storage (reduced to match 2d/2GB retention)
+    # Storage (reduced to match 1d/1GB retention)
     storageSpec:
       volumeClaimTemplate:
         spec:
@@ -168,16 +190,16 @@ prometheus:
           accessModes: ["ReadWriteOnce"]
           resources:
             requests:
-              storage: 3Gi
+              storage: 2Gi
 
-    # Resources (reduced memory from 2Gi - optimized for 4GB nodes)
+    # Resources (optimized for 4GB nodes)
     resources:
       requests:
-        cpu: 250m
-        memory: 384Mi
+        cpu: 200m
+        memory: 256Mi
       limits:
-        cpu: 1000m
-        memory: 1Gi
+        cpu: 800m
+        memory: 768Mi
 
     # Service monitors (auto-discover services with prometheus.io annotations)
     serviceMonitorSelectorNilUsesHelmValues: false
