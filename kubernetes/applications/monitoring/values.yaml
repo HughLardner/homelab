@@ -95,15 +95,15 @@ grafana:
 
   # Sidecar resource limits (prevents memory bloat from watching all namespaces)
   # Resources apply to ALL sidecars (dashboard + datasource)
-  # Set to 150Mi to allow for initial ConfigMap loading without OOM
+  # Set to 300Mi - sidecars need ~270Mi when watching all namespaces
   sidecar:
     resources:
       limits:
-        cpu: 100m
-        memory: 150Mi
+        cpu: 200m
+        memory: 300Mi
       requests:
         cpu: 50m
-        memory: 64Mi
+        memory: 100Mi
     dashboards:
       enabled: true
     datasources:
