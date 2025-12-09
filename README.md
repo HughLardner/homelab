@@ -174,7 +174,7 @@ make help              # Show all commands
 │ Core Platform Services (Ansible)            │
 │  • Longhorn (Storage)                       │
 │  • Cert-Manager (TLS)                       │
-│  • Traefik (Ingress @ 192.168.10.146)       │
+│  • Traefik (Ingress @ 192.168.10.145)       │
 │  • ArgoCD (GitOps)                          │
 │  • Sealed Secrets (Secret Encryption)       │
 └─────────────────────────────────────────────┘
@@ -204,6 +204,32 @@ make help              # Show all commands
 
 - **Cluster Network**: 192.168.10.0/24
 - **Node IPs**: 192.168.10.20-22
-- **MetalLB Pool**: 192.168.10.150-159
-- **Traefik LoadBalancer**: 192.168.10.146
-- **DNS**: `*.silverseekers.org` → 192.168.10.146
+- **kube-vip (K8s API)**: 192.168.10.15
+- **MetalLB Pool**: 192.168.10.145-161
+- **Traefik LoadBalancer**: 192.168.10.145
+
+### DNS Configuration (UniFi Gateway)
+
+All services are accessed through Traefik at `192.168.10.145`. Configure your UniFi Gateway with a wildcard DNS entry:
+
+**UniFi Network → Settings → DNS:**
+```
+Type: A Record
+Name: *.silverseekers.org
+IP: 192.168.10.145
+```
+
+If your UniFi version doesn't support wildcard DNS, add individual entries:
+- `argocd.silverseekers.org` → `192.168.10.145`
+- `traefik.silverseekers.org` → `192.168.10.145`
+- `grafana.silverseekers.org` → `192.168.10.145`
+- `longhorn.silverseekers.org` → `192.168.10.145`
+
+**Architecture:**
+```
+Browser → UniFi DNS → Traefik (192.168.10.145) → Backend Service
+                         ↓
+                    Host() routing
+                    /     |     \
+               ArgoCD  Grafana  Longhorn
+```

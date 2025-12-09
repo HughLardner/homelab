@@ -1,4 +1,4 @@
-.PHONY: help init plan apply destroy ssh-* k3s-* metallb-* longhorn-* cert-manager-* traefik-* argocd-* monitoring-* sealed-secrets-* seal-secrets external-dns-* coredns-local-* kured-* root-app-deploy apps-list apps-status monitoring-secrets inventory clean deploy-infra deploy-platform deploy-services deploy-all deploy deploy-apps
+.PHONY: help init plan apply destroy ssh-* k3s-* metallb-* longhorn-* cert-manager-* traefik-* argocd-* monitoring-* sealed-secrets-* seal-secrets kured-* root-app-deploy apps-list apps-status monitoring-secrets inventory clean deploy-infra deploy-platform deploy-services deploy-all deploy deploy-apps
 
 # Default target
 help:
@@ -34,15 +34,6 @@ help:
 	@echo "  make sealed-secrets-install - Install Sealed Secrets (Secret Encryption)"
 	@echo "  make sealed-secrets-status  - Check Sealed Secrets status"
 	@echo "  make seal-secrets           - Encrypt secrets from secrets.yml and commit to git"
-	@echo "  make external-dns-install   - Install External-DNS (DNS Automation)"
-	@echo "  make external-dns-status    - Check External-DNS status"
-	@echo "  make external-dns-logs      - View External-DNS logs"
-	@echo "  make external-dns-records   - Show recent DNS operations"
-	@echo "  make coredns-local-install  - Install CoreDNS Local DNS Server"
-	@echo "  make coredns-local-status   - Check CoreDNS Local DNS status"
-	@echo "  make coredns-local-test     - Test DNS resolution"
-	@echo "  make coredns-local-logs     - View CoreDNS logs"
-	@echo "  make coredns-local-etcd-shell - Open etcd shell"
 	@echo "  make kured-deploy           - Deploy Kured via ArgoCD (Automated Node Reboots)"
 	@echo "  make kured-status           - Check Kured status"
 	@echo "  make kured-logs             - View Kured logs"
@@ -293,96 +284,6 @@ seal-secrets:
 	@echo "Sealing secrets from secrets.yml..."
 	ansible-playbook ansible/playbooks/seal-secrets.yml
 
-external-dns-install: inventory
-	@echo "Installing External-DNS (DNS Automation)..."
-	cd ansible && ansible-playbook playbooks/external-dns.yml
-
-external-dns-status:
-	@echo "External-DNS Status:"
-	@echo ""
-	@echo "Deployment:"
-	@kubectl get deployment -n external-dns external-dns
-	@echo ""
-	@echo "Pods:"
-	@kubectl get pods -n external-dns
-	@echo ""
-	@echo "💡 View logs: make external-dns-logs"
-	@echo "💡 Check DNS records: make external-dns-records"
-
-external-dns-logs:
-	@echo "External-DNS Logs (press Ctrl+C to exit):"
-	@kubectl logs -n external-dns -l app.kubernetes.io/name=external-dns --tail=100 -f
-
-external-dns-records:
-	@echo "Recent DNS operations from external-dns:"
-	@kubectl logs -n external-dns -l app.kubernetes.io/name=external-dns --tail=200 | grep -E "(CREATE|UPDATE|DELETE)" || echo "No recent DNS changes"
-
-coredns-local-install: inventory
-	@echo "Installing CoreDNS Local DNS Server..."
-	cd ansible && ansible-playbook playbooks/coredns-local.yml
-
-coredns-local-status:
-	@echo "CoreDNS Local DNS Status:"
-	@echo ""
-	@echo "etcd Cluster:"
-	@kubectl get statefulset -n coredns-local coredns-etcd
-	@kubectl get pods -n coredns-local -l app=coredns-etcd
-	@echo ""
-	@echo "CoreDNS:"
-	@kubectl get deployment -n coredns-local coredns
-	@kubectl get svc -n coredns-local coredns
-	@echo ""
-	@echo "External-DNS (Local):"
-	@kubectl get deployment -n external-dns-local external-dns-local 2>/dev/null || echo "Not deployed"
-	@echo ""
-	@echo "💡 Test DNS: make coredns-local-test"
-	@echo "💡 View logs: make coredns-local-logs"
-	@echo "💡 Inspect etcd: make coredns-local-etcd-shell"
-
-coredns-local-test:
-	@echo "Testing DNS Resolution..."
-	@COREDNS_IP=$$(kubectl get svc -n coredns-local coredns -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null); \
-	if [ -z "$$COREDNS_IP" ]; then \
-		echo "❌ CoreDNS LoadBalancer IP not assigned yet"; \
-		exit 1; \
-	fi; \
-	echo "CoreDNS Server: $$COREDNS_IP"; \
-	echo ""; \
-	echo "Test 1: External DNS forwarding (should forward to Cloudflare)..."; \
-	if nslookup google.com $$COREDNS_IP > /dev/null 2>&1; then \
-		echo "✅ External DNS forwarding works"; \
-	else \
-		echo "❌ External DNS forwarding failed"; \
-		exit 1; \
-	fi; \
-	echo ""; \
-	echo "Test 2: Checking silverseekers.org records in etcd..."; \
-	RECORD_COUNT=$$(kubectl exec -n coredns-local coredns-etcd-0 -- etcdctl get --prefix /skydns --keys-only 2>/dev/null | grep -c "^/skydns" || echo "0"); \
-	if [ "$${RECORD_COUNT:-0}" -gt 0 ] 2>/dev/null; then \
-		echo "✅ Found $$RECORD_COUNT DNS record(s) in etcd"; \
-		echo "Records:"; \
-		kubectl exec -n coredns-local coredns-etcd-0 -- etcdctl get --prefix /skydns --keys-only 2>/dev/null | grep "^/skydns"; \
-	else \
-		echo "ℹ️  No DNS records in etcd yet (services need external-dns annotations)"; \
-		echo ""; \
-		echo "To create records, annotate services with:"; \
-		echo "  external-dns.alpha.kubernetes.io/hostname: myapp.silverseekers.org"; \
-	fi; \
-	echo ""; \
-	echo "✅ CoreDNS is working correctly!"
-
-coredns-local-logs:
-	@echo "CoreDNS Logs (press Ctrl+C to exit):"
-	kubectl logs -n coredns-local -l app=coredns --tail=100 -f
-
-coredns-local-etcd-shell:
-	@echo "Opening etcd shell..."
-	@echo "Useful commands:"
-	@echo "  etcdctl get /skydns --prefix --keys-only    # List all DNS records"
-	@echo "  etcdctl get /skydns/org/silverseekers/argocd  # Get specific record"
-	@echo ""
-	kubectl exec -it -n coredns-local coredns-etcd-0 -- sh
-
 kured-deploy:
 	@echo "Deploying Kured via ArgoCD..."
 	kubectl apply -f kubernetes/applications/kured/application.yaml
@@ -606,12 +507,6 @@ deploy-services: deploy-platform
 	@echo "Installing Traefik (Ingress)..."
 	$(MAKE) traefik-install
 	@echo ""
-	@echo "Installing External-DNS (Cloudflare DNS Automation)..."
-	$(MAKE) external-dns-install
-	@echo ""
-	@echo "Installing CoreDNS Local (Local DNS Server)..."
-	$(MAKE) coredns-local-install
-	@echo ""
 	@echo "Installing ArgoCD (GitOps)..."
 	$(MAKE) argocd-install
 	@echo ""
@@ -624,14 +519,10 @@ deploy-services: deploy-platform
 	@echo "  Traefik:  https://traefik.silverseekers.org"
 	@echo "  ArgoCD:   https://argocd.silverseekers.org"
 	@echo "  Longhorn: https://longhorn.silverseekers.org"
-	@echo "  CoreDNS:  192.168.10.150 (Local DNS Server)"
 	@echo ""
 	@echo "DNS Configuration:"
-	@echo "  External-DNS: Manages Cloudflare DNS records automatically"
-	@echo "  CoreDNS Local: Serves local network DNS queries"
-	@echo ""
-	@echo "DNS Testing:"
-	@echo "  make coredns-local-test"
+	@echo "  Configure UniFi Gateway with wildcard DNS:"
+	@echo "    *.silverseekers.org -> 192.168.10.145"
 	@echo ""
 	@echo "Next: make deploy-apps"
 
@@ -647,9 +538,6 @@ deploy-all: deploy-services
 	@echo "Deploying monitoring stack via ArgoCD..."
 	$(MAKE) monitoring-deploy
 	@echo ""
-	@echo "Deploying Kured via ArgoCD..."
-	$(MAKE) kured-deploy
-	@echo ""
 	@echo "========================================"
 	@echo "✅ FULL STACK DEPLOYMENT COMPLETE!"
 	@echo "========================================"
@@ -661,19 +549,16 @@ deploy-all: deploy-services
 	@echo "  ArgoCD:   https://argocd.silverseekers.org"
 	@echo "  Traefik:  https://traefik.silverseekers.org"
 	@echo "  Longhorn: https://longhorn.silverseekers.org"
-	@echo "  CoreDNS:  192.168.10.150 (Local DNS)"
 	@echo ""
 	@echo "DNS Configuration:"
-	@echo "  ✅ External-DNS managing Cloudflare DNS"
-	@echo "  ✅ CoreDNS Local serving local network"
-	@echo "  💡 Configure router to use 192.168.10.150 as primary DNS"
+	@echo "  Configure UniFi Gateway with wildcard DNS:"
+	@echo "    *.silverseekers.org -> 192.168.10.145"
 	@echo ""
 	@echo "Check status:"
 	@echo "  kubectl get nodes"
 	@echo "  kubectl get pods -A"
 	@echo "  make argocd-ui"
 	@echo "  make grafana-ui"
-	@echo "  make coredns-local-test"
 	@echo ""
 	@echo "💡 Monitor ArgoCD sync:"
 	@echo "  make apps-status"
@@ -694,9 +579,6 @@ deploy-apps:
 	@echo ""
 	@echo "Deploying monitoring stack via ArgoCD..."
 	$(MAKE) monitoring-deploy
-	@echo ""
-	@echo "Deploying Kured via ArgoCD..."
-	$(MAKE) kured-deploy
 	@echo ""
 	@echo "✅ Applications deployment complete!"
 	@echo ""

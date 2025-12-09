@@ -24,7 +24,6 @@ metadata:
   namespace: monitoring
   annotations:
     kubernetes.io/ingress.class: traefik
-    external-dns.alpha.kubernetes.io/target: "traefik.silverseekers.org"
 spec:
   entryPoints:
     - websecure

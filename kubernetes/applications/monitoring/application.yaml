@@ -27,10 +27,16 @@ spec:
         valueFiles:
           - $values/kubernetes/applications/monitoring/values.yaml
 
-    # Values source (this repo)
+    # Values source (this repo) - referenced by $values in helm.valueFiles
     - repoURL: https://github.com/HughLardner/homelab.git
       targetRevision: HEAD
       ref: values
+
+    # Additional resources (IngressRoute, Certificate) via Kustomize
+    - repoURL: https://github.com/HughLardner/homelab.git
+      targetRevision: HEAD
+      path: kubernetes/applications/monitoring
+      kustomize: {}
 
   destination:
     server: https://kubernetes.default.svc

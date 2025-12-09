@@ -33,8 +33,6 @@ service:
   annotations:
     metallb.universe.tf/allow-shared-ip: "traefik-lb"
     metallb.universe.tf/loadBalancerIPs: "192.168.10.145"  # Lock static IP
-    external-dns.alpha.kubernetes.io/hostname: "traefik.{{ traefik_domain | default('silverseekers.org') }}"
-    external-dns.alpha.kubernetes.io/ttl: "300"
   spec:
     # MetalLB will assign an IP from the pool
     loadBalancerIP: {{ traefik_loadbalancer_ip | default('') }}
