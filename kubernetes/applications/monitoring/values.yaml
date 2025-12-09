@@ -95,11 +95,12 @@ grafana:
 
   # Sidecar resource limits (prevents memory bloat from watching all namespaces)
   # Resources apply to ALL sidecars (dashboard + datasource)
+  # Set to 150Mi to allow for initial ConfigMap loading without OOM
   sidecar:
     resources:
       limits:
         cpu: 100m
-        memory: 128Mi
+        memory: 150Mi
       requests:
         cpu: 50m
         memory: 64Mi
@@ -187,13 +188,14 @@ prometheus:
               storage: 2Gi
 
     # Resources (optimized for 4GB nodes)
+    # Memory limit set to 850Mi to allow headroom above typical 700-800Mi usage
     resources:
       requests:
         cpu: 200m
-        memory: 256Mi
+        memory: 384Mi
       limits:
         cpu: 800m
-        memory: 768Mi
+        memory: 850Mi
 
     # Service monitors (auto-discover services with prometheus.io annotations)
     serviceMonitorSelectorNilUsesHelmValues: false
