@@ -24,7 +24,7 @@ additionalArguments:
 deployment:
   enabled: true
   kind: Deployment
-  replicas: {{ traefik_replicas | default(2) }}
+  replicas: 1  # Reduced from 2 - HA not needed for homelab infrastructure
 
 # Service configuration
 service:

@@ -152,11 +152,15 @@ prometheus:
     # Replicas (reduced from 2 - HA not needed for homelab with 16GB host RAM)
     replicas: 1
 
-    # Retention (reduced from 15d/9GB to save memory on 4GB nodes)
-    retention: 7d
-    retentionSize: 5GB
+    # Retention (reduced for homelab - 2d is sufficient for troubleshooting)
+    retention: 2d
+    retentionSize: 2GB
 
-    # Storage (reduced from 10Gi to match 7d/5GB retention)
+    # Scrape interval (increased from default 30s to reduce CPU usage)
+    scrapeInterval: 1m
+    evaluationInterval: 1m
+
+    # Storage (reduced to match 2d/2GB retention)
     storageSpec:
       volumeClaimTemplate:
         spec:
@@ -164,7 +168,7 @@ prometheus:
           accessModes: ["ReadWriteOnce"]
           resources:
             requests:
-              storage: 5Gi
+              storage: 3Gi
 
     # Resources (reduced memory from 2Gi - optimized for 4GB nodes)
     resources:

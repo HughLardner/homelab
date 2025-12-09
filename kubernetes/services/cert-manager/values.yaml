@@ -13,8 +13,8 @@
 # Install CRDs with this chart
 installCRDs: true
 
-# Replicas for high availability
-replicaCount: 2
+# Replicas (reduced from 2 - HA not needed for homelab)
+replicaCount: 1
 
 # Global settings
 global:
@@ -36,7 +36,7 @@ resources:
 
 # Webhook resource limits
 webhook:
-  replicaCount: 2
+  replicaCount: 1  # Reduced from 2 - HA not needed for homelab
 
   resources:
     limits:
@@ -48,7 +48,7 @@ webhook:
 
 # CA Injector resource limits
 cainjector:
-  replicaCount: 2
+  replicaCount: 1  # Reduced from 2 - HA not needed for homelab
 
   resources:
     limits:
