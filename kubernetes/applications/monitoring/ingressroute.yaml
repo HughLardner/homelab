@@ -31,7 +31,7 @@ spec:
     - match: Host(`grafana.silverseekers.org`)
       kind: Rule
       services:
-        - name: monitoring-grafana
+        - name: grafana
           port: 80
   tls:
     secretName: grafana-tls

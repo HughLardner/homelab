@@ -1,0 +1,54 @@
+---
+# Kube State Metrics Helm Values
+# Exports Kubernetes object state as metrics
+
+# Resource limits
+resources:
+  requests:
+    cpu: 25m
+    memory: 32Mi
+  limits:
+    cpu: 100m
+    memory: 128Mi
+
+# Service for scraping
+service:
+  port: 8080
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8080"
+
+# Pod annotations for auto-discovery
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8080"
+
+# Collectors - enable only what's needed
+collectors:
+  - certificatesigningrequests
+  - configmaps
+  - cronjobs
+  - daemonsets
+  - deployments
+  - endpoints
+  - horizontalpodautoscalers
+  - ingresses
+  - jobs
+  - namespaces
+  - nodes
+  - persistentvolumeclaims
+  - persistentvolumes
+  - poddisruptionbudgets
+  - pods
+  - replicasets
+  - replicationcontrollers
+  - resourcequotas
+  - secrets
+  - services
+  - statefulsets
+  - storageclasses
+
+# Metric labels to allow (reduce cardinality)
+metricLabelsAllowlist:
+  - pods=[app.kubernetes.io/name,app.kubernetes.io/instance,app.kubernetes.io/component]
+  - deployments=[app.kubernetes.io/name,app.kubernetes.io/instance]

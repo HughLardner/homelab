@@ -1,0 +1,25 @@
+---
+# Victoria Metrics Operator Helm Values
+# Lightweight operator for managing VM components
+
+# Operator resources (very lightweight)
+operator:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+# Enable CRD installation
+crds:
+  enabled: true
+
+# Admission webhook (disable to save resources in homelab)
+admissionWebhooks:
+  enabled: false
+
+# ServiceMonitor for operator itself
+serviceMonitor:
+  enabled: true
