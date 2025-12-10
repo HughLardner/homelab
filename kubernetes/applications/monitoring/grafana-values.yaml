@@ -99,19 +99,25 @@ dashboards:
       gnetId: 10229
       revision: 35
       datasource: VictoriaMetrics
-
-    # Kubernetes cluster monitoring (updated for VM)
+    
+    # Kubernetes cluster monitoring (original from kube-prometheus-stack)
     kubernetes-cluster:
-      gnetId: 315
-      revision: 3
+      gnetId: 7249
+      revision: 1
       datasource: VictoriaMetrics
-
+    
     # Node exporter full
     node-exporter:
       gnetId: 1860
       revision: 31
       datasource: VictoriaMetrics
-
+    
+    # Persistent volumes (original from kube-prometheus-stack)
+    persistent-volumes:
+      gnetId: 13646
+      revision: 2
+      datasource: VictoriaMetrics
+    
     # Kubernetes pods
     kubernetes-pods:
       gnetId: 6336
