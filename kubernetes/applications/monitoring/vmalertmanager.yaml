@@ -1,0 +1,59 @@
+---
+# VMAlertmanager - Alert routing and notifications
+# Receives alerts from VMAlert and routes to notification channels
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAlertmanager
+metadata:
+  name: vmalertmanager
+  namespace: monitoring
+spec:
+  # Single replica for homelab
+  replicaCount: 1
+
+  # Resource limits
+  resources:
+    requests:
+      cpu: 25m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 64Mi
+
+  # Persistent storage for silences
+  storage:
+    volumeClaimTemplate:
+      spec:
+        storageClassName: longhorn
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 1Gi
+
+  # Select all VMAlertmanagerConfig resources
+  selectAllByDefault: true
+
+  # Configuration secret (optional - can add notification channels later)
+  configSecret: ""
+
+---
+# Default Alertmanager configuration
+# Can be customized to add Slack, Email, PagerDuty, etc.
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAlertmanagerConfig
+metadata:
+  name: default
+  namespace: monitoring
+spec:
+  # Default route - catch all alerts
+  route:
+    receiver: "default"
+    group_by: ["alertname", "namespace"]
+    group_wait: "30s"
+    group_interval: "5m"
+    repeat_interval: "4h"
+
+  # Default receiver (logs alerts, no external notification)
+  receivers:
+    - name: "default"
+      # Add webhook, slack, email configs here as needed

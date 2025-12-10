@@ -1,0 +1,41 @@
+---
+# Prometheus Node Exporter Helm Values
+# Exports host-level metrics from each node
+
+# Resource limits (node exporter is lightweight)
+resources:
+  requests:
+    cpu: 25m
+    memory: 32Mi
+  limits:
+    cpu: 100m
+    memory: 64Mi
+
+# Service for scraping
+service:
+  enabled: true
+  port: 9100
+  targetPort: 9100
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9100"
+
+# Pod annotations for auto-discovery
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "9100"
+
+# Host paths to collect metrics from
+hostRootFsMount:
+  enabled: true
+  mountPropagation: HostToContainer
+
+# Collectors to enable (optimized for K3s)
+extraArgs:
+  - --collector.filesystem.mount-points-exclude=^/(dev|proc|sys|var/lib/docker/.+|var/lib/kubelet/.+)($|/)
+  - --collector.filesystem.fs-types-exclude=^(autofs|binfmt_misc|bpf|cgroup2?|configfs|debugfs|devpts|devtmpfs|fusectl|hugetlbfs|iso9660|mqueue|nsfs|overlay|proc|procfs|pstore|rpc_pipefs|securityfs|selinuxfs|squashfs|sysfs|tracefs)$
+
+# Tolerations to run on all nodes including control plane
+tolerations:
+  - effect: NoSchedule
+    operator: Exists

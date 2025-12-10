@@ -1,0 +1,39 @@
+---
+# VMSingle - Victoria Metrics single-node time series database
+# Replaces Prometheus with much lower memory footprint
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMSingle
+metadata:
+  name: vmsingle
+  namespace: monitoring
+spec:
+  # Retention settings (1 day for homelab)
+  retentionPeriod: "1d"
+
+  # Resource limits (much lower than Prometheus)
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+
+  # Persistent storage
+  storage:
+    storageClassName: longhorn
+    accessModes:
+      - ReadWriteOnce
+    resources:
+      requests:
+        storage: 2Gi
+
+  # Extra args for optimization
+  extraArgs:
+    # Deduplication window
+    dedup.minScrapeInterval: "30s"
+    # Memory management
+    memory.allowedPercent: "80"
+    # Search settings
+    search.maxConcurrentRequests: "4"
+    search.maxQueueDuration: "30s"

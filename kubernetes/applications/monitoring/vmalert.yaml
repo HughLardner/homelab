@@ -1,0 +1,44 @@
+---
+# VMAlert - Alert rule evaluation engine
+# Evaluates alerting and recording rules against VMSingle
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAlert
+metadata:
+  name: vmalert
+  namespace: monitoring
+spec:
+  # Resource limits
+  resources:
+    requests:
+      cpu: 25m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 64Mi
+
+  # Datasource (VMSingle)
+  datasource:
+    url: "http://vmsingle-vmsingle.monitoring.svc:8429"
+
+  # Remote write for recording rules
+  remoteWrite:
+    url: "http://vmsingle-vmsingle.monitoring.svc:8429"
+
+  # Remote read for alert state persistence
+  remoteRead:
+    url: "http://vmsingle-vmsingle.monitoring.svc:8429"
+
+  # Alertmanager for notifications
+  notifier:
+    url: "http://vmalertmanager-vmalertmanager.monitoring.svc:9093"
+
+  # Evaluation interval
+  evaluationInterval: "60s"
+
+  # Auto-discover VMRule resources
+  selectAllByDefault: true
+
+  # Extra args
+  extraArgs:
+    # External URL for links in alerts
+    external.url: "https://grafana.silverseekers.org"
