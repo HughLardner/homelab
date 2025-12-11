@@ -32,7 +32,7 @@
   vars:
     longhorn_version: "v1.6.0"
     longhorn_namespace: "longhorn-system"
-    longhorn_replica_count: 2
+    longhorn_replica_count: 1  # Single node - increase to 2 when adding second node
     longhorn_data_path: "/var/lib/longhorn"
     longhorn_ui_service_type: "LoadBalancer"
     longhorn_manifests_path: "{{ playbook_dir }}/../../kubernetes/services/longhorn"

@@ -1,10 +1,10 @@
-.PHONY: help init plan apply destroy ssh-node k3s-* metallb-* cert-manager-* traefik-* argocd-* monitoring-* sealed-secrets-* seal-secrets kured-* root-app-deploy apps-list apps-status monitoring-secrets inventory clean deploy-infra deploy-platform deploy-services deploy-all deploy deploy-apps
+.PHONY: help init plan apply destroy ssh-node k3s-* metallb-* longhorn-* cert-manager-* traefik-* argocd-* monitoring-* sealed-secrets-* seal-secrets kured-* root-app-deploy apps-list apps-status monitoring-secrets inventory clean deploy-infra deploy-platform deploy-services deploy-all deploy deploy-apps
 
 # Default target
 help:
 	@echo "Homelab Infrastructure Makefile"
 	@echo ""
-	@echo "Single-Node K3s Cluster (12GB RAM, local-path storage)"
+	@echo "Single-Node K3s Cluster (12GB RAM, Longhorn + local-path storage)"
 	@echo ""
 	@echo "Terraform Commands:"
 	@echo "  make init          - Initialize Terraform"
@@ -22,6 +22,9 @@ help:
 	@echo "  make k3s-destroy       - Uninstall K3s from all nodes"
 	@echo "  make metallb-install   - Install MetalLB (LoadBalancer)"
 	@echo "  make metallb-test      - Install MetalLB with LoadBalancer testing"
+	@echo "  make longhorn-install  - Install Longhorn (Distributed Storage)"
+	@echo "  make longhorn-status   - Check Longhorn status"
+	@echo "  make longhorn-ui       - Open Longhorn UI"
 	@echo "  make cert-manager-install - Install cert-manager (TLS)"
 	@echo "  make cert-manager-status  - Check cert-manager status"
 	@echo "  make traefik-install      - Install Traefik (Ingress Controller)"
@@ -148,6 +151,34 @@ metallb-test: inventory
 	@echo "Installing MetalLB with LoadBalancer testing..."
 	cd ansible && ansible-playbook playbooks/metallb.yml \
 	  -e metallb_test_loadbalancer=true
+
+longhorn-install: inventory
+	@echo "Installing Longhorn distributed storage..."
+	cd ansible && ansible-playbook playbooks/longhorn.yml
+
+longhorn-status:
+	@echo "Longhorn Status:"
+	@echo ""
+	@echo "Pods:"
+	@kubectl get pods -n longhorn-system
+	@echo ""
+	@echo "Volumes:"
+	@kubectl get volumes.longhorn.io -n longhorn-system
+	@echo ""
+	@echo "StorageClass:"
+	@kubectl get storageclass longhorn
+
+longhorn-ui:
+	@echo "Accessing Longhorn UI..."
+	@LONGHORN_IP=$$(kubectl get svc -n longhorn-system longhorn-frontend -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo ""); \
+	if [ -z "$$LONGHORN_IP" ]; then \
+		echo "Longhorn UI not exposed via LoadBalancer. Use port-forward:"; \
+		echo "  kubectl port-forward -n longhorn-system svc/longhorn-frontend 8080:80"; \
+		echo "  Then open: http://localhost:8080"; \
+	else \
+		echo "Longhorn UI: http://$$LONGHORN_IP"; \
+		open "http://$$LONGHORN_IP" 2>/dev/null || xdg-open "http://$$LONGHORN_IP" 2>/dev/null || echo "Open http://$$LONGHORN_IP in your browser"; \
+	fi
 
 cert-manager-install: inventory
 	@echo "Installing cert-manager..."
@@ -431,7 +462,7 @@ logs:
 	fi
 
 # ============================================================================
-# Full Stack Deployment (Single Node - No Longhorn)
+# Full Stack Deployment (Single Node with Longhorn)
 # ============================================================================
 
 # Deploy infrastructure only (Terraform VMs)
@@ -465,7 +496,7 @@ deploy-platform: deploy-infra
 	@echo ""
 	@echo "Next: make deploy-services"
 
-# Deploy infrastructure + K3s + all core services (NO LONGHORN - using local-path)
+# Deploy infrastructure + K3s + all core services
 deploy-services: deploy-platform
 	@echo ""
 	@echo "========================================"
@@ -474,7 +505,8 @@ deploy-services: deploy-platform
 	@echo "Installing MetalLB (LoadBalancer)..."
 	$(MAKE) metallb-install
 	@echo ""
-	@echo "Note: Using K3s built-in local-path-provisioner for storage"
+	@echo "Installing Longhorn (Distributed Storage)..."
+	$(MAKE) longhorn-install
 	@echo ""
 	@echo "Installing Cert-Manager (TLS)..."
 	$(MAKE) cert-manager-install
@@ -493,8 +525,11 @@ deploy-services: deploy-platform
 	@echo "Access Points:"
 	@echo "  Traefik:  https://traefik.silverseekers.org"
 	@echo "  ArgoCD:   https://argocd.silverseekers.org"
+	@echo "  Longhorn: http://192.168.10.144"
 	@echo ""
-	@echo "Storage: local-path (K3s built-in)"
+	@echo "Storage Classes:"
+	@echo "  local-path (default) - ephemeral data"
+	@echo "  longhorn             - persistent data (apps, databases)"
 	@echo ""
 	@echo "DNS Configuration:"
 	@echo "  Configure UniFi Gateway with wildcard DNS:"
@@ -522,12 +557,13 @@ deploy-all: deploy-services
 	@echo ""
 	@echo "Single-Node Configuration:"
 	@echo "  RAM:     12 GB"
-	@echo "  Storage: local-path (K3s built-in)"
+	@echo "  Storage: Longhorn (1 replica) + local-path"
 	@echo ""
 	@echo "Access Points:"
 	@echo "  Grafana:  https://grafana.silverseekers.org"
 	@echo "  ArgoCD:   https://argocd.silverseekers.org"
 	@echo "  Traefik:  https://traefik.silverseekers.org"
+	@echo "  Longhorn: http://192.168.10.144"
 	@echo ""
 	@echo "DNS Configuration:"
 	@echo "  Configure UniFi Gateway with wildcard DNS:"

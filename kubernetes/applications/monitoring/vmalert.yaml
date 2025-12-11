@@ -42,3 +42,4 @@ spec:
   extraArgs:
     # External URL for links in alerts
     external.url: "https://grafana.silverseekers.org"
+
