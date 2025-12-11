@@ -1,0 +1,11 @@
+---
+# Kustomization for Authentik additional resources
+# Note: Main installation is via Helm chart
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: authentik
+
+resources:
+  - ingressroute.yaml
+  - middleware.yaml
