@@ -11,10 +11,10 @@ admin:
   userKey: admin-user
   passwordKey: admin-password
 
-# Persistence for dashboards
+# Persistence for dashboards (local-path for single-node cluster)
 persistence:
   enabled: true
-  storageClassName: longhorn
+  storageClassName: local-path
   size: 5Gi
 
 # Service configuration
@@ -100,96 +100,96 @@ dashboards:
       gnetId: 10229
       revision: 35
       datasource: VictoriaMetrics
-    
+
     # === Kubernetes Cluster Overview ===
     kubernetes-cluster:
       gnetId: 7249
       revision: 1
       datasource: VictoriaMetrics
-    
+
     # Kubernetes cluster monitoring (Prometheus)
     k8s-cluster-prometheus:
       gnetId: 315
       revision: 3
       datasource: VictoriaMetrics
-    
+
     # === Kubernetes Compute Resources ===
     # Compute Resources / Cluster
     k8s-resources-cluster:
       gnetId: 7187
       revision: 1
       datasource: VictoriaMetrics
-    
+
     # Compute Resources / Namespace (Pods)
     k8s-resources-namespace:
       gnetId: 10000
       revision: 1
       datasource: VictoriaMetrics
-    
+
     # Compute Resources / Pod
     k8s-resources-pod:
       gnetId: 6781
       revision: 1
       datasource: VictoriaMetrics
-    
+
     # === Kubernetes System ===
     # Kubernetes API Server
     k8s-apiserver:
       gnetId: 12654
       revision: 1
       datasource: VictoriaMetrics
-    
+
     # Kubernetes Kubelet
     k8s-kubelet:
       gnetId: 16361
       revision: 1
       datasource: VictoriaMetrics
-    
+
     # CoreDNS
     coredns:
       gnetId: 14981
       revision: 2
       datasource: VictoriaMetrics
-    
+
     # === Node Metrics ===
     # Node Exporter Full
     node-exporter:
       gnetId: 1860
       revision: 31
       datasource: VictoriaMetrics
-    
+
     # Node Exporter for Prometheus
     node-exporter-prometheus:
       gnetId: 11074
       revision: 9
       datasource: VictoriaMetrics
-    
+
     # === Storage ===
     # Persistent Volumes
     persistent-volumes:
       gnetId: 13646
       revision: 2
       datasource: VictoriaMetrics
-    
+
     # === Workloads ===
     # Kubernetes Pods
     kubernetes-pods:
       gnetId: 6336
       revision: 1
       datasource: VictoriaMetrics
-    
+
     # Kubernetes Deployments
     k8s-deployments:
       gnetId: 8588
       revision: 1
       datasource: VictoriaMetrics
-    
+
     # Kubernetes StatefulSets
     k8s-statefulsets:
       gnetId: 8588
       revision: 1
       datasource: VictoriaMetrics
-    
+
     # === Networking ===
     # Kubernetes Networking
     k8s-networking:

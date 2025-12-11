@@ -19,11 +19,11 @@ spec:
       cpu: 100m
       memory: 64Mi
 
-  # Persistent storage for silences
+  # Persistent storage for silences (local-path for single-node cluster)
   storage:
     volumeClaimTemplate:
       spec:
-        storageClassName: longhorn
+        storageClassName: local-path
         accessModes:
           - ReadWriteOnce
         resources:

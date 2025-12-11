@@ -5,6 +5,7 @@ Lightweight monitoring solution using Victoria Metrics for Kubernetes observabil
 ## Overview
 
 This deployment includes:
+
 - **VMSingle** - Time series database (replaces Prometheus, ~200Mi vs 800Mi)
 - **VMAgent** - Lightweight metric scraper
 - **VMAlert** - Alert rule evaluation
@@ -15,13 +16,13 @@ This deployment includes:
 
 ### Why Victoria Metrics?
 
-| Metric | Prometheus Stack | Victoria Metrics |
-|--------|-----------------|------------------|
-| Memory Usage | ~1.5 GB | ~400 MB |
-| CPU Usage | Higher | 2-5x lower |
-| Disk I/O | Higher | Lower (compression) |
-| Query Speed | Fast | Faster (optimized) |
-| PromQL Compatible | Yes | Yes (plus MetricsQL) |
+| Metric            | Prometheus Stack | Victoria Metrics     |
+| ----------------- | ---------------- | -------------------- |
+| Memory Usage      | ~1.5 GB          | ~400 MB              |
+| CPU Usage         | Higher           | 2-5x lower           |
+| Disk I/O          | Higher           | Lower (compression)  |
+| Query Speed       | Fast             | Faster (optimized)   |
+| PromQL Compatible | Yes              | Yes (plus MetricsQL) |
 
 ## Architecture
 
@@ -84,34 +85,35 @@ argocd app get monitoring
 
 ## Pre-loaded Dashboards
 
-| Dashboard | Description | Grafana ID |
-|-----------|-------------|------------|
-| Victoria Metrics | VM node metrics | 10229 |
-| Kubernetes Cluster | Overall cluster metrics | 315 |
-| Node Exporter Full | Detailed node metrics | 1860 |
-| Kubernetes Pods | Pod-level metrics | 6336 |
+| Dashboard          | Description             | Grafana ID |
+| ------------------ | ----------------------- | ---------- |
+| Victoria Metrics   | VM node metrics         | 10229      |
+| Kubernetes Cluster | Overall cluster metrics | 315        |
+| Node Exporter Full | Detailed node metrics   | 1860       |
+| Kubernetes Pods    | Pod-level metrics       | 6336       |
 
 ## Configuration Files
 
-| File | Purpose |
-|------|---------|
-| `application.yaml` | ArgoCD Application definition |
-| `vm-operator-values.yaml` | Victoria Metrics Operator config |
-| `vmsingle.yaml` | VMSingle (storage) CRD |
-| `vmagent.yaml` | VMAgent (scraper) CRD |
-| `vmalert.yaml` | VMAlert (alerting) CRD |
-| `vmalertmanager.yaml` | VMAlertmanager CRD |
-| `vm-scrape-configs.yaml` | Scrape target configurations |
-| `grafana-values.yaml` | Grafana Helm values |
-| `node-exporter-values.yaml` | Node Exporter config |
-| `kube-state-metrics-values.yaml` | Kube State Metrics config |
-| `ingressroute.yaml` | Traefik IngressRoute for Grafana |
+| File                             | Purpose                          |
+| -------------------------------- | -------------------------------- |
+| `application.yaml`               | ArgoCD Application definition    |
+| `vm-operator-values.yaml`        | Victoria Metrics Operator config |
+| `vmsingle.yaml`                  | VMSingle (storage) CRD           |
+| `vmagent.yaml`                   | VMAgent (scraper) CRD            |
+| `vmalert.yaml`                   | VMAlert (alerting) CRD           |
+| `vmalertmanager.yaml`            | VMAlertmanager CRD               |
+| `vm-scrape-configs.yaml`         | Scrape target configurations     |
+| `grafana-values.yaml`            | Grafana Helm values              |
+| `node-exporter-values.yaml`      | Node Exporter config             |
+| `kube-state-metrics-values.yaml` | Kube State Metrics config        |
+| `ingressroute.yaml`              | Traefik IngressRoute for Grafana |
 
 ## Components
 
 ### VMSingle (Time Series Database)
 
 **Endpoints:**
+
 - Internal: `http://vmsingle-vmsingle.monitoring.svc:8429`
 - VMUI: Port-forward to access built-in UI
 
@@ -121,6 +123,7 @@ kubectl port-forward -n monitoring svc/vmsingle-vmsingle 8429:8429
 ```
 
 **Query Examples (PromQL/MetricsQL):**
+
 ```promql
 # CPU usage by pod
 rate(container_cpu_usage_seconds_total[5m])
@@ -135,6 +138,7 @@ kube_pod_container_status_restarts_total
 ### VMAgent (Metric Scraper)
 
 Discovers and scrapes metrics from:
+
 - Kubernetes nodes (kubelet, cadvisor)
 - Services with `prometheus.io/scrape: "true"` annotations
 - VMServiceScrape and VMPodScrape CRDs
@@ -144,6 +148,7 @@ Discovers and scrapes metrics from:
 Evaluates alerting rules defined in VMRule CRDs.
 
 **Create Custom Alert:**
+
 ```yaml
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMRule
@@ -166,6 +171,7 @@ spec:
 ### Grafana
 
 **Features:**
+
 - Victoria Metrics datasource (Prometheus compatible)
 - Pre-loaded dashboards
 - TLS via Traefik IngressRoute
@@ -176,6 +182,7 @@ spec:
 ### Auto-Discovery via Annotations
 
 Add these annotations to your Service or Pod:
+
 ```yaml
 annotations:
   prometheus.io/scrape: "true"
@@ -208,41 +215,44 @@ spec:
 
 All components use Longhorn for persistent storage:
 
-| Component | PVC Size | Purpose |
-|-----------|----------|---------|
-| VMSingle | 2Gi | Metrics data |
-| Grafana | 5Gi | Dashboards & config |
-| VMAlertmanager | 1Gi | Alert state |
+| Component      | PVC Size | Purpose             |
+| -------------- | -------- | ------------------- |
+| VMSingle       | 2Gi      | Metrics data        |
+| Grafana        | 5Gi      | Dashboards & config |
+| VMAlertmanager | 1Gi      | Alert state         |
 
 ## Resource Usage
 
 Expected memory usage after deployment:
 
-| Component | Memory |
-|-----------|--------|
-| VMSingle | ~200 Mi |
-| VMAgent | ~50 Mi |
-| VMAlert | ~30 Mi |
-| VMAlertmanager | ~30 Mi |
-| Grafana | ~100 Mi |
-| VM Operator | ~30 Mi |
-| Node Exporter (per node) | ~10 Mi |
-| Kube State Metrics | ~20 Mi |
-| **Total** | **~470 Mi** |
+| Component                | Memory      |
+| ------------------------ | ----------- |
+| VMSingle                 | ~200 Mi     |
+| VMAgent                  | ~50 Mi      |
+| VMAlert                  | ~30 Mi      |
+| VMAlertmanager           | ~30 Mi      |
+| Grafana                  | ~100 Mi     |
+| VM Operator              | ~30 Mi      |
+| Node Exporter (per node) | ~10 Mi      |
+| Kube State Metrics       | ~20 Mi      |
+| **Total**                | **~470 Mi** |
 
 ## Troubleshooting
 
 ### Check Pod Status
+
 ```bash
 kubectl get pods -n monitoring
 ```
 
 ### View VMSingle Logs
+
 ```bash
 kubectl logs -n monitoring -l app.kubernetes.io/name=vmsingle
 ```
 
 ### View Grafana Logs
+
 ```bash
 kubectl logs -n monitoring -l app.kubernetes.io/name=grafana
 ```
@@ -250,11 +260,13 @@ kubectl logs -n monitoring -l app.kubernetes.io/name=grafana
 ### VMAgent Not Scraping Targets
 
 1. Check VMServiceScrape/VMPodScrape exists:
+
 ```bash
 kubectl get vmservicescrape,vmpodscrape -A
 ```
 
 2. Check VMAgent targets:
+
 ```bash
 kubectl port-forward -n monitoring svc/vmagent-vmagent 8429:8429
 # Open http://localhost:8429/targets
@@ -263,10 +275,12 @@ kubectl port-forward -n monitoring svc/vmagent-vmagent 8429:8429
 ### Grafana Dashboard Not Loading
 
 1. Check datasource connection:
+
    - Grafana → Configuration → Data Sources → VictoriaMetrics
    - Click "Test" button
 
 2. Verify VMSingle is running:
+
 ```bash
 kubectl get pods -n monitoring -l app.kubernetes.io/name=vmsingle
 ```
