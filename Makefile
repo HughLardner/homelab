@@ -1,8 +1,10 @@
-.PHONY: help init plan apply destroy ssh-* k3s-* metallb-* longhorn-* cert-manager-* traefik-* argocd-* monitoring-* sealed-secrets-* seal-secrets kured-* root-app-deploy apps-list apps-status monitoring-secrets inventory clean deploy-infra deploy-platform deploy-services deploy-all deploy deploy-apps
+.PHONY: help init plan apply destroy ssh-node k3s-* metallb-* cert-manager-* traefik-* argocd-* monitoring-* sealed-secrets-* seal-secrets kured-* root-app-deploy apps-list apps-status monitoring-secrets inventory clean deploy-infra deploy-platform deploy-services deploy-all deploy deploy-apps
 
 # Default target
 help:
 	@echo "Homelab Infrastructure Makefile"
+	@echo ""
+	@echo "Single-Node K3s Cluster (12GB RAM, local-path storage)"
 	@echo ""
 	@echo "Terraform Commands:"
 	@echo "  make init          - Initialize Terraform"
@@ -20,8 +22,6 @@ help:
 	@echo "  make k3s-destroy       - Uninstall K3s from all nodes"
 	@echo "  make metallb-install   - Install MetalLB (LoadBalancer)"
 	@echo "  make metallb-test      - Install MetalLB with LoadBalancer testing"
-	@echo "  make longhorn-install     - Install Longhorn (Storage)"
-	@echo "  make longhorn-ui          - Open Longhorn UI"
 	@echo "  make cert-manager-install - Install cert-manager (TLS)"
 	@echo "  make cert-manager-status  - Check cert-manager status"
 	@echo "  make traefik-install      - Install Traefik (Ingress Controller)"
@@ -48,7 +48,7 @@ help:
 	@echo "  make monitoring-install    - Install monitoring via Ansible (legacy)"
 	@echo "  make monitoring-status     - Check monitoring stack status"
 	@echo "  make grafana-ui            - Open Grafana dashboard"
-	@echo "  make prometheus-ui         - Port-forward Prometheus UI"
+	@echo "  make vmsingle-ui           - Port-forward Victoria Metrics UI"
 	@echo "  make ping                 - Test connectivity to all nodes"
 	@echo ""
 	@echo "Full Stack Deployment:"
@@ -60,9 +60,7 @@ help:
 	@echo "  make deploy-apps       - Deploy only applications (assumes services exist)"
 	@echo ""
 	@echo "SSH Commands:"
-	@echo "  make ssh-node1     - SSH to node 1"
-	@echo "  make ssh-node2     - SSH to node 2"
-	@echo "  make ssh-node3     - SSH to node 3"
+	@echo "  make ssh-node      - SSH to the K3s node"
 	@echo ""
 	@echo "Workspace Commands:"
 	@echo "  make workspace-list    - List all workspaces"
@@ -150,22 +148,6 @@ metallb-test: inventory
 	@echo "Installing MetalLB with LoadBalancer testing..."
 	cd ansible && ansible-playbook playbooks/metallb.yml \
 	  -e metallb_test_loadbalancer=true
-
-longhorn-install: inventory
-	@echo "Installing Longhorn storage..."
-	cd ansible && ansible-playbook playbooks/longhorn.yml
-
-longhorn-ui:
-	@echo "Accessing Longhorn UI..."
-	@LONGHORN_IP=$$(kubectl get svc -n longhorn-system longhorn-frontend -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo ""); \
-	if [ -z "$$LONGHORN_IP" ]; then \
-		echo "Longhorn UI not exposed via LoadBalancer. Use port-forward:"; \
-		echo "  kubectl port-forward -n longhorn-system svc/longhorn-frontend 8080:80"; \
-		echo "  Then open: http://localhost:8080"; \
-	else \
-		echo "Longhorn UI: http://$$LONGHORN_IP"; \
-		open "http://$$LONGHORN_IP" 2>/dev/null || xdg-open "http://$$LONGHORN_IP" 2>/dev/null || echo "Open http://$$LONGHORN_IP in your browser"; \
-	fi
 
 cert-manager-install: inventory
 	@echo "Installing cert-manager..."
@@ -384,7 +366,7 @@ monitoring-sync:
 	fi
 
 monitoring-install: inventory
-	@echo "Installing Monitoring Stack (Prometheus + Grafana)..."
+	@echo "Installing Monitoring Stack (Victoria Metrics + Grafana)..."
 	cd ansible && ansible-playbook playbooks/monitoring.yml
 
 monitoring-status:
@@ -407,33 +389,27 @@ grafana-ui:
 	@GRAFANA_DOMAIN=$$(kubectl get ingressroute -n monitoring grafana -o jsonpath='{.spec.routes[0].match}' 2>/dev/null | sed 's/.*Host(`\([^`]*\)`).*/\1/' || echo ""); \
 	if [ -z "$$GRAFANA_DOMAIN" ]; then \
 		echo "IngressRoute not found. Use port-forward:"; \
-		echo "  kubectl port-forward -n monitoring svc/kube-prometheus-grafana 3000:80"; \
+		echo "  kubectl port-forward -n monitoring svc/grafana 3000:80"; \
 		echo "  Then open: http://localhost:3000"; \
 	else \
 		echo "Grafana: https://$$GRAFANA_DOMAIN"; \
 		open "https://$$GRAFANA_DOMAIN" 2>/dev/null || xdg-open "https://$$GRAFANA_DOMAIN" 2>/dev/null || echo "Open https://$$GRAFANA_DOMAIN in your browser"; \
 	fi
 
-prometheus-ui:
-	@echo "Port-forwarding Prometheus UI..."
-	@echo "Prometheus will be available at: http://localhost:9090"
-	kubectl port-forward -n monitoring svc/kube-prometheus-prometheus 9090:9090
+vmsingle-ui:
+	@echo "Port-forwarding Victoria Metrics UI..."
+	@echo "Victoria Metrics will be available at: http://localhost:8429/vmui"
+	kubectl port-forward -n monitoring svc/vmsingle-vmsingle 8429:8429
 
 ping:
 	cd ansible && ansible all -m ping
 
 # ============================================================================
-# SSH Access
+# SSH Access (Single Node)
 # ============================================================================
 
-ssh-node1:
+ssh-node:
 	ssh ubuntu@$$(cd terraform && terraform output -json | jq -r '.vm_ip_addresses.value[0]' | cut -d'/' -f1)
-
-ssh-node2:
-	ssh ubuntu@$$(cd terraform && terraform output -json | jq -r '.vm_ip_addresses.value[1]' | cut -d'/' -f1)
-
-ssh-node3:
-	ssh ubuntu@$$(cd terraform && terraform output -json | jq -r '.vm_ip_addresses.value[2]' | cut -d'/' -f1)
 
 # ============================================================================
 # Utility Commands
@@ -455,7 +431,7 @@ logs:
 	fi
 
 # ============================================================================
-# Full Stack Deployment
+# Full Stack Deployment (Single Node - No Longhorn)
 # ============================================================================
 
 # Deploy infrastructure only (Terraform VMs)
@@ -489,7 +465,7 @@ deploy-platform: deploy-infra
 	@echo ""
 	@echo "Next: make deploy-services"
 
-# Deploy infrastructure + K3s + all core services
+# Deploy infrastructure + K3s + all core services (NO LONGHORN - using local-path)
 deploy-services: deploy-platform
 	@echo ""
 	@echo "========================================"
@@ -498,8 +474,7 @@ deploy-services: deploy-platform
 	@echo "Installing MetalLB (LoadBalancer)..."
 	$(MAKE) metallb-install
 	@echo ""
-	@echo "Installing Longhorn (Storage)..."
-	$(MAKE) longhorn-install
+	@echo "Note: Using K3s built-in local-path-provisioner for storage"
 	@echo ""
 	@echo "Installing Cert-Manager (TLS)..."
 	$(MAKE) cert-manager-install
@@ -518,11 +493,12 @@ deploy-services: deploy-platform
 	@echo "Access Points:"
 	@echo "  Traefik:  https://traefik.silverseekers.org"
 	@echo "  ArgoCD:   https://argocd.silverseekers.org"
-	@echo "  Longhorn: https://longhorn.silverseekers.org"
+	@echo ""
+	@echo "Storage: local-path (K3s built-in)"
 	@echo ""
 	@echo "DNS Configuration:"
 	@echo "  Configure UniFi Gateway with wildcard DNS:"
-	@echo "    *.silverseekers.org -> 192.168.10.145"
+	@echo "    *.silverseekers.org -> 192.168.10.150"
 	@echo ""
 	@echo "Next: make deploy-apps"
 
@@ -544,15 +520,18 @@ deploy-all: deploy-services
 	@echo ""
 	@echo "🎉 Your homelab is ready!"
 	@echo ""
+	@echo "Single-Node Configuration:"
+	@echo "  RAM:     12 GB"
+	@echo "  Storage: local-path (K3s built-in)"
+	@echo ""
 	@echo "Access Points:"
 	@echo "  Grafana:  https://grafana.silverseekers.org"
 	@echo "  ArgoCD:   https://argocd.silverseekers.org"
 	@echo "  Traefik:  https://traefik.silverseekers.org"
-	@echo "  Longhorn: https://longhorn.silverseekers.org"
 	@echo ""
 	@echo "DNS Configuration:"
 	@echo "  Configure UniFi Gateway with wildcard DNS:"
-	@echo "    *.silverseekers.org -> 192.168.10.145"
+	@echo "    *.silverseekers.org -> 192.168.10.150"
 	@echo ""
 	@echo "Check status:"
 	@echo "  kubectl get nodes"
