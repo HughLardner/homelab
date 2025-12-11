@@ -5,6 +5,7 @@ Production-ready Kubernetes (K3s) platform on Proxmox VE with complete GitOps wo
 ## Features
 
 ### Infrastructure (Terraform)
+
 - **Multi-cluster management** via Terraform workspaces
 - **Automated VM provisioning** on Proxmox VE
 - **Firewall integration** with automated IPSet/security groups
@@ -12,6 +13,7 @@ Production-ready Kubernetes (K3s) platform on Proxmox VE with complete GitOps wo
 - **Dynamic inventory generation** for Ansible
 
 ### Platform Services (Ansible)
+
 - **K3s cluster** with HA embedded etcd (3 control plane nodes)
 - **MetalLB** LoadBalancer (192.168.10.150-159)
 - **Longhorn** distributed block storage
@@ -21,6 +23,7 @@ Production-ready Kubernetes (K3s) platform on Proxmox VE with complete GitOps wo
 - **Sealed Secrets** encrypted secrets for GitOps workflow
 
 ### Applications (ArgoCD/GitOps)
+
 - **Monitoring Stack** (Prometheus + Grafana)
   - Grafana metrics visualization (https://grafana.silverseekers.org)
   - Prometheus metrics collection and alerting
@@ -134,16 +137,19 @@ make help              # Show all commands
 ## Documentation
 
 ### Planning & Architecture
+
 - [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) - Complete implementation guide with phases
 - [CLAUDE.md](CLAUDE.md) - Architecture and development guide for AI assistants
 - [SECRETS.md](SECRETS.md) - Secrets management workflow with Sealed Secrets
 
 ### Infrastructure & Platform
+
 - [Terraform README](terraform/README.md) - Infrastructure provisioning on Proxmox VE
 - [Ansible README](ansible/README.md) - Cluster and services deployment
 - [Kubernetes README](kubernetes/README.md) - Kubernetes resources and GitOps structure
 
 ### Core Services
+
 - [MetalLB README](kubernetes/services/metallb/README.md) - LoadBalancer configuration
 - [Longhorn README](kubernetes/services/longhorn/README.md) - Distributed storage
 - [Cert-Manager README](kubernetes/services/cert-manager/README.md) - TLS certificate automation
@@ -153,7 +159,12 @@ make help              # Show all commands
 - [Kured README](kubernetes/services/kured/README.md) - Automated node reboots
 
 ### Monitoring
+
 - [Monitoring README](kubernetes/applications/monitoring/README.md) - Prometheus + Grafana stack
+
+### AI Integration
+
+- [Grafana MCP](docs/GRAFANA_MCP.md) - AI assistant integration with Grafana
 
 ## Architecture
 
@@ -193,12 +204,12 @@ make help              # Show all commands
 
 ## Access Points
 
-| Service | URL | Credentials |
-|---------|-----|-------------|
+| Service               | URL                               | Credentials              |
+| --------------------- | --------------------------------- | ------------------------ |
 | **Traefik Dashboard** | https://traefik.silverseekers.org | admin / (from Terraform) |
-| **ArgoCD** | https://argocd.silverseekers.org | admin / (via secrets) |
-| **Grafana** | https://grafana.silverseekers.org | admin / (from Terraform) |
-| **Longhorn UI** | Port-forward or LoadBalancer | N/A |
+| **ArgoCD**            | https://argocd.silverseekers.org  | admin / (via secrets)    |
+| **Grafana**           | https://grafana.silverseekers.org | admin / (from Terraform) |
+| **Longhorn UI**       | Port-forward or LoadBalancer      | N/A                      |
 
 ## Network Configuration
 
@@ -213,6 +224,7 @@ make help              # Show all commands
 All services are accessed through Traefik at `192.168.10.145`. Configure your UniFi Gateway with a wildcard DNS entry:
 
 **UniFi Network → Settings → DNS:**
+
 ```
 Type: A Record
 Name: *.silverseekers.org
@@ -220,12 +232,14 @@ IP: 192.168.10.145
 ```
 
 If your UniFi version doesn't support wildcard DNS, add individual entries:
+
 - `argocd.silverseekers.org` → `192.168.10.145`
 - `traefik.silverseekers.org` → `192.168.10.145`
 - `grafana.silverseekers.org` → `192.168.10.145`
 - `longhorn.silverseekers.org` → `192.168.10.145`
 
 **Architecture:**
+
 ```
 Browser → UniFi DNS → Traefik (192.168.10.145) → Backend Service
                          ↓

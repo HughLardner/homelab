@@ -19,9 +19,9 @@ spec:
       cpu: 500m
       memory: 512Mi
 
-  # Persistent storage
+  # Persistent storage (local-path for single-node cluster)
   storage:
-    storageClassName: longhorn
+    storageClassName: local-path
     accessModes:
       - ReadWriteOnce
     resources:
