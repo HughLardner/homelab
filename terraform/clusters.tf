@@ -35,12 +35,12 @@ variable "cluster" {
   default = {
     cluster_name      = "homelab"
     cluster_id        = 1
-    node_count        = 3
+    node_count        = 1           # Single node cluster (saves 8GB RAM on Proxmox)
     node_start_ip     = 20
-    cores             = 2           # 2 cores per node (6 total out of N150's cores)
+    cores             = 4           # 4 cores for single node (plenty for homelab)
     cpu_type          = "host"      # Use host CPU for best performance
-    memory            = 4096        # 4GB per node (12GB total out of 16GB host RAM)
-    disk_size         = 50
+    memory            = 12288       # 12GB for single node (leaves ~3GB for Proxmox)
+    disk_size         = 100         # 100GB disk (more space for local-path storage)
     vlan_id           = null        # No VLAN tag - handled by Unifi switch port
     subnet_prefix     = "192.168.10"
     gateway           = "192.168.10.1"
@@ -53,8 +53,8 @@ variable "cluster" {
     cert_manager_domain        = "silverseekers.org"
     cloudflare_email           = "hughlardner@gmail.com"
     traefik_dashboard_domain   = "traefik.silverseekers.org"
-    longhorn_domain            = "longhorn.silverseekers.org"
-    longhorn_cert_issuer       = "letsencrypt-prod"
+    longhorn_domain            = "longhorn.silverseekers.org"      # Kept for reference, not used
+    longhorn_cert_issuer       = "letsencrypt-prod"                # Kept for reference, not used
     # ArgoCD GitOps
     argocd_domain   = "argocd.silverseekers.org"
     argocd_github_repo_url = "https://github.com/HughLardner/homelab.git"
