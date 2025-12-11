@@ -14,7 +14,8 @@
 # Default settings
 defaultSettings:
   # Number of replicas for volumes
-  defaultReplicaCount: {{ longhorn_replica_count | default(2) }}
+  # Single node = 1, increase to 2 when adding second node
+  defaultReplicaCount: {{ longhorn_replica_count | default(1) }}
 
   # Storage path on each node
   defaultDataPath: {{ longhorn_data_path | default('/var/lib/longhorn') }}
@@ -36,14 +37,15 @@ defaultSettings:
 
 # Persistence settings
 persistence:
-  # Set as default StorageClass
-  defaultClass: true
+  # Set as default StorageClass (false = local-path remains default for ephemeral data)
+  defaultClass: false
 
   # Default filesystem type
   defaultFsType: ext4
 
   # Default replica count for StorageClass
-  defaultClassReplicaCount: {{ longhorn_replica_count | default(2) }}
+  # Single node = 1, increase to 2 when adding second node
+  defaultClassReplicaCount: {{ longhorn_replica_count | default(1) }}
 
   # Reclaim policy
   reclaimPolicy: Delete
@@ -80,12 +82,13 @@ resources:
     memory: 128Mi
 
 # Enable CSI snapshotter
+# Single node = 1 replica each, increase when adding more nodes
 csi:
   kubeletRootDir: /var/lib/kubelet
-  attacherReplicaCount: 3
-  provisionerReplicaCount: 3
-  resizerReplicaCount: 3
-  snapshotterReplicaCount: 3
+  attacherReplicaCount: 1
+  provisionerReplicaCount: 1
+  resizerReplicaCount: 1
+  snapshotterReplicaCount: 1
 
 # Image pull policy
 image:

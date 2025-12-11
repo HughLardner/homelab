@@ -43,7 +43,8 @@ def generate_inventory(cluster_name="homelab"):
                         "k3s_kube_vip_hostname": config.get("kube_vip_hostname", ""),
                         "metallb_ipv4_pools": config.get("lb_cidrs", ""),
                         # Longhorn storage configuration (optional - has defaults)
-                        "longhorn_replica_count": config.get("longhorn_replica_count", 2),
+                        # Single node = 1 replica, increase to 2 when adding second node
+                        "longhorn_replica_count": config.get("longhorn_replica_count", 1),
                         "longhorn_data_path": config.get("longhorn_data_path", "/var/lib/longhorn"),
                         "longhorn_ui_service_type": config.get("longhorn_ui_service_type", "LoadBalancer"),
                         # Cert-Manager TLS configuration (required)
@@ -57,20 +58,20 @@ def generate_inventory(cluster_name="homelab"):
                         "traefik_loadbalancer_ip": config.get("traefik_loadbalancer_ip", ""),
                         "traefik_storage_class": config.get("traefik_storage_class", "longhorn"),
                         "traefik_dashboard_domain": config.get("traefik_dashboard_domain", ""),
-                        "traefik_cert_issuer": config.get("traefik_cert_issuer", "letsencrypt-staging"),
+                        "traefik_cert_issuer": config.get("traefik_cert_issuer", "letsencrypt-prod"),
                         "traefik_dashboard_username": config.get("traefik_dashboard_username", "admin"),
                         "traefik_dashboard_password": config.get("traefik_dashboard_password", ""),
                         # ArgoCD GitOps configuration
                         "argocd_domain": config.get("argocd_domain", ""),
                         "argocd_password": config.get("argocd_password", ""),
                         "argocd_replicas": config.get("argocd_replicas", 1),
-                        "argocd_cert_issuer": config.get("argocd_cert_issuer", "letsencrypt-staging"),
+                        "argocd_cert_issuer": config.get("argocd_cert_issuer", "letsencrypt-prod"),
                         "argocd_github_repo_url": config.get("argocd_github_repo_url", ""),
                         "argocd_github_token": config.get("argocd_github_token", ""),
                         # Monitoring configuration
                         "grafana_domain": config.get("grafana_domain", ""),
                         "grafana_admin_password": config.get("grafana_admin_password", ""),
-                        "grafana_cert_issuer": config.get("grafana_cert_issuer", "letsencrypt-staging"),
+                        "grafana_cert_issuer": config.get("grafana_cert_issuer", "letsencrypt-prod"),
                         "monitoring_storage_class": config.get("monitoring_storage_class", "longhorn"),
                         "prometheus_storage_size": config.get("prometheus_storage_size", "10Gi"),
                         "prometheus_retention": config.get("prometheus_retention", "15d"),

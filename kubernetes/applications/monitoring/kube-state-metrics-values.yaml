@@ -52,3 +52,4 @@ collectors:
 metricLabelsAllowlist:
   - pods=[app.kubernetes.io/name,app.kubernetes.io/instance,app.kubernetes.io/component]
   - deployments=[app.kubernetes.io/name,app.kubernetes.io/instance]
+

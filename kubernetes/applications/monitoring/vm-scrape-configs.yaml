@@ -118,3 +118,4 @@ spec:
         - sourceLabels: [__meta_kubernetes_pod_name]
           action: replace
           targetLabel: pod
+
