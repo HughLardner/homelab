@@ -67,10 +67,16 @@ grafana.ini:
     auth_url: https://auth.silverseekers.org/application/o/authorize/
     token_url: https://auth.silverseekers.org/application/o/token/
     api_url: https://auth.silverseekers.org/application/o/userinfo/
+    # Email and name extraction from Authentik userinfo response
+    email_attribute_path: email
+    name_attribute_path: name
+    login_attribute_path: preferred_username
     # Map Authentik groups to Grafana roles
     role_attribute_path: contains(groups[*], 'Grafana Admins') && 'Admin' || contains(groups[*], 'Grafana Editors') && 'Editor' || 'Viewer'
     # Auto-login disabled - users can choose local or SSO
     auto_login: false
+    # Use ID token for user info (skip separate userinfo call)
+    use_pkce: true
 
 # Environment from secret
 envFromSecret: grafana-admin-secret
