@@ -1,0 +1,70 @@
+# Authentik Blueprint: User Groups
+# Creates groups for RBAC across all integrated services
+#
+# Groups are used to:
+# - Control access to Authentik admin UI
+# - Map to Grafana roles (Admin/Editor/Viewer)
+# - Map to ArgoCD roles (admin/readonly)
+# - Control ForwardAuth access
+
+version: 1
+metadata:
+  name: Homelab User Groups
+  labels:
+    blueprints.goauthentik.io/description: "User groups for homelab RBAC"
+entries:
+  # ============================================
+  # Authentik Admin Groups
+  # ============================================
+  - model: authentik_core.group
+    id: group-authentik-admins
+    attrs:
+      name: "authentik Admins"
+      is_superuser: true
+
+  # ============================================
+  # Grafana Groups
+  # ============================================
+  - model: authentik_core.group
+    id: group-grafana-admins
+    attrs:
+      name: "Grafana Admins"
+
+  - model: authentik_core.group
+    id: group-grafana-editors
+    attrs:
+      name: "Grafana Editors"
+
+  - model: authentik_core.group
+    id: group-grafana-viewers
+    attrs:
+      name: "Grafana Viewers"
+
+  # ============================================
+  # ArgoCD Groups
+  # ============================================
+  - model: authentik_core.group
+    id: group-argocd-admins
+    attrs:
+      name: "ArgoCD Admins"
+
+  - model: authentik_core.group
+    id: group-argocd-developers
+    attrs:
+      name: "ArgoCD Developers"
+
+  # ============================================
+  # Traefik Groups
+  # ============================================
+  - model: authentik_core.group
+    id: group-traefik-admins
+    attrs:
+      name: "Traefik Admins"
+
+  # ============================================
+  # Generic Access Groups
+  # ============================================
+  - model: authentik_core.group
+    id: group-homelab-users
+    attrs:
+      name: "Homelab Users"

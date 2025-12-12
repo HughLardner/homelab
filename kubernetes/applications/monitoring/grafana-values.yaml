@@ -55,40 +55,33 @@ grafana.ini:
   # =========================================================================
   # Authentik SSO Integration (OIDC)
   # =========================================================================
-  # Prerequisites:
-  #   1. Deploy Authentik (make authentik-install)
-  #   2. Create OAuth2/OIDC provider in Authentik Admin UI
-  #   3. Create application linked to the provider
-  #   4. Add OIDC client secret to secrets.yml and seal it
-  #
-  # To enable: uncomment the section below and add the client secret
-  # -------------------------------------------------------------------------
-  # auth.generic_oauth:
-  #   enabled: true
-  #   name: Authentik
-  #   allow_sign_up: true
-  #   client_id: grafana
-  #   # client_secret is loaded from environment variable
-  #   scopes: openid profile email
-  #   auth_url: https://{{ authentik_domain | default('auth.silverseekers.org') }}/application/o/authorize/
-  #   token_url: https://{{ authentik_domain | default('auth.silverseekers.org') }}/application/o/token/
-  #   api_url: https://{{ authentik_domain | default('auth.silverseekers.org') }}/application/o/userinfo/
-  #   # Map Authentik groups to Grafana roles
-  #   role_attribute_path: contains(groups[*], 'Grafana Admins') && 'Admin' || contains(groups[*], 'Grafana Editors') && 'Editor' || 'Viewer'
-  #   # Allow users to be auto-provisioned
-  #   auto_login: false
-  # -------------------------------------------------------------------------
+  # Providers and applications are created automatically via Authentik blueprints.
+  # Client secret must match oidc-grafana-secret in authentik-secrets.
+  auth.generic_oauth:
+    enabled: true
+    name: Authentik
+    allow_sign_up: true
+    client_id: grafana
+    # client_secret is loaded from environment variable GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET
+    scopes: openid profile email groups
+    auth_url: https://{{ authentik_domain | default('auth.silverseekers.org') }}/application/o/authorize/
+    token_url: https://{{ authentik_domain | default('auth.silverseekers.org') }}/application/o/token/
+    api_url: https://{{ authentik_domain | default('auth.silverseekers.org') }}/application/o/userinfo/
+    # Map Authentik groups to Grafana roles
+    role_attribute_path: contains(groups[*], 'Grafana Admins') && 'Admin' || contains(groups[*], 'Grafana Editors') && 'Editor' || 'Viewer'
+    # Auto-login disabled - users can choose local or SSO
+    auto_login: false
 
 # Environment from secret
 envFromSecret: grafana-admin-secret
 
-# Additional environment variables for OIDC (uncomment when enabling SSO)
-# env:
-#   GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET:
-#     valueFrom:
-#       secretKeyRef:
-#         name: grafana-oidc-secret
-#         key: client-secret
+# Environment variables for OIDC client secret
+env:
+  GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET:
+    valueFrom:
+      secretKeyRef:
+        name: grafana-oidc-secret
+        key: client-secret
 
 # Datasources - Victoria Metrics (Prometheus compatible)
 datasources:

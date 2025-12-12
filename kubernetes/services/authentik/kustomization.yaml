@@ -9,3 +9,18 @@ namespace: authentik
 resources:
   - ingressroute.yaml
   - middleware.yaml
+
+# Generate ConfigMap from blueprint files
+# These are mounted into the Authentik worker for declarative configuration
+configMapGenerator:
+  - name: authentik-blueprints
+    files:
+      - blueprints/00-groups.yaml
+      - blueprints/10-grafana-oidc.yaml
+      - blueprints/11-argocd-oidc.yaml
+      - blueprints/12-traefik-oidc.yaml
+      - blueprints/20-forward-auth.yaml
+      - blueprints/30-outpost.yaml
+    options:
+      # Disable hash suffix so Helm values can reference by name
+      disableNameSuffixHash: true

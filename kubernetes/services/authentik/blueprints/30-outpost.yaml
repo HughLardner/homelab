@@ -1,0 +1,48 @@
+# Authentik Blueprint: Embedded Outpost Configuration
+# Configures the embedded outpost to handle proxy authentication
+#
+# The embedded outpost is automatically included with the Authentik server.
+# This blueprint links it to the ForwardAuth proxy provider.
+
+version: 1
+metadata:
+  name: Embedded Outpost Configuration
+  labels:
+    blueprints.goauthentik.io/description: "Configure embedded outpost for ForwardAuth"
+entries:
+  # ============================================
+  # Update Embedded Outpost
+  # ============================================
+  # Note: The embedded outpost is created automatically by Authentik.
+  # We just need to ensure the ForwardAuth provider is linked to it.
+  # This is typically done via the API or UI after initial deployment.
+  #
+  # The outpost configuration will be handled by the embedded outpost
+  # which automatically picks up all proxy providers.
+  #
+  # For manual configuration, visit:
+  # https://auth.silverseekers.org/if/admin/#/outpost/outposts
+  # And ensure "authentik Embedded Outpost" includes the "Protected Services" application.
+
+  # Service connection for embedded outpost (uses internal Kubernetes service)
+  - model: authentik_outposts.outpost
+    id: outpost-embedded
+    state: present
+    conditions: []
+    attrs:
+      name: "authentik Embedded Outpost"
+      type: proxy
+      # Link to the ForwardAuth application
+      providers:
+        - !KeyOf provider-forward-auth
+      config:
+        # Use the built-in service connection
+        authentik_host: https://auth.silverseekers.org
+        authentik_host_insecure: false
+        # Log level
+        log_level: info
+        # Docker/Kubernetes specific settings
+        docker_network: null
+        docker_map_ports: true
+        kubernetes_replicas: 1
+        kubernetes_namespace: authentik
