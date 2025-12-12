@@ -46,8 +46,7 @@ sidecar:
 grafana.ini:
   server:
     serve_from_sub_path: false
-    # Overridden by ArgoCD helm.parameters
-    root_url: "https://grafana.example.com"
+    root_url: "https://grafana.silverseekers.org"
   auth.anonymous:
     enabled: false
   # Feature toggles
@@ -58,7 +57,6 @@ grafana.ini:
   # =========================================================================
   # Providers and applications are configured via Authentik API (make authentik-configure).
   # Client secret is loaded from grafana-oidc-secret.
-  # Domain-specific URLs are overridden by ArgoCD helm.parameters in application.yaml
   auth.generic_oauth:
     enabled: true
     name: Authentik
@@ -66,10 +64,9 @@ grafana.ini:
     client_id: grafana
     # client_secret is loaded from environment variable GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET
     scopes: openid profile email groups
-    # These URLs are overridden by ArgoCD helm.parameters
-    auth_url: https://auth.example.com/application/o/authorize/
-    token_url: https://auth.example.com/application/o/token/
-    api_url: https://auth.example.com/application/o/userinfo/
+    auth_url: https://auth.silverseekers.org/application/o/authorize/
+    token_url: https://auth.silverseekers.org/application/o/token/
+    api_url: https://auth.silverseekers.org/application/o/userinfo/
     # Map Authentik groups to Grafana roles
     role_attribute_path: contains(groups[*], 'Grafana Admins') && 'Admin' || contains(groups[*], 'Grafana Editors') && 'Editor' || 'Viewer'
     # Auto-login disabled - users can choose local or SSO
