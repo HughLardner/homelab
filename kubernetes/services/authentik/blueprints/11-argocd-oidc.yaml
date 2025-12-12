@@ -1,0 +1,71 @@
+# Authentik Blueprint: ArgoCD OIDC Provider
+# Configures OAuth2/OIDC for ArgoCD single sign-on
+#
+# After deployment, ArgoCD will accept SSO from Authentik.
+# Users are mapped to roles based on group membership:
+# - ArgoCD Admins -> role:admin
+# - ArgoCD Developers -> role:readonly
+
+version: 1
+metadata:
+  name: ArgoCD OIDC Provider
+  labels:
+    blueprints.goauthentik.io/description: "ArgoCD SSO integration"
+context:
+  argocd_client_id: argocd
+  argocd_redirect_uri: https://argocd.silverseekers.org/auth/callback
+entries:
+  # ============================================
+  # Property Mappings for ArgoCD
+  # ============================================
+  - model: authentik_providers_oauth2.scopemapping
+    id: argocd-scope-groups
+    attrs:
+      name: "ArgoCD - Groups"
+      scope_name: groups
+      expression: |
+        return {
+          "groups": [group.name for group in request.user.ak_groups.all()]
+        }
+
+  # ============================================
+  # OAuth2 Provider
+  # ============================================
+  - model: authentik_providers_oauth2.oauth2provider
+    id: provider-argocd
+    attrs:
+      name: ArgoCD
+      authorization_flow:
+        !Find [
+          authentik_flows.flow,
+          [slug, default-provider-authorization-implicit-consent],
+        ]
+      client_type: confidential
+      client_id: !Context argocd_client_id
+      client_secret: !Env [OIDC_ARGOCD_SECRET, "changeme"]
+      redirect_uris: !Context argocd_redirect_uri
+      signing_key:
+        !Find [
+          authentik_crypto.certificatekeypair,
+          [name, "authentik Self-signed Certificate"],
+        ]
+      property_mappings:
+        - !Find [authentik_providers_oauth2.scopemapping, [scope_name, openid]]
+        - !Find [authentik_providers_oauth2.scopemapping, [scope_name, email]]
+        - !Find [authentik_providers_oauth2.scopemapping, [scope_name, profile]]
+        - !KeyOf argocd-scope-groups
+
+  # ============================================
+  # Application
+  # ============================================
+  - model: authentik_core.application
+    id: app-argocd
+    attrs:
+      name: ArgoCD
+      slug: argocd
+      provider: !KeyOf provider-argocd
+      meta_icon: https://argo-cd.readthedocs.io/en/stable/assets/logo.png
+      meta_description: "GitOps continuous delivery"
+      meta_publisher: "Argo Project"
+      meta_launch_url: https://argocd.silverseekers.org
+      policy_engine_mode: any

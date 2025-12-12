@@ -1,0 +1,94 @@
+# Authentik Blueprint: Grafana OIDC Provider
+# Configures OAuth2/OIDC for Grafana single sign-on
+#
+# After deployment, Grafana will accept SSO from Authentik.
+# Users are mapped to roles based on group membership:
+# - Grafana Admins -> Admin role
+# - Grafana Editors -> Editor role
+# - Grafana Viewers / Homelab Users -> Viewer role
+
+version: 1
+metadata:
+  name: Grafana OIDC Provider
+  labels:
+    blueprints.goauthentik.io/description: "Grafana SSO integration"
+context:
+  grafana_client_id: grafana
+  grafana_redirect_uri: https://grafana.silverseekers.org/login/generic_oauth
+entries:
+  # ============================================
+  # Property Mappings for Grafana
+  # ============================================
+  - model: authentik_providers_oauth2.scopemapping
+    id: grafana-scope-email
+    attrs:
+      name: "Grafana - Email"
+      scope_name: email
+      expression: |
+        return {
+          "email": request.user.email,
+          "email_verified": True
+        }
+
+  - model: authentik_providers_oauth2.scopemapping
+    id: grafana-scope-profile
+    attrs:
+      name: "Grafana - Profile"
+      scope_name: profile
+      expression: |
+        return {
+          "name": request.user.name,
+          "preferred_username": request.user.username
+        }
+
+  - model: authentik_providers_oauth2.scopemapping
+    id: grafana-scope-groups
+    attrs:
+      name: "Grafana - Groups"
+      scope_name: groups
+      expression: |
+        return {
+          "groups": [group.name for group in request.user.ak_groups.all()]
+        }
+
+  # ============================================
+  # OAuth2 Provider
+  # ============================================
+  - model: authentik_providers_oauth2.oauth2provider
+    id: provider-grafana
+    attrs:
+      name: Grafana
+      authorization_flow:
+        !Find [
+          authentik_flows.flow,
+          [slug, default-provider-authorization-implicit-consent],
+        ]
+      client_type: confidential
+      client_id: !Context grafana_client_id
+      client_secret: !Env [OIDC_GRAFANA_SECRET, "changeme"]
+      redirect_uris: !Context grafana_redirect_uri
+      signing_key:
+        !Find [
+          authentik_crypto.certificatekeypair,
+          [name, "authentik Self-signed Certificate"],
+        ]
+      property_mappings:
+        - !Find [authentik_providers_oauth2.scopemapping, [scope_name, openid]]
+        - !KeyOf grafana-scope-email
+        - !KeyOf grafana-scope-profile
+        - !KeyOf grafana-scope-groups
+
+  # ============================================
+  # Application
+  # ============================================
+  - model: authentik_core.application
+    id: app-grafana
+    attrs:
+      name: Grafana
+      slug: grafana
+      provider: !KeyOf provider-grafana
+      meta_icon: https://grafana.com/static/img/menu/grafana2.svg
+      meta_description: "Metrics visualization and dashboards"
+      meta_publisher: "Grafana Labs"
+      meta_launch_url: https://grafana.silverseekers.org
+      policy_engine_mode: any

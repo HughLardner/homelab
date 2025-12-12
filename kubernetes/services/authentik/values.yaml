@@ -16,17 +16,35 @@ global:
         secretKeyRef:
           name: authentik-secrets
           key: postgresql-password
-    # Optional: Bootstrap credentials for initial setup
-    # - name: AUTHENTIK_BOOTSTRAP_PASSWORD
-    #   valueFrom:
-    #     secretKeyRef:
-    #       name: authentik-secrets
-    #       key: bootstrap-password
-    # - name: AUTHENTIK_BOOTSTRAP_TOKEN
-    #   valueFrom:
-    #     secretKeyRef:
-    #       name: authentik-secrets
-    #       key: bootstrap-token
+    # Bootstrap credentials for automated initial setup
+    - name: AUTHENTIK_BOOTSTRAP_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: authentik-secrets
+          key: bootstrap-password
+    - name: AUTHENTIK_BOOTSTRAP_TOKEN
+      valueFrom:
+        secretKeyRef:
+          name: authentik-secrets
+          key: bootstrap-token
+    - name: AUTHENTIK_BOOTSTRAP_EMAIL
+      value: "admin@silverseekers.org"
+    # OIDC client secrets for declarative blueprint configuration
+    - name: OIDC_GRAFANA_SECRET
+      valueFrom:
+        secretKeyRef:
+          name: authentik-secrets
+          key: oidc-grafana-secret
+    - name: OIDC_ARGOCD_SECRET
+      valueFrom:
+        secretKeyRef:
+          name: authentik-secrets
+          key: oidc-argocd-secret
+    - name: OIDC_TRAEFIK_SECRET
+      valueFrom:
+        secretKeyRef:
+          name: authentik-secrets
+          key: oidc-traefik-secret
 
 # Authentik-specific configuration
 authentik:
@@ -57,6 +75,15 @@ server:
     serviceMonitor:
       enabled: false # Enable if using Prometheus Operator
 
+  # Mount blueprints ConfigMap for declarative configuration
+  volumes:
+    - name: blueprints
+      configMap:
+        name: authentik-blueprints
+  volumeMounts:
+    - name: blueprints
+      mountPath: /blueprints/custom
+
 # Worker (background tasks) configuration
 worker:
   replicas: 1
@@ -69,9 +96,23 @@ worker:
       cpu: "500m"
       memory: "512Mi"
 
+  # Mount blueprints ConfigMap for declarative configuration
+  volumes:
+    - name: blueprints
+      configMap:
+        name: authentik-blueprints
+  volumeMounts:
+    - name: blueprints
+      mountPath: /blueprints/custom
+
 # PostgreSQL configuration (bundled)
 postgresql:
   enabled: true
+  # Use latest tag (Bitnami deprecated versioned images in Aug 2025)
+  image:
+    registry: docker.io
+    repository: bitnami/postgresql
+    tag: "latest"
   auth:
     existingSecret: authentik-secrets
     secretKeys:
@@ -93,6 +134,11 @@ postgresql:
 # Redis configuration (bundled)
 redis:
   enabled: true
+  # Use latest tag (Bitnami deprecated versioned images in Aug 2025)
+  image:
+    registry: docker.io
+    repository: bitnami/redis
+    tag: "latest"
   architecture: standalone
   auth:
     enabled: false

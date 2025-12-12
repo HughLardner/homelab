@@ -112,29 +112,18 @@ configs:
     # =========================================================================
     # Authentik SSO Integration (OIDC)
     # =========================================================================
-    # Prerequisites:
-    #   1. Deploy Authentik (make authentik-install)
-    #   2. Create OAuth2/OIDC provider in Authentik Admin UI:
-    #      - Name: ArgoCD
-    #      - Client ID: argocd
-    #      - Redirect URIs: https://{{ argocd_domain }}/auth/callback
-    #      - Scopes: openid, profile, email, groups
-    #   3. Create application linked to the provider
-    #   4. Add OIDC client secret to argocd-secret
-    #
-    # To enable: uncomment the oidc.config section below
-    # -------------------------------------------------------------------------
-    # oidc.config: |
-    #   name: Authentik
-    #   issuer: https://{{ authentik_domain | default('auth.silverseekers.org') }}/application/o/argocd/
-    #   clientID: argocd
-    #   clientSecret: $oidc.authentik.clientSecret
-    #   requestedScopes:
-    #     - openid
-    #     - profile
-    #     - email
-    #     - groups
-    # -------------------------------------------------------------------------
+    # Providers and applications are created automatically via Authentik blueprints.
+    # Client secret must match oidc-argocd-secret in authentik-secrets.
+    oidc.config: |
+      name: Authentik
+      issuer: https://{{ authentik_domain | default('auth.silverseekers.org') }}/application/o/argocd/
+      clientID: argocd
+      clientSecret: $oidc.authentik.clientSecret
+      requestedScopes:
+        - openid
+        - profile
+        - email
+        - groups
 
   # RBAC configuration
   rbac:
@@ -142,12 +131,9 @@ configs:
     policy.default: role:readonly
     policy.csv: |
       g, admin, role:admin
-      # =========================================================================
-      # Authentik Group Mappings (uncomment when enabling SSO)
-      # =========================================================================
-      # Map Authentik groups to ArgoCD roles
-      # g, ArgoCD Admins, role:admin
-      # g, ArgoCD Developers, role:readonly
+      # Authentik Group Mappings
+      g, ArgoCD Admins, role:admin
+      g, ArgoCD Developers, role:readonly
 
   # Repository credentials (add your repos here)
   repositories: {}
