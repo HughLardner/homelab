@@ -75,13 +75,12 @@ grafana.ini:
 # Environment from secret
 envFromSecret: grafana-admin-secret
 
-# Environment variables for OIDC client secret
-env:
+# Environment variables from secrets (OIDC client secret)
+envValueFrom:
   GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET:
-    valueFrom:
-      secretKeyRef:
-        name: grafana-oidc-secret
-        key: client-secret
+    secretKeyRef:
+      name: grafana-oidc-secret
+      key: client-secret
 
 # Datasources - Victoria Metrics (Prometheus compatible)
 datasources:
