@@ -21,15 +21,20 @@ variable "cluster" {
     cert_manager_email        = string
     cert_manager_domain       = string
     cloudflare_email          = string
+    # TLS Certificate Issuer - Controls staging vs production certs globally
+    # Options: "letsencrypt-staging" (testing) or "letsencrypt-prod" (trusted certs)
+    default_cert_issuer       = optional(string, "letsencrypt-staging")
     traefik_dashboard_domain  = string
-    longhorn_domain           = string
-    longhorn_cert_issuer      = string
+    longhorn_domain           = optional(string, null)           # Optional, not used by default
+    longhorn_cert_issuer      = optional(string, null)           # Falls back to default_cert_issuer
     # ArgoCD configuration
     argocd_domain             = string
     argocd_github_repo_url    = string
     # Monitoring configuration
     grafana_domain            = string
     external_dns_domain       = string
+    # Authentik SSO configuration
+    authentik_domain          = string
   })
 
   default = {
@@ -52,15 +57,19 @@ variable "cluster" {
     cert_manager_email         = "hughlardner@gmail.com"
     cert_manager_domain        = "silverseekers.org"
     cloudflare_email           = "hughlardner@gmail.com"
+    # TLS Issuer: "letsencrypt-staging" for testing, "letsencrypt-prod" for trusted certs
+    default_cert_issuer        = "letsencrypt-staging"
     traefik_dashboard_domain   = "traefik.silverseekers.org"
-    longhorn_domain            = "longhorn.silverseekers.org"      # Kept for reference, not used
-    longhorn_cert_issuer       = "letsencrypt-prod"                # Kept for reference, not used
+    longhorn_domain            = null
+    longhorn_cert_issuer       = null
     # ArgoCD GitOps
     argocd_domain   = "argocd.silverseekers.org"
     argocd_github_repo_url = "https://github.com/HughLardner/homelab.git"
     # Monitoring
     grafana_domain = "grafana.silverseekers.org"
     external_dns_domain = "silverseekers.org"
+    # Authentik SSO
+    authentik_domain = "auth.silverseekers.org"
   }
 }
 

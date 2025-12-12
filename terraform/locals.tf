@@ -34,6 +34,8 @@ resource "local_file" "cluster_config_json" {
     cert_manager_domain   = var.cluster.cert_manager_domain
     cloudflare_email      = var.cluster.cloudflare_email
     cloudflare_api_token  = var.cloudflare_api_token
+    # TLS Issuer: "letsencrypt-staging" for testing, "letsencrypt-prod" for trusted certs
+    default_cert_issuer   = var.cluster.default_cert_issuer
     # Traefik configuration
     traefik_dashboard_domain   = var.cluster.traefik_dashboard_domain
     traefik_dashboard_password = var.traefik_dashboard_password
@@ -47,6 +49,8 @@ resource "local_file" "cluster_config_json" {
     grafana_admin_password = var.grafana_admin_password
     # External-DNS configuration
     external_dns_domain = var.cluster.external_dns_domain
+    # Authentik SSO configuration
+    authentik_domain = var.cluster.authentik_domain
   })
   filename = "../ansible/tmp/${var.cluster.cluster_name}/cluster_config.json"
 }
