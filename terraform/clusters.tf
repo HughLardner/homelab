@@ -60,8 +60,7 @@ variable "cluster" {
     # TLS Issuer: "letsencrypt-staging" for testing, "letsencrypt-prod" for trusted certs
     default_cert_issuer        = "letsencrypt-staging"
     traefik_dashboard_domain   = "traefik.silverseekers.org"
-    longhorn_domain            = null
-    longhorn_cert_issuer       = null
+    longhorn_domain            = "longhorn.silverseekers.org"
     # ArgoCD GitOps
     argocd_domain   = "argocd.silverseekers.org"
     argocd_github_repo_url = "https://github.com/HughLardner/homelab.git"
