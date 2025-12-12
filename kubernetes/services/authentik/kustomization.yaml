@@ -1,14 +1,11 @@
 ---
 # Kustomization for Authentik additional resources
 # Note: Main installation is via Helm chart
+# Note: IngressRoute and Middleware are applied separately by Ansible (with Jinja2 templating)
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 namespace: authentik
-
-resources:
-  - ingressroute.yaml
-  - middleware.yaml
 
 # Generate ConfigMap from blueprint files
 # These are mounted into the Authentik worker for declarative configuration
