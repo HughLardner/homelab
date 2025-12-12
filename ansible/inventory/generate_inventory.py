@@ -52,33 +52,42 @@ def generate_inventory(cluster_name="homelab"):
                         "cert_manager_domain": config.get("cert_manager_domain", ""),
                         "cloudflare_email": config.get("cloudflare_email", ""),
                         "cloudflare_api_token": config.get("cloudflare_api_token", ""),
+                        # Global TLS issuer - cascades to all services unless overridden
+                        # Options: "letsencrypt-staging" (testing) or "letsencrypt-prod" (trusted)
+                        "default_cert_issuer": config.get("default_cert_issuer", "letsencrypt-staging"),
                         # Traefik Ingress Controller configuration (optional - has defaults)
                         "traefik_replicas": config.get("traefik_replicas", 2),
                         "traefik_service_type": config.get("traefik_service_type", "LoadBalancer"),
                         "traefik_loadbalancer_ip": config.get("traefik_loadbalancer_ip", ""),
                         "traefik_storage_class": config.get("traefik_storage_class", "longhorn"),
                         "traefik_dashboard_domain": config.get("traefik_dashboard_domain", ""),
-                        "traefik_cert_issuer": config.get("traefik_cert_issuer", "letsencrypt-prod"),
+                        "traefik_cert_issuer": config.get("traefik_cert_issuer") or config.get("default_cert_issuer", "letsencrypt-staging"),
                         "traefik_dashboard_username": config.get("traefik_dashboard_username", "admin"),
                         "traefik_dashboard_password": config.get("traefik_dashboard_password", ""),
                         # ArgoCD GitOps configuration
                         "argocd_domain": config.get("argocd_domain", ""),
                         "argocd_password": config.get("argocd_password", ""),
                         "argocd_replicas": config.get("argocd_replicas", 1),
-                        "argocd_cert_issuer": config.get("argocd_cert_issuer", "letsencrypt-prod"),
+                        "argocd_cert_issuer": config.get("argocd_cert_issuer") or config.get("default_cert_issuer", "letsencrypt-staging"),
                         "argocd_github_repo_url": config.get("argocd_github_repo_url", ""),
                         "argocd_github_token": config.get("argocd_github_token", ""),
                         # Monitoring configuration
                         "grafana_domain": config.get("grafana_domain", ""),
                         "grafana_admin_password": config.get("grafana_admin_password", ""),
-                        "grafana_cert_issuer": config.get("grafana_cert_issuer", "letsencrypt-prod"),
+                        "grafana_cert_issuer": config.get("grafana_cert_issuer") or config.get("default_cert_issuer", "letsencrypt-staging"),
                         "monitoring_storage_class": config.get("monitoring_storage_class", "longhorn"),
                         "prometheus_storage_size": config.get("prometheus_storage_size", "10Gi"),
                         "prometheus_retention": config.get("prometheus_retention", "15d"),
                         "grafana_storage_size": config.get("grafana_storage_size", "5Gi"),
                         "alertmanager_storage_size": config.get("alertmanager_storage_size", "2Gi"),
                         # External-DNS configuration
-                        "external_dns_domain": config.get("external_dns_domain", "silverseekers.org")
+                        "external_dns_domain": config.get("external_dns_domain", "silverseekers.org"),
+                        # Authentik SSO configuration
+                        "authentik_domain": config.get("authentik_domain", "auth.silverseekers.org"),
+                        "authentik_storage_class": config.get("authentik_storage_class", "longhorn"),
+                        "authentik_cert_issuer": config.get("authentik_cert_issuer") or config.get("default_cert_issuer", "letsencrypt-staging"),
+                        # Longhorn configuration
+                        "longhorn_cert_issuer": config.get("longhorn_cert_issuer") or config.get("default_cert_issuer", "letsencrypt-staging")
                     }
                 }
             },

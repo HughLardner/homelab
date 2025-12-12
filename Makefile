@@ -1,4 +1,4 @@
-.PHONY: help init plan apply destroy ssh-node k3s-* metallb-* longhorn-* cert-manager-* traefik-* argocd-* monitoring-* sealed-secrets-* seal-secrets kured-* root-app-deploy apps-list apps-status monitoring-secrets inventory clean deploy-infra deploy-platform deploy-services deploy-all deploy deploy-apps
+.PHONY: help init plan apply destroy ssh-node k3s-* metallb-* longhorn-* cert-manager-* traefik-* argocd-* authentik-* monitoring-* sealed-secrets-* seal-secrets kured-* root-app-deploy apps-list apps-status monitoring-secrets inventory clean deploy-infra deploy-platform deploy-services deploy-all deploy deploy-apps
 
 # Default target
 help:
@@ -37,6 +37,11 @@ help:
 	@echo "  make sealed-secrets-install - Install Sealed Secrets (Secret Encryption)"
 	@echo "  make sealed-secrets-status  - Check Sealed Secrets status"
 	@echo "  make seal-secrets           - Encrypt secrets from secrets.yml and commit to git"
+	@echo "  make authentik-secrets      - Apply Authentik sealed secrets (prerequisite)"
+	@echo "  make authentik-install      - Install Authentik SSO Platform"
+	@echo "  make authentik-status       - Check Authentik status"
+	@echo "  make authentik-ui           - Open Authentik SSO UI"
+	@echo "  make authentik-logs         - View Authentik logs"
 	@echo "  make kured-deploy           - Deploy Kured via ArgoCD (Automated Node Reboots)"
 	@echo "  make kured-status           - Check Kured status"
 	@echo "  make kured-logs             - View Kured logs"
@@ -296,6 +301,52 @@ seal-secrets:
 	fi
 	@echo "Sealing secrets from secrets.yml..."
 	ansible-playbook ansible/playbooks/seal-secrets.yml
+
+authentik-secrets: inventory
+	@echo "Creating Authentik Kubernetes secrets..."
+	cd ansible && ansible-playbook playbooks/authentik-secrets.yml
+
+authentik-install: inventory
+	@echo "Installing Authentik SSO Platform..."
+	cd ansible && ansible-playbook playbooks/authentik.yml
+
+authentik-status:
+	@echo "Authentik Status:"
+	@echo ""
+	@echo "Pods:"
+	@kubectl get pods -n authentik
+	@echo ""
+	@echo "Services:"
+	@kubectl get svc -n authentik
+	@echo ""
+	@echo "PVCs:"
+	@kubectl get pvc -n authentik
+	@echo ""
+	@echo "IngressRoute:"
+	@kubectl get ingressroute -n authentik
+	@echo ""
+	@echo "Middleware:"
+	@kubectl get middleware -n authentik
+	@echo ""
+	@echo "Certificate:"
+	@kubectl get certificate -n authentik
+
+authentik-ui:
+	@echo "Accessing Authentik SSO..."
+	@AUTHENTIK_DOMAIN=$$(kubectl get ingressroute -n authentik authentik-server -o jsonpath='{.spec.routes[0].match}' 2>/dev/null | sed 's/.*Host(`\([^`]*\)`).*/\1/' || echo ""); \
+	if [ -z "$$AUTHENTIK_DOMAIN" ]; then \
+		echo "IngressRoute not found. Use port-forward:"; \
+		echo "  kubectl port-forward -n authentik svc/authentik-server 9000:80"; \
+		echo "  Then open: http://localhost:9000"; \
+	else \
+		echo "Authentik: https://$$AUTHENTIK_DOMAIN"; \
+		echo "Admin UI:  https://$$AUTHENTIK_DOMAIN/if/admin/"; \
+		open "https://$$AUTHENTIK_DOMAIN" 2>/dev/null || xdg-open "https://$$AUTHENTIK_DOMAIN" 2>/dev/null || echo "Open https://$$AUTHENTIK_DOMAIN in your browser"; \
+	fi
+
+authentik-logs:
+	@echo "Authentik Logs (Press Ctrl+C to exit):"
+	kubectl logs -n authentik -l app.kubernetes.io/component=server -f --tail=50
 
 kured-deploy:
 	@echo "Deploying Kured via ArgoCD..."
