@@ -110,15 +110,14 @@ configs:
     application.resourceTrackingMethod: annotation
 
     # =========================================================================
-    # Authentik SSO Integration (OIDC)
+    # Authelia SSO Integration (OIDC)
     # =========================================================================
-    # Providers and applications are created automatically via Authentik blueprints.
-    # Client secret must match oidc-argocd-secret in authentik-secrets.
+    # Client secret is stored in argocd-oidc-secret.
     oidc.config: |
-      name: Authentik
-      issuer: https://{{ authentik_domain | default('auth.silverseekers.org') }}/application/o/argocd/
+      name: Authelia
+      issuer: https://auth.silverseekers.org
       clientID: argocd
-      clientSecret: $oidc.authentik.clientSecret
+      clientSecret: $oidc.authelia.clientSecret
       requestedScopes:
         - openid
         - profile
@@ -131,9 +130,9 @@ configs:
     policy.default: role:readonly
     policy.csv: |
       g, admin, role:admin
-      # Authentik Group Mappings
-      g, ArgoCD Admins, role:admin
-      g, ArgoCD Developers, role:readonly
+      # Authelia Group Mappings
+      g, argocd_admins, role:admin
+      g, admins, role:admin
 
   # Repository credentials (add your repos here)
   repositories: {}
