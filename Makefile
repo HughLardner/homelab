@@ -39,6 +39,7 @@ help:
 	@echo "  make seal-secrets           - Encrypt secrets from secrets.yml and commit to git"
 	@echo "  make authentik-secrets      - Apply Authentik sealed secrets (prerequisite)"
 	@echo "  make authentik-install      - Install Authentik SSO Platform"
+	@echo "  make authentik-configure    - Configure Authentik OIDC via API (fully declarative)"
 	@echo "  make authentik-status       - Check Authentik status"
 	@echo "  make authentik-ui           - Open Authentik SSO UI"
 	@echo "  make authentik-logs         - View Authentik logs"
@@ -310,6 +311,10 @@ authentik-install: inventory
 	@echo "Installing Authentik SSO Platform..."
 	cd ansible && ansible-playbook playbooks/authentik.yml
 
+authentik-configure: inventory
+	@echo "Configuring Authentik OIDC providers via API..."
+	cd ansible && ansible-playbook playbooks/authentik-configure.yml
+
 authentik-status:
 	@echo "Authentik Status:"
 	@echo ""
@@ -571,12 +576,22 @@ deploy-services: deploy-platform
 	@echo "Installing Sealed Secrets (Secret Encryption)..."
 	$(MAKE) sealed-secrets-install
 	@echo ""
+	@echo "Applying Authentik Secrets..."
+	$(MAKE) authentik-secrets
+	@echo ""
+	@echo "Installing Authentik SSO Platform..."
+	$(MAKE) authentik-install
+	@echo ""
+	@echo "Configuring Authentik OIDC Providers..."
+	$(MAKE) authentik-configure
+	@echo ""
 	@echo "✅ Core services deployment complete!"
 	@echo ""
 	@echo "Access Points:"
-	@echo "  Traefik:  https://traefik.silverseekers.org"
-	@echo "  ArgoCD:   https://argocd.silverseekers.org"
-	@echo "  Longhorn: http://192.168.10.144"
+	@echo "  Traefik:   https://traefik.silverseekers.org"
+	@echo "  ArgoCD:    https://argocd.silverseekers.org"
+	@echo "  Authentik: https://auth.silverseekers.org"
+	@echo "  Longhorn:  http://192.168.10.144"
 	@echo ""
 	@echo "Storage Classes:"
 	@echo "  local-path (default) - ephemeral data"

@@ -135,25 +135,6 @@
         mode: "0644"
 
     # =========================================================================
-    # Apply Blueprints ConfigMap
-    # =========================================================================
-    - name: Build Kustomize manifests (including blueprints ConfigMap)
-      ansible.builtin.command:
-        cmd: kubectl kustomize {{ authentik_manifests_path }}
-      register: kustomize_output
-      changed_when: false
-      delegate_to: localhost
-      become: false
-
-    - name: Apply Kustomize manifests (ConfigMap with blueprints)
-      ansible.builtin.shell: |
-        cat <<'EOF' | /usr/local/bin/k3s kubectl apply -f -
-        {{ kustomize_output.stdout }}
-        EOF
-      register: kustomize_apply
-      changed_when: "'created' in kustomize_apply.stdout or 'configured' in kustomize_apply.stdout"
-
-    # =========================================================================
     # Install Authentik via Helm
     # =========================================================================
     - name: Install or upgrade Authentik via Helm
@@ -280,17 +261,6 @@
           {{ authentik_cert.stdout | default('Not found - check cert-manager') }}
 
           ========================================
-          🎯 Declarative Setup Active
-          ========================================
-          Blueprints have been deployed. The following are
-          automatically configured:
-
-          ✅ User groups (Grafana/ArgoCD/Traefik admins)
-          ✅ OIDC providers for Grafana, ArgoCD, Traefik
-          ✅ Proxy provider for ForwardAuth
-          ✅ Embedded outpost configuration
-
-          ========================================
           🔧 Access Points:
           ========================================
           User Portal: https://{{ authentik_domain }}
@@ -299,11 +269,11 @@
           Login with bootstrap credentials from secrets.yml
 
           ========================================
-          📚 Next Steps:
+          📚 Next Step:
           ========================================
-          1. Login to Admin UI and verify providers were created
-          2. Create user accounts and assign to groups
-          3. Test SSO login on Grafana and ArgoCD
+          Run: make authentik-configure
+          
+          This will configure OIDC providers via API.
 
           ========================================
           🔒 Using ForwardAuth Middleware:

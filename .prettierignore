@@ -1,0 +1,16 @@
+# Ignore files with Jinja2 templates - Prettier breaks {{ }} syntax
+# These files are processed by Ansible templating before use
+
+# Kubernetes values files with Jinja2
+kubernetes/services/*/values.yaml
+kubernetes/services/*/ingressroute.yaml
+kubernetes/services/*/middleware.yaml
+kubernetes/applications/*/*.yaml
+
+# Ansible files
+ansible/**/*.yml
+ansible/**/*.yaml
+
+# Secrets files
+secrets.yml
+secrets.example.yml

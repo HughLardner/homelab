@@ -1,0 +1,32 @@
+---
+# CoreDNS Custom Hosts ConfigMap
+# Adds local domain entries for in-cluster DNS resolution
+#
+# This is needed because:
+# 1. Pods need to resolve *.silverseekers.org to access services
+# 2. The cluster DNS (CoreDNS) doesn't have access to local/external DNS
+# 3. These entries point to the Traefik LoadBalancer IP
+#
+# Usage:
+#   kubectl apply -f custom-hosts.yaml
+#   kubectl rollout restart deployment coredns -n kube-system
+#
+# Note: K3s may overwrite this on upgrades. Consider adding to Ansible playbook.
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: coredns-custom-hosts
+  namespace: kube-system
+  labels:
+    app: coredns-custom
+data:
+  silverseekers.hosts: |
+    # All domains point to Traefik's ClusterIP for proper TLS termination
+    # Get current IP: kubectl get svc -n traefik traefik -o jsonpath='{.spec.clusterIP}'
+    # This avoids hairpin NAT issues and ensures valid TLS certificates
+    10.43.148.102 auth.silverseekers.org
+    10.43.148.102 argocd.silverseekers.org
+    10.43.148.102 grafana.silverseekers.org
+    10.43.148.102 traefik.silverseekers.org
+    10.43.148.102 longhorn.silverseekers.org
