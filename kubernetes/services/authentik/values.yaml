@@ -29,22 +29,26 @@ global:
           key: bootstrap-token
     - name: AUTHENTIK_BOOTSTRAP_EMAIL
       value: "admin@silverseekers.org"
-    # OIDC client secrets for declarative blueprint configuration
+    # OIDC client secrets for declarative blueprint configuration (optional)
+    # Add these keys to authentik-secrets when enabling SSO integration
     - name: OIDC_GRAFANA_SECRET
       valueFrom:
         secretKeyRef:
           name: authentik-secrets
           key: oidc-grafana-secret
+          optional: true
     - name: OIDC_ARGOCD_SECRET
       valueFrom:
         secretKeyRef:
           name: authentik-secrets
           key: oidc-argocd-secret
+          optional: true
     - name: OIDC_TRAEFIK_SECRET
       valueFrom:
         secretKeyRef:
           name: authentik-secrets
           key: oidc-traefik-secret
+          optional: true
 
 # Authentik-specific configuration
 authentik:
