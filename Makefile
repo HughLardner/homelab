@@ -23,6 +23,7 @@ help:
 	@echo "  make metallb-install   - Install MetalLB (LoadBalancer)"
 	@echo "  make metallb-test      - Install MetalLB with LoadBalancer testing"
 	@echo "  make longhorn-install  - Install Longhorn (Distributed Storage)"
+	@echo "  make longhorn-ingress  - Configure Longhorn IngressRoute (after Traefik)"
 	@echo "  make longhorn-status   - Check Longhorn status"
 	@echo "  make longhorn-ui       - Open Longhorn UI"
 	@echo "  make cert-manager-install - Install cert-manager (TLS)"
@@ -56,6 +57,9 @@ help:
 	@echo "  make monitoring-install    - Install monitoring via Ansible (legacy)"
 	@echo "  make monitoring-status     - Check monitoring stack status"
 	@echo "  make grafana-ui            - Open Grafana dashboard"
+	@echo "  make grafana-mcp-token     - Get Grafana MCP service account token"
+	@echo "  make grafana-mcp-configure - Auto-configure .cursor/mcp.json with Grafana token"
+	@echo "  make grafana-mcp-regenerate - Regenerate the Grafana MCP token"
 	@echo "  make vmsingle-ui           - Port-forward Victoria Metrics UI"
 	@echo "  make ping                 - Test connectivity to all nodes"
 	@echo ""
@@ -189,10 +193,6 @@ longhorn-ui:
 # Run after traefik-install to enable https://longhorn.silverseekers.org
 longhorn-ingress: inventory
 	@echo "Configuring Longhorn IngressRoute..."
-	cd ansible && ansible-playbook playbooks/longhorn.yml \
-	  -e "longhorn_domain={{ longhorn_domain }}" \
-	  -e "longhorn_cert_issuer={{ longhorn_cert_issuer }}" \
-	  --tags ingress 2>/dev/null || \
 	cd ansible && ansible-playbook playbooks/longhorn.yml
 
 cert-manager-install: inventory
@@ -487,6 +487,102 @@ grafana-ui:
 		open "https://$$GRAFANA_DOMAIN" 2>/dev/null || xdg-open "https://$$GRAFANA_DOMAIN" 2>/dev/null || echo "Open https://$$GRAFANA_DOMAIN in your browser"; \
 	fi
 
+# Get Grafana MCP token from k8s Job logs or cached file
+grafana-mcp-token:
+	@echo "Fetching Grafana MCP service account token..."
+	@TOKEN_FILE="$$HOME/.grafana-mcp-token"; \
+	TOKEN=$$(kubectl logs -n monitoring job/grafana-mcp-setup 2>/dev/null | grep -o 'glsa_[a-zA-Z0-9_]*'); \
+	if [ -n "$$TOKEN" ]; then \
+		echo "$$TOKEN" > "$$TOKEN_FILE"; \
+		echo "✅ Token found and cached to $$TOKEN_FILE"; \
+	elif [ -f "$$TOKEN_FILE" ]; then \
+		TOKEN=$$(cat "$$TOKEN_FILE"); \
+		echo "✅ Using cached token from $$TOKEN_FILE"; \
+	fi; \
+	if [ -z "$$TOKEN" ]; then \
+		echo "❌ Token not found."; \
+		echo ""; \
+		echo "Options:"; \
+		echo "  1. If service account exists, delete it and re-sync:"; \
+		echo "     - Go to https://grafana.silverseekers.org/admin/serviceaccounts"; \
+		echo "     - Delete 'mcp-grafana' service account"; \
+		echo "     - Run: make grafana-mcp-regenerate"; \
+		echo ""; \
+		echo "  2. If this is a fresh install, trigger ArgoCD sync:"; \
+		echo "     kubectl patch application monitoring -n argocd --type merge -p '{\"operation\":{\"sync\":{}}}'"; \
+		exit 1; \
+	else \
+		echo ""; \
+		echo "Token: $$TOKEN"; \
+		echo ""; \
+		echo "To configure Cursor MCP, run:"; \
+		echo "  make grafana-mcp-configure"; \
+	fi
+
+# Regenerate Grafana MCP token (deletes SA and re-syncs)
+grafana-mcp-regenerate:
+	@echo "Regenerating Grafana MCP service account token..."
+	@echo "Deleting existing service account via Grafana API..."
+	@kubectl port-forward -n monitoring svc/grafana 3000:80 &>/dev/null & \
+	PF_PID=$$!; \
+	sleep 3; \
+	ADMIN_USER=$$(kubectl get secret grafana-admin-secret -n monitoring -o jsonpath='{.data.admin-user}' | base64 -d); \
+	ADMIN_PASS=$$(kubectl get secret grafana-admin-secret -n monitoring -o jsonpath='{.data.admin-password}' | base64 -d); \
+	SA_ID=$$(curl -sf -u "$$ADMIN_USER:$$ADMIN_PASS" http://localhost:3000/api/serviceaccounts/search?query=mcp-grafana 2>/dev/null | grep -o '"id":[0-9]*' | head -1 | grep -o '[0-9]*'); \
+	if [ -n "$$SA_ID" ]; then \
+		curl -sf -X DELETE -u "$$ADMIN_USER:$$ADMIN_PASS" "http://localhost:3000/api/serviceaccounts/$$SA_ID" && \
+		echo "Deleted service account ID $$SA_ID"; \
+	else \
+		echo "No existing service account found"; \
+	fi; \
+	kill $$PF_PID 2>/dev/null; \
+	rm -f "$$HOME/.grafana-mcp-token"; \
+	echo ""; \
+	echo "Triggering ArgoCD sync to recreate service account..."; \
+	kubectl delete job grafana-mcp-setup -n monitoring 2>/dev/null || true; \
+	kubectl patch application monitoring -n argocd --type merge -p '{"operation":{"initiatedBy":{"username":"admin"},"sync":{"syncStrategy":{"apply":{}}}}}'; \
+	echo "Waiting for Job to complete..."; \
+	sleep 30; \
+	$(MAKE) grafana-mcp-token
+
+# Configure project's .cursor/mcp.json with Grafana MCP token
+grafana-mcp-configure:
+	@echo "Configuring Cursor MCP for Grafana..."
+	@TOKEN_FILE="$$HOME/.grafana-mcp-token"; \
+	TOKEN=$$(kubectl logs -n monitoring job/grafana-mcp-setup 2>/dev/null | grep -o 'glsa_[a-zA-Z0-9_]*'); \
+	if [ -z "$$TOKEN" ] && [ -f "$$TOKEN_FILE" ]; then \
+		TOKEN=$$(cat "$$TOKEN_FILE"); \
+	fi; \
+	if [ -z "$$TOKEN" ]; then \
+		echo "❌ Token not found. Run 'make grafana-mcp-token' first."; \
+		exit 1; \
+	fi; \
+	MCP_FILE=".cursor/mcp.json"; \
+	mkdir -p ".cursor"; \
+	if [ -f "$$MCP_FILE" ]; then \
+		if command -v jq >/dev/null 2>&1; then \
+			echo "Updating $$MCP_FILE with new token..."; \
+			jq --arg token "$$TOKEN" \
+				'.mcpServers.grafana.env.GRAFANA_SERVICE_ACCOUNT_TOKEN = $$token' \
+				"$$MCP_FILE" > "$$MCP_FILE.tmp" && mv "$$MCP_FILE.tmp" "$$MCP_FILE"; \
+			echo "✅ Updated $$MCP_FILE"; \
+		else \
+			echo "❌ jq not installed. Install with: brew install jq"; \
+			echo ""; \
+			echo "Manually update .cursor/mcp.json with:"; \
+			echo "  GRAFANA_SERVICE_ACCOUNT_TOKEN: $$TOKEN"; \
+			exit 1; \
+		fi; \
+	else \
+		echo "Creating new $$MCP_FILE..."; \
+		mkdir -p .cursor; \
+		echo '{"mcpServers":{"grafana":{"command":"docker","args":["run","--rm","-i","-e","GRAFANA_URL","-e","GRAFANA_SERVICE_ACCOUNT_TOKEN","mcp/grafana","-t","stdio"],"env":{"GRAFANA_URL":"https://grafana.silverseekers.org","GRAFANA_SERVICE_ACCOUNT_TOKEN":"'"$$TOKEN"'"}}}}' | jq . > "$$MCP_FILE"; \
+		echo "✅ Created $$MCP_FILE"; \
+	fi; \
+	echo "$$TOKEN" > "$$TOKEN_FILE"; \
+	echo ""; \
+	echo "🔄 Restart Cursor to activate the Grafana MCP server!"
+
 vmsingle-ui:
 	@echo "Port-forwarding Victoria Metrics UI..."
 	@echo "Victoria Metrics will be available at: http://localhost:8429/vmui"
@@ -574,6 +670,9 @@ deploy-services: deploy-platform
 	@echo "Installing Traefik (Ingress)..."
 	$(MAKE) traefik-install
 	@echo ""
+	@echo "Configuring Longhorn IngressRoute..."
+	$(MAKE) longhorn-ingress
+	@echo ""
 	@echo "Installing ArgoCD (GitOps)..."
 	$(MAKE) argocd-install
 	@echo ""
@@ -595,7 +694,7 @@ deploy-services: deploy-platform
 	@echo "  Traefik:   https://traefik.silverseekers.org"
 	@echo "  ArgoCD:    https://argocd.silverseekers.org"
 	@echo "  Authelia:  https://auth.silverseekers.org"
-	@echo "  Longhorn:  http://192.168.10.144"
+	@echo "  Longhorn:  https://longhorn.silverseekers.org"
 	@echo ""
 	@echo "Storage Classes:"
 	@echo "  local-path (default) - ephemeral data"
