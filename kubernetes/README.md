@@ -67,9 +67,11 @@ kubectl apply -k kubernetes/services/
 **Examples**:
 - **metallb**: LoadBalancer IP assignment
 - **traefik**: Ingress controller / reverse proxy
-- **cert-manager**: TLS certificate management (future)
-- **longhorn**: Distributed block storage (future)
-- **prometheus**: Monitoring and metrics (future)
+- **cert-manager**: TLS certificate management
+- **longhorn**: Distributed block storage
+- **argocd**: GitOps continuous delivery
+- **sealed-secrets**: Encrypted secrets for GitOps
+- **authelia**: SSO/2FA authentication
 
 **Structure**:
 ```
@@ -293,23 +295,23 @@ data:
 
 ### Core Platform ✅ (Ansible Bootstrap)
 Infrastructure services required before GitOps can function:
-- [x] **MetalLB** - LoadBalancer IP assignment (192.168.10.145-161)
-- [x] **Longhorn** - Distributed block storage with replication
+- [x] **MetalLB** - LoadBalancer IP assignment (192.168.10.150-165)
+- [x] **Longhorn** - Distributed block storage (1 replica for single node)
 - [x] **Cert-Manager** - Automated TLS certificates via Let's Encrypt + Cloudflare DNS
-- [x] **Traefik** - Ingress controller with HTTPS (192.168.10.145)
+- [x] **Traefik** - Ingress controller with HTTPS (192.168.10.150)
 - [x] **ArgoCD** - GitOps continuous delivery platform
 - [x] **Sealed Secrets** - Encrypt secrets for safe storage in Git
+- [x] **Authelia** - SSO/2FA authentication (https://auth.silverseekers.org)
 
 ### Applications ✅ (ArgoCD GitOps)
 Applications managed via GitOps after bootstrap services are ready:
-- [x] **Kured** - Automated node reboots during maintenance window (04:00-08:00 UTC)
 - [x] **Monitoring Stack** (Victoria Metrics)
   - [x] **Grafana** - Metrics dashboards (https://grafana.silverseekers.org)
-  - [x] **VMSingle** - Time series database (Prometheus alternative)
+  - [x] **VMSingle** - Time series database (lightweight Prometheus alternative)
   - [x] **VMAgent** - Metrics scraper
   - [x] **VMAlert** - Alerting rule evaluation
   - [x] **VMAlertmanager** - Alert routing
-  - [x] **Node Exporters** - Node metrics on all nodes
+  - [x] **Node Exporters** - Node metrics
   - [x] **Kube-state-metrics** - Cluster state metrics
 
 ## Future Additions

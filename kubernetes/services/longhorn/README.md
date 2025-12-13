@@ -358,8 +358,10 @@ kubectl delete crd $(kubectl get crd | grep longhorn | awk '{print $1}')
 
 1. **Separate Storage Disks**: Use dedicated disks for Longhorn data
 2. **Storage Requirements**: Plan for 2-3x actual data size (replicas + snapshots)
-3. **Node Count**: Minimum 3 nodes for HA (with 2 replicas)
+3. **Node Count**: 1 node for single-node deployment (1 replica), 3+ nodes for HA (2-3 replicas)
 4. **Disk Type**: SSDs recommended for production workloads
+
+> **Note**: The current single-node deployment uses 1 replica. To scale to HA, add more nodes and increase replica count.
 
 ### Performance Tuning
 
