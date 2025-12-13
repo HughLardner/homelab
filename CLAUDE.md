@@ -4,16 +4,22 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository Overview
 
-This homelab infrastructure uses **Terraform workspaces** to manage multiple Kubernetes clusters on Proxmox VE. Each workspace represents a distinct cluster (k3s, alpha, beta, gamma) with its own network configuration, VM specifications, and optional features like VLANs, firewalls, and high availability.
+This homelab infrastructure deploys a **single-node Kubernetes (K3s) cluster** on Proxmox VE, optimized for low-power hardware (12GB RAM). The infrastructure supports scaling to multi-node HA clusters via configuration changes.
+
+### Current Deployment
+- **Single node**: 192.168.10.20 (12GB RAM, 100GB disk)
+- **Services**: MetalLB, Longhorn, Cert-Manager, Traefik, ArgoCD, Sealed Secrets, Authelia
+- **Monitoring**: Victoria Metrics + Grafana (lightweight Prometheus alternative)
+- **Domain**: *.silverseekers.org → 192.168.10.150 (Traefik LoadBalancer)
 
 ## Key Architecture Concepts
 
-### Workspace-Based Cluster Management
+### Single Cluster Configuration
 
-- Terraform workspaces are the primary mechanism for managing different clusters
-- The active workspace determines which cluster configuration from `var.clusters` is used
-- `local.cluster_config = var.clusters[terraform.workspace]` (locals.tf:47)
-- `local.nodes` is filtered to only include nodes from the current workspace (locals.tf:53)
+- The cluster configuration is defined in `terraform/clusters.tf` as a single `var.cluster` object
+- Key settings: `node_count`, `memory`, `disk_size`, and service domains
+- Scaling to multi-node: change `node_count` from 1 to 3 and adjust `memory` per node
+- All services are accessed via Traefik at `192.168.10.150`
 
 ### Node Class System
 

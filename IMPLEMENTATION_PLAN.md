@@ -4,9 +4,9 @@
 
 **Strategy**: Layered bootstrap approach - critical services via Ansible, additional services via ArgoCD.
 
-**Status**: ✅ **PHASES 1-4 COMPLETE** | ⚠️ **PHASE 5 PARTIAL** (Grafana operational, Prometheus/Alertmanager pending node recovery)
+**Status**: ✅ **ALL PHASES COMPLETE** - Single-node cluster fully operational
 
-**Last Updated**: 2025-12-07
+**Last Updated**: 2025-12-13
 
 ---
 
@@ -14,16 +14,18 @@
 
 | Phase | Service | Status | Notes |
 |-------|---------|--------|-------|
-| 1 | **Longhorn** | ✅ Complete | Storage layer operational across all nodes |
+| 1 | **Longhorn** | ✅ Complete | Storage layer operational (1 replica for single node) |
 | 2 | **Cert-Manager** | ✅ Complete | TLS certificates via Let's Encrypt + Cloudflare DNS |
-| 3 | **Traefik** | ✅ Complete | Ingress controller with LoadBalancer at 192.168.10.146 |
+| 3 | **Traefik** | ✅ Complete | Ingress controller with LoadBalancer at 192.168.10.150 |
 | 4 | **ArgoCD** | ✅ Complete | GitOps platform accessible at https://argocd.silverseekers.org |
-| 5 | **Monitoring** | ⚠️ Partial | Grafana accessible (https://grafana.silverseekers.org), Prometheus/Alertmanager pending |
+| 5 | **Monitoring** | ✅ Complete | Victoria Metrics + Grafana (https://grafana.silverseekers.org) |
+| 6 | **Authelia** | ✅ Complete | SSO/2FA portal at https://auth.silverseekers.org |
 
-### Current Blockers
+### Current Configuration
 
-- **homelab-node-1 (192.168.10.21) NotReady**: Preventing Prometheus and Alertmanager pods from starting due to RWO volume attachment issues
-- **Action Required**: Investigate and restore homelab-node-1, or force-detach Longhorn volumes
+- **Single-node deployment**: 1 VM with 12GB RAM, 100GB disk
+- **Node IP**: 192.168.10.20
+- **All services operational** on single node
 
 ---
 
@@ -50,28 +52,30 @@
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │ Layer 0: Infrastructure (Terraform)                              │
-│  ✅ Proxmox VMs, Networks, Storage, Firewall                     │
+│  ✅ Proxmox VM (192.168.10.20), 12GB RAM, 100GB disk             │
 └─────────────────────────────────────────────────────────────────┘
                               ↓
 ┌─────────────────────────────────────────────────────────────────┐
 │ Layer 1: Platform (Ansible)                                      │
-│  ✅ K3s Cluster (HA etcd)                                        │
-│  ✅ MetalLB (192.168.10.150-159)                                 │
+│  ✅ K3s Cluster (single-node, scalable to HA)                    │
+│  ✅ MetalLB (192.168.10.150-165)                                 │
 └─────────────────────────────────────────────────────────────────┘
                               ↓
 ┌─────────────────────────────────────────────────────────────────┐
 │ Layer 2: Core Services (Ansible)                                │
 │  ✅ Longhorn (Distributed Storage)                              │
 │  ✅ Cert-Manager (TLS Certificates)                             │
-│  ✅ Traefik (Ingress Controller @ 192.168.10.146)               │
+│  ✅ Traefik (Ingress Controller @ 192.168.10.150)               │
 │  ✅ ArgoCD (GitOps Platform @ argocd.silverseekers.org)         │
+│  ✅ Authelia (SSO/2FA @ auth.silverseekers.org)                 │
 └─────────────────────────────────────────────────────────────────┘
                               ↓
 ┌─────────────────────────────────────────────────────────────────┐
-│ Layer 3: Platform Services (ArgoCD/Ansible)                     │
-│  ✅ Grafana (Monitoring @ grafana.silverseekers.org)            │
-│  ⚠️  Prometheus + Alertmanager (pending node recovery)          │
-│  🔲 Traefik Dashboard                                           │
+│ Layer 3: Platform Services (ArgoCD/GitOps)                      │
+│  ✅ Victoria Metrics (Time-series database)                     │
+│  ✅ VMAgent + VMAlert + VMAlertmanager                          │
+│  ✅ Grafana (@ grafana.silverseekers.org)                       │
+│  ✅ Traefik Dashboard (@ traefik.silverseekers.org)             │
 └─────────────────────────────────────────────────────────────────┘
                               ↓
 ┌─────────────────────────────────────────────────────────────────┐
@@ -1503,87 +1507,73 @@ argocd app list
 
 ---
 
-## Phase 5: Monitoring Stack (Prometheus + Grafana)
+## Phase 5: Monitoring Stack (Victoria Metrics + Grafana)
 
-**Purpose**: Metrics collection and visualization
+**Purpose**: Metrics collection and visualization with minimal resource usage
 
 **Duration**: 1-2 hours
 
-**Deployment Method**: Via ArgoCD (not Ansible)
+**Deployment Method**: Via ArgoCD GitOps
 
-### 5.1 Create ArgoCD Application
+### 5.1 Why Victoria Metrics?
 
-**File**: `kubernetes/services/argocd/apps/prometheus-stack.yaml`
+Victoria Metrics was chosen over Prometheus for significant resource savings:
 
-```yaml
----
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: kube-prometheus-stack
-  namespace: argocd
-spec:
-  project: default
-  source:
-    repoURL: https://prometheus-community.github.io/helm-charts
-    chart: kube-prometheus-stack
-    targetRevision: 55.5.0
-    helm:
-      valuesObject:
-        prometheus:
-          prometheusSpec:
-            storageSpec:
-              volumeClaimTemplate:
-                spec:
-                  storageClassName: longhorn
-                  resources:
-                    requests:
-                      storage: 10Gi
-        grafana:
-          adminPassword: changeme
-          persistence:
-            enabled: true
-            storageClassName: longhorn
-            size: 5Gi
-          ingress:
-            enabled: true
-            ingressClassName: traefik
-            hosts:
-              - grafana.yourdomain.com
-            tls:
-              - secretName: grafana-tls
-                hosts:
-                  - grafana.yourdomain.com
-  destination:
-    server: https://kubernetes.default.svc
-    namespace: monitoring
-  syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
-    syncOptions:
-      - CreateNamespace=true
-```
+| Metric | Prometheus | Victoria Metrics |
+|--------|-----------|-----------------|
+| Memory | ~1.5 GB | ~400 MB |
+| CPU | Higher | 2-5x lower |
+| Disk I/O | Higher | Lower (compression) |
+| PromQL | Yes | Yes (plus MetricsQL) |
 
-### 5.2 Deployment
+### 5.2 Components
+
+The monitoring stack uses Victoria Metrics Operator with these components:
+
+- **VMSingle** - Time-series database (replaces Prometheus)
+- **VMAgent** - Lightweight metric scraper
+- **VMAlert** - Alert rule evaluation
+- **VMAlertmanager** - Alert routing and notifications
+- **Grafana** - Metrics visualization and dashboards
+- **Node Exporter** - Host-level metrics
+- **Kube State Metrics** - Kubernetes object metrics
+
+### 5.3 Deployment
 
 ```bash
-# Apply via kubectl
-kubectl apply -f kubernetes/services/argocd/apps/prometheus-stack.yaml
+# Deploy via ArgoCD
+kubectl apply -f kubernetes/applications/monitoring/application.yaml
 
-# Or via ArgoCD UI
-# Navigate to Applications → New App → Paste YAML
+# Or via Make command
+make monitoring-secrets   # Create secrets first
+make monitoring-deploy    # Deploy via ArgoCD
 
 # Verify
 kubectl get pods -n monitoring
 kubectl get svc -n monitoring
 
 # Access Grafana
-kubectl port-forward -n monitoring svc/kube-prometheus-stack-grafana 3000:80
-# Open: http://localhost:3000
-# Username: admin
-# Password: changeme
+open https://grafana.silverseekers.org
+# Or: make grafana-ui
+
+# Access Victoria Metrics UI
+make vmsingle-ui
+# Opens: http://localhost:8429/vmui
 ```
+
+### 5.4 Configuration Files
+
+All monitoring configuration is in `kubernetes/applications/monitoring/`:
+
+| File | Purpose |
+|------|---------|
+| `application.yaml` | ArgoCD Application definition |
+| `vmsingle.yaml` | VMSingle (storage) CRD |
+| `vmagent.yaml` | VMAgent (scraper) CRD |
+| `vmalert.yaml` | VMAlert (alerting) CRD |
+| `vmalertmanager.yaml` | VMAlertmanager CRD |
+| `grafana-values.yaml` | Grafana Helm values |
+| `vm-scrape-configs.yaml` | Scrape target configurations |
 
 ---
 
@@ -1879,48 +1869,58 @@ kubectl delete namespace argocd
 - [x] Can deploy applications
 - [x] Git repository connected (https://github.com/HughLardner/homelab)
 
-### Phase 5 Partial ⚠️
-- [ ] Prometheus collecting metrics (pod pending due to node issue)
+### Phase 5 Complete ✅
+- [x] VMSingle collecting metrics
 - [x] Grafana accessible (https://grafana.silverseekers.org)
-- [ ] Dashboards displaying data (partial - node exporters working)
-- [ ] Alertmanager operational (pod pending due to node issue)
+- [x] Dashboards displaying data
+- [x] VMAlertmanager operational
+
+### Phase 6 Complete ✅
+- [x] Authelia SSO deployed (https://auth.silverseekers.org)
+- [x] 2FA configured
+- [x] Sealed secrets for credentials
 
 ### Final State
 - [x] Core services running (Longhorn, Cert-Manager, Traefik, ArgoCD)
-- [x] DNS configured (*.silverseekers.org → 192.168.10.146)
-- [ ] Monitoring fully operational (blocked by homelab-node-1 NotReady)
+- [x] DNS configured (*.silverseekers.org → 192.168.10.150)
+- [x] Monitoring fully operational (Victoria Metrics + Grafana)
+- [x] SSO/2FA operational (Authelia)
 - [x] Documentation updated
-- [ ] Team trained on operations
 
 ---
 
 ## Next Steps
 
-### Immediate (Unblock Monitoring)
-1. **Restore homelab-node-1** or force-detach Longhorn volumes
-   ```bash
-   # SSH to node-1 and check status
-   ssh ubuntu@192.168.10.21
-   systemctl status k3s
+### Future Enhancements
+1. **Configure Additional Grafana Dashboards** - Import Kubernetes monitoring dashboards
+2. **Set up Alert Routing** - Configure VMAlertmanager for Slack/Email notifications
+3. **Implement Backup Strategy** - Configure Longhorn backups to S3/NFS
+4. **Deploy Applications** - Use GitOps workflow to deploy your apps
+5. **Scale to HA** - Add 2 more nodes for high availability (optional)
+6. **Document Runbooks** - Operations procedures for common tasks
 
-   # Or force-detach volumes via Longhorn UI
-   # Access: kubectl port-forward -n longhorn-system svc/longhorn-frontend 8080:80
+### Scaling to Multi-Node (Optional)
+
+To scale from single-node to 3-node HA cluster:
+
+1. Update `terraform/clusters.tf`:
+   ```hcl
+   node_count = 3
+   memory = 4096  # 4GB per node
    ```
 
-2. **Verify Prometheus and Alertmanager** start after node recovery
+2. Apply infrastructure changes:
    ```bash
-   kubectl get pods -n monitoring
-   kubectl wait --for=condition=Ready pod -l app.kubernetes.io/name=prometheus -n monitoring --timeout=300s
+   cd terraform && terraform apply
    ```
 
-### Post-Completion
-1. **Configure Grafana Dashboards** - Import Kubernetes monitoring dashboards
-2. **Set up Alerting** - Configure Prometheus AlertManager rules
-3. **Deploy App-of-Apps** - Manage additional platform services via ArgoCD
-4. **Implement Backup Strategy** - Configure Longhorn backups to S3/NFS
-5. **Deploy First Application** - Test full GitOps workflow
-6. **Set up Monitoring Alerts** - Slack/Email notifications
-7. **Document Runbooks** - Operations procedures for common tasks
+3. Re-run K3s installation:
+   ```bash
+   make inventory
+   make k3s-install
+   ```
+
+4. Update Longhorn replica count to 2 or 3
 
 ---
 
@@ -1944,6 +1944,6 @@ See individual service READMEs in `kubernetes/services/<service>/`
 
 ---
 
-**Plan Version**: 1.0
-**Last Updated**: 2024-12-05
-**Status**: Ready for Implementation
+**Plan Version**: 2.0
+**Last Updated**: 2025-12-13
+**Status**: ✅ Implementation Complete (Single-Node Deployment)

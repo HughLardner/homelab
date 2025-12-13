@@ -41,29 +41,39 @@
         fail_msg: "Required variables argocd_domain and argocd_password must be set"
         success_msg: "All required variables are set"
 
-    - name: Check if Traefik is installed
+    - name: Check if Traefik IngressRoute CRD is installed
       ansible.builtin.command:
-        cmd: /usr/local/bin/k3s kubectl get namespace traefik
-      register: traefik_ns_check
+        cmd: /usr/local/bin/k3s kubectl get crd ingressroutes.traefik.io
+      register: traefik_crd_check
       changed_when: false
       failed_when: false
 
-    - name: Warn if Traefik not installed
-      ansible.builtin.debug:
-        msg: "⚠️  WARNING: Traefik namespace not found. IngressRoute may not work without Traefik."
-      when: traefik_ns_check.rc != 0
-
-    - name: Check if cert-manager is installed
+    - name: Check if cert-manager Certificate CRD is installed
       ansible.builtin.command:
-        cmd: /usr/local/bin/k3s kubectl get namespace cert-manager
-      register: certmanager_ns_check
+        cmd: /usr/local/bin/k3s kubectl get crd certificates.cert-manager.io
+      register: certmanager_crd_check
       changed_when: false
       failed_when: false
 
-    - name: Warn if cert-manager not installed
+    - name: Check if SealedSecrets CRD is installed
+      ansible.builtin.command:
+        cmd: /usr/local/bin/k3s kubectl get crd sealedsecrets.bitnami.com
+      register: sealedsecrets_crd_check
+      changed_when: false
+      failed_when: false
+
+    - name: Set CRD availability facts
+      ansible.builtin.set_fact:
+        ingress_crds_available: "{{ traefik_crd_check.rc == 0 and certmanager_crd_check.rc == 0 }}"
+        sealedsecrets_crd_available: "{{ sealedsecrets_crd_check.rc == 0 }}"
+
+    - name: Display CRD availability status
       ansible.builtin.debug:
-        msg: "⚠️  WARNING: cert-manager namespace not found. TLS certificates may not be issued."
-      when: certmanager_ns_check.rc != 0
+        msg: |
+          CRD Availability:
+            Traefik IngressRoute: {{ 'available' if traefik_crd_check.rc == 0 else 'NOT FOUND' }}
+            cert-manager Certificate: {{ 'available' if certmanager_crd_check.rc == 0 else 'NOT FOUND' }}
+            SealedSecrets: {{ 'available' if sealedsecrets_crd_check.rc == 0 else 'NOT FOUND' }}
 
     # =========================================================================
     # Namespace Setup
@@ -158,7 +168,7 @@
       changed_when: "'patched' in password_update.stdout"
 
     # =========================================================================
-    # Apply ArgoCD OIDC Sealed Secret
+    # Apply ArgoCD OIDC Sealed Secret (requires SealedSecrets CRD)
     # =========================================================================
     - name: Check if ArgoCD OIDC sealed secret exists
       ansible.builtin.stat:
@@ -167,12 +177,19 @@
       delegate_to: localhost
       become: false
 
+    - name: Skip OIDC sealed secret if CRD not available
+      ansible.builtin.debug:
+        msg: |
+          ⏭️  Skipping OIDC SealedSecret - SealedSecrets CRD not yet installed.
+          Run this playbook again after 'make sealed-secrets-install' to apply OIDC secrets.
+      when: argocd_oidc_sealed.stat.exists and not (sealedsecrets_crd_available | default(false))
+
     - name: Copy ArgoCD OIDC sealed secret to node
       ansible.builtin.copy:
         src: "{{ playbook_dir }}/../../kubernetes/services/argocd/secrets/argocd-oidc-sealed.yaml"
         dest: /tmp/argocd-oidc-sealed.yaml
         mode: '0600'
-      when: argocd_oidc_sealed.stat.exists
+      when: argocd_oidc_sealed.stat.exists and (sealedsecrets_crd_available | default(false))
 
     - name: Apply ArgoCD OIDC sealed secret
       kubernetes.core.k8s:
@@ -180,13 +197,13 @@
         src: /tmp/argocd-oidc-sealed.yaml
       environment:
         KUBECONFIG: /etc/rancher/k3s/k3s.yaml
-      when: argocd_oidc_sealed.stat.exists
+      when: argocd_oidc_sealed.stat.exists and (sealedsecrets_crd_available | default(false))
 
     - name: Clean up OIDC sealed secret temp file
       ansible.builtin.file:
         path: /tmp/argocd-oidc-sealed.yaml
         state: absent
-      when: argocd_oidc_sealed.stat.exists
+      when: argocd_oidc_sealed.stat.exists and (sealedsecrets_crd_available | default(false))
 
     - name: Wait for ArgoCD OIDC secret to be unsealed
       kubernetes.core.k8s_info:
@@ -200,7 +217,7 @@
       delay: 2
       environment:
         KUBECONFIG: /etc/rancher/k3s/k3s.yaml
-      when: argocd_oidc_sealed.stat.exists
+      when: argocd_oidc_sealed.stat.exists and (sealedsecrets_crd_available | default(false))
 
     - name: Copy OIDC client secret to main argocd-secret
       ansible.builtin.shell: |
@@ -209,7 +226,7 @@
           -p="[{\"op\": \"add\", \"path\": \"/data/oidc.authelia.clientSecret\", \"value\": \"$OIDC_SECRET\"}]"
       register: oidc_patch
       changed_when: "'patched' in oidc_patch.stdout"
-      when: argocd_oidc_sealed.stat.exists
+      when: argocd_oidc_sealed.stat.exists and (sealedsecrets_crd_available | default(false))
 
     # =========================================================================
     # Wait for ArgoCD Components
@@ -236,19 +253,30 @@
       changed_when: false
 
     # =========================================================================
-    # Apply IngressRoute for TLS Access
+    # Apply IngressRoute for TLS Access (requires Traefik + cert-manager CRDs)
     # =========================================================================
+    - name: Skip IngressRoute if CRDs not available
+      ansible.builtin.debug:
+        msg: |
+          ⏭️  Skipping IngressRoute configuration - required CRDs not yet installed.
+          Traefik CRD: {{ 'available' if traefik_crd_check.rc == 0 else 'NOT FOUND' }}
+          cert-manager CRD: {{ 'available' if certmanager_crd_check.rc == 0 else 'NOT FOUND' }}
+          Run this playbook again after Traefik and cert-manager are installed.
+      when: not (ingress_crds_available | default(false))
+
     - name: Template IngressRoute manifests
       ansible.builtin.template:
         src: "{{ argocd_manifests_path }}/ingressroute.yaml"
         dest: "{{ temp_dir.path }}/ingressroute.yaml"
         mode: "0644"
+      when: ingress_crds_available | default(false)
 
     - name: Apply IngressRoute for ArgoCD
       ansible.builtin.command:
         cmd: /usr/local/bin/k3s kubectl apply -f {{ temp_dir.path }}/ingressroute.yaml
       register: ingressroute_result
       changed_when: "'created' in ingressroute_result.stdout or 'configured' in ingressroute_result.stdout"
+      when: ingress_crds_available | default(false)
 
     # =========================================================================
     # Configure Repository Connection
@@ -302,6 +330,8 @@
         cmd: /usr/local/bin/k3s kubectl get ingressroute -n {{ argocd_namespace }}
       register: argocd_ingressroute
       changed_when: false
+      failed_when: false
+      when: ingress_crds_available | default(false)
 
     - name: Get certificate status
       ansible.builtin.command:
@@ -309,6 +339,7 @@
       register: argocd_cert
       changed_when: false
       failed_when: false
+      when: ingress_crds_available | default(false)
 
     # =========================================================================
     # Display Completion Message
@@ -327,10 +358,13 @@
           {{ argocd_svc.stdout }}
 
           🌐 IngressRoute:
-          {{ argocd_ingressroute.stdout }}
+          {{ argocd_ingressroute.stdout | default('SKIPPED - Traefik/cert-manager CRDs not installed') if ingress_crds_available | default(false) else '⏭️  SKIPPED - Run again after Traefik/cert-manager install' }}
 
           🔐 Certificate:
-          {{ argocd_cert.stdout | default('Not found - check cert-manager') }}
+          {{ argocd_cert.stdout | default('Not found') if ingress_crds_available | default(false) else '⏭️  SKIPPED - Run again after cert-manager install' }}
+
+          🔑 OIDC Secret:
+          {{ '✅ Applied' if (argocd_oidc_sealed.stat.exists and sealedsecrets_crd_available | default(false)) else '⏭️  SKIPPED - Run again after sealed-secrets install' if argocd_oidc_sealed.stat.exists else 'Not configured (no sealed secret file)' }}
 
           📦 Repository Connection:
           {{ 'Configured: ' + argocd_github_repo_url if github_repo_configured else 'Not configured (no GitHub URL/token provided)' }}

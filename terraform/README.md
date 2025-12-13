@@ -1,6 +1,6 @@
-# Simplified Homelab Terraform Configuration
+# Homelab Terraform Configuration
 
-This Terraform configuration creates a 3-node Kubernetes cluster on a single Proxmox host.
+This Terraform configuration creates a single-node Kubernetes cluster on a Proxmox host, optimized for low-power hardware.
 
 ## Hardware Setup
 - **Host**: Beelink Mini PC (Intel N150, 16GB RAM, 500GB SSD)
@@ -9,15 +9,22 @@ This Terraform configuration creates a 3-node Kubernetes cluster on a single Pro
 
 ## Cluster Configuration
 
-The cluster creates 3 identical VMs that serve as combined control plane + worker nodes:
+The cluster creates a single VM that serves as combined control plane + worker node:
 
 | Node | VM ID | IP Address | Cores | Memory | Disk |
 |------|-------|------------|-------|--------|------|
-| homelab-node-0 | 120 | 192.168.10.20 | 4 | 4GB | 50GB |
-| homelab-node-1 | 121 | 192.168.10.21 | 4 | 4GB | 50GB |
-| homelab-node-2 | 122 | 192.168.10.22 | 4 | 4GB | 50GB |
+| homelab-node-0 | 120 | 192.168.10.20 | 4 | 12GB | 100GB |
 
-**Total Resource Usage**: 12 cores (all 4 cores × 3), 12GB RAM (leaving 4GB for Proxmox)
+**Total Resource Usage**: 4 cores, 12GB RAM (leaving ~3GB for Proxmox)
+
+### Scaling to Multi-Node (Optional)
+
+To scale to a 3-node HA cluster, update `clusters.tf`:
+
+```hcl
+node_count = 3
+memory = 4096  # 4GB per node (12GB total)
+```
 
 ### Additional Network Configuration
 - **Kube-VIP (K8s API)**: 192.168.10.15 (homelab-api)
@@ -64,17 +71,25 @@ To change cluster settings, edit `clusters.tf`:
 variable "cluster" {
   default = {
     cluster_name   = "homelab"       # Cluster name
-    node_count     = 3               # Number of nodes
-    node_start_ip  = 20              # First node IP: .20, .21, .22
+    node_count     = 1               # Number of nodes (1 = single-node, 3 = HA)
+    node_start_ip  = 20              # First node IP: .20
     cores          = 4               # CPU cores per node
-    memory         = 4096            # RAM per node (MB)
-    disk_size      = 50              # Disk size per node (GB)
+    memory         = 12288           # RAM per node (MB) - 12GB for single node
+    disk_size      = 100             # Disk size per node (GB)
     kube_vip       = "192.168.10.15" # K8s API VIP
-    lb_cidrs       = "192.168.10.150/28" # MetalLB range
-    # ... other settings
+    lb_cidrs       = "192.168.10.150/28" # MetalLB range (16 IPs)
+    # ... other settings (see clusters.tf for full list)
   }
 }
 ```
+
+### Key Configuration Options
+
+| Setting | Current | For HA Cluster |
+|---------|---------|----------------|
+| `node_count` | 1 | 3 |
+| `memory` | 12288 (12GB) | 4096 (4GB each) |
+| `disk_size` | 100 | 50 |
 
 ## Disabled Features
 

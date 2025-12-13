@@ -160,52 +160,56 @@
     # =========================================================================
     # IngressRoute Configuration (Optional)
     # =========================================================================
-    - name: Check if Traefik is installed
+    - name: Check if Traefik IngressRoute CRD is installed
       ansible.builtin.command:
-        cmd: /usr/local/bin/k3s kubectl get namespace traefik
-      register: traefik_ns_check
+        cmd: /usr/local/bin/k3s kubectl get crd ingressroutes.traefik.io
+      register: traefik_crd_check
       changed_when: false
       failed_when: false
       when: configure_ingress | bool
 
-    - name: Warn if Traefik not installed
-      ansible.builtin.debug:
-        msg: "⚠️  WARNING: Traefik namespace not found. IngressRoute may not work without Traefik."
-      when: configure_ingress | bool and traefik_ns_check.rc != 0
-
-    - name: Check if cert-manager is installed
+    - name: Check if cert-manager Certificate CRD is installed
       ansible.builtin.command:
-        cmd: /usr/local/bin/k3s kubectl get namespace cert-manager
-      register: certmanager_ns_check
+        cmd: /usr/local/bin/k3s kubectl get crd certificates.cert-manager.io
+      register: certmanager_crd_check
       changed_when: false
       failed_when: false
       when: configure_ingress | bool
 
-    - name: Warn if cert-manager not installed
+    - name: Set CRD availability fact
+      ansible.builtin.set_fact:
+        crds_available: "{{ traefik_crd_check.rc == 0 and certmanager_crd_check.rc == 0 }}"
+      when: configure_ingress | bool
+
+    - name: Skip IngressRoute if CRDs not available
       ansible.builtin.debug:
-        msg: "⚠️  WARNING: cert-manager namespace not found. TLS certificates may not be issued."
-      when: configure_ingress | bool and certmanager_ns_check.rc != 0
+        msg: |
+          ⏭️  Skipping IngressRoute configuration - required CRDs not yet installed.
+          Traefik CRD: {{ 'available' if traefik_crd_check.rc == 0 else 'NOT FOUND' }}
+          cert-manager CRD: {{ 'available' if certmanager_crd_check.rc == 0 else 'NOT FOUND' }}
+          Run 'make longhorn-ingress' after installing Traefik and cert-manager to configure IngressRoute.
+      when: configure_ingress | bool and not (crds_available | default(false))
 
     - name: Create temporary directory for templated manifests
       ansible.builtin.tempfile:
         state: directory
         prefix: longhorn_
       register: temp_dir
-      when: configure_ingress | bool
+      when: configure_ingress | bool and (crds_available | default(false))
 
     - name: Template IngressRoute manifests
       ansible.builtin.template:
         src: "{{ longhorn_manifests_path }}/ingressroute.yaml"
         dest: "{{ temp_dir.path }}/ingressroute.yaml"
         mode: "0644"
-      when: configure_ingress | bool
+      when: configure_ingress | bool and (crds_available | default(false))
 
     - name: Apply IngressRoute for Longhorn
       ansible.builtin.command:
         cmd: /usr/local/bin/k3s kubectl apply -f {{ temp_dir.path }}/ingressroute.yaml
       register: ingressroute_result
       changed_when: "'created' in ingressroute_result.stdout or 'configured' in ingressroute_result.stdout"
-      when: configure_ingress | bool
+      when: configure_ingress | bool and (crds_available | default(false))
 
     - name: Get IngressRoute status
       ansible.builtin.command:
@@ -213,7 +217,7 @@
       register: longhorn_ingressroute
       changed_when: false
       failed_when: false
-      when: configure_ingress | bool
+      when: configure_ingress | bool and (crds_available | default(false))
 
     - name: Get certificate status
       ansible.builtin.command:
@@ -221,21 +225,21 @@
       register: longhorn_cert
       changed_when: false
       failed_when: false
-      when: configure_ingress | bool
+      when: configure_ingress | bool and (crds_available | default(false))
 
     - name: Clean up temporary directory
       ansible.builtin.file:
         path: "{{ temp_dir.path }}"
         state: absent
-      when: configure_ingress | bool and temp_dir.path is defined
+      when: configure_ingress | bool and (crds_available | default(false)) and temp_dir.path is defined
 
   post_tasks:
     - name: Get Longhorn UI access information
       ansible.builtin.set_fact:
         ui_access: >-
-          {%- if configure_ingress | default(false) and longhorn_domain is defined -%}
+          {%- if configure_ingress | default(false) and crds_available | default(false) and longhorn_domain is defined -%}
           https://{{ longhorn_domain }}
-          {%- elif longhorn_ui_service_type == 'LoadBalancer' and longhorn_lb_ip.stdout != '' -%}
+          {%- elif longhorn_ui_service_type == 'LoadBalancer' and longhorn_lb_ip.stdout | default('') != '' -%}
           http://{{ longhorn_lb_ip.stdout }}
           {%- elif longhorn_ui_service_type == 'NodePort' -%}
           http://<node-ip>:<node-port>
@@ -265,20 +269,24 @@
             Name: longhorn (default)
             Provisioner: driver.longhorn.io
 
-          {%- if configure_ingress | default(false) %}
+          {%- if configure_ingress | default(false) and crds_available | default(false) %}
 
           🌐 IngressRoute:
           {{ longhorn_ingressroute.stdout | default('Not configured') }}
 
           🔐 Certificate:
           {{ longhorn_cert.stdout | default('Not found - check cert-manager') }}
+          {%- elif configure_ingress | default(false) and not crds_available | default(false) %}
+
+          ⏭️  IngressRoute: SKIPPED (Traefik/cert-manager CRDs not yet installed)
+          Run 'make longhorn-ingress' after Traefik and cert-manager are deployed.
           {%- endif %}
 
           Verify Installation:
             kubectl get pods -n {{ longhorn_namespace }}
             kubectl get storageclass
             kubectl get pv
-            {%- if configure_ingress | default(false) %}
+            {%- if configure_ingress | default(false) and crds_available | default(false) %}
             kubectl get ingressroute -n {{ longhorn_namespace }}
             kubectl get certificate -n {{ longhorn_namespace }}
             {%- endif %}

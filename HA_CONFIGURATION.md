@@ -1,16 +1,33 @@
 # High Availability Configuration Summary
 
-This document outlines the HA configuration changes made to ensure service resilience in the homelab Kubernetes cluster.
+This document outlines the HA configuration options for the homelab Kubernetes cluster.
 
-## Overview
+## Current Deployment
 
-The homelab cluster has a highly available infrastructure foundation with:
+> **Note**: The current deployment is a **single-node cluster** optimized for low-power hardware (12GB RAM). The HA configurations documented below apply when scaling to a 3-node cluster.
+
+### Single-Node Configuration (Current)
+- **1 node** (homelab-node-0 at 192.168.10.20)
+- **12GB RAM, 100GB disk**
+- **Longhorn** with 1 replica (no replication on single node)
+- **All services** running on single node
+
+### Multi-Node HA Configuration (Optional)
+To scale to HA, update `terraform/clusters.tf`:
+```hcl
+node_count = 3
+memory = 4096  # 4GB per node
+```
+
+## HA Overview (3-Node Cluster)
+
+When running a 3-node cluster, the infrastructure supports:
 - **3 control plane nodes** (homelab-node-0, homelab-node-1, homelab-node-2)
 - **Embedded etcd** in HA mode across all control planes
 - **MetalLB** for LoadBalancer service distribution
-- **Longhorn** for distributed storage with replication
+- **Longhorn** for distributed storage with replication (2-3 replicas)
 
-However, many application-layer services were initially deployed with single replicas, creating single points of failure. This document details the changes made to enable HA at the application layer.
+The following HA configurations apply to the 3-node deployment.
 
 ## Configuration Changes
 
@@ -452,6 +469,6 @@ With HA properly configured, you can now:
 
 ---
 
-**Last Updated**: 2025-12-07
+**Last Updated**: 2025-12-13
 **Author**: Claude Code
-**Cluster**: homelab (k3s workspace)
+**Cluster**: homelab (single-node, scalable to HA)
