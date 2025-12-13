@@ -1,0 +1,231 @@
+---
+# Authelia Deployment Playbook
+# Deploys Authelia SSO using Helm with OIDC and ForwardAuth support
+#
+# Prerequisites:
+#   - K3s cluster running
+#   - Traefik ingress controller installed
+#   - cert-manager installed
+#   - Sealed secrets installed
+#   - Authelia secrets applied (make authelia-secrets)
+#
+# Run with: make authelia-install
+# Or: ansible-playbook -i ansible/inventory/hosts.yml ansible/playbooks/authelia.yml
+
+- name: Deploy Authelia SSO
+  hosts: k3s_masters[0]
+  become: true
+  gather_facts: false
+
+  vars:
+    authelia_namespace: authelia
+    authelia_helm_repo: https://charts.authelia.com
+    authelia_helm_chart: authelia
+    authelia_helm_version: "0.9.0"
+    authelia_domain: "{{ hostvars[inventory_hostname]['authelia_domain'] | default('auth.silverseekers.org') }}"
+    authelia_cert_issuer: "{{ hostvars[inventory_hostname]['authelia_cert_issuer'] | default('letsencrypt-prod') }}"
+    authelia_storage_class: "{{ hostvars[inventory_hostname]['authelia_storage_class'] | default('longhorn') }}"
+    base_domain: "{{ hostvars[inventory_hostname]['external_dns_domain'] | default('silverseekers.org') }}"
+    
+    # Paths
+    authelia_values_path: "{{ playbook_dir }}/../../kubernetes/services/authelia/values.yaml"
+    authelia_manifests_path: "{{ playbook_dir }}/../../kubernetes/services/authelia"
+
+  tasks:
+    - name: Display deployment info
+      ansible.builtin.debug:
+        msg: |
+          ========================================
+          Deploying Authelia SSO
+          ========================================
+          Namespace: {{ authelia_namespace }}
+          Domain: {{ authelia_domain }}
+          Helm Chart: {{ authelia_helm_chart }}:{{ authelia_helm_version }}
+          Storage Class: {{ authelia_storage_class }}
+
+    # =========================================================================
+    # Pre-flight Checks
+    # =========================================================================
+    - name: Check if Authelia secrets exist
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Secret
+        name: authelia-secrets
+        namespace: "{{ authelia_namespace }}"
+      register: authelia_secrets
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    - name: Fail if secrets don't exist
+      ansible.builtin.fail:
+        msg: |
+          Authelia secrets not found!
+          Run 'make authelia-secrets' first to apply the sealed secrets.
+      when: authelia_secrets.resources | length == 0
+
+    # =========================================================================
+    # Prepare Values
+    # =========================================================================
+    - name: Create local temporary directory
+      ansible.builtin.tempfile:
+        state: directory
+        prefix: authelia_
+      register: local_temp_dir
+      delegate_to: localhost
+      become: false
+
+    - name: Create remote temporary directory
+      ansible.builtin.tempfile:
+        state: directory
+        prefix: authelia_
+      register: temp_dir
+
+    - name: Template Helm values locally
+      ansible.builtin.template:
+        src: "{{ authelia_values_path }}"
+        dest: "{{ local_temp_dir.path }}/values.yaml"
+        mode: '0600'
+      delegate_to: localhost
+      become: false
+
+    - name: Copy templated values to node
+      ansible.builtin.copy:
+        src: "{{ local_temp_dir.path }}/values.yaml"
+        dest: "{{ temp_dir.path }}/values.yaml"
+        mode: '0600'
+
+    # =========================================================================
+    # Deploy Users ConfigMap
+    # =========================================================================
+    - name: Copy users ConfigMap to node
+      ansible.builtin.copy:
+        src: "{{ authelia_manifests_path }}/users-configmap.yaml"
+        dest: "{{ temp_dir.path }}/users-configmap.yaml"
+        mode: '0600'
+
+    - name: Apply users ConfigMap
+      kubernetes.core.k8s:
+        state: present
+        src: "{{ temp_dir.path }}/users-configmap.yaml"
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    # =========================================================================
+    # Add Helm Repository
+    # =========================================================================
+    - name: Add Authelia Helm repository
+      kubernetes.core.helm_repository:
+        name: authelia
+        repo_url: "{{ authelia_helm_repo }}"
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    # =========================================================================
+    # Install Authelia via Helm
+    # =========================================================================
+    - name: Install or upgrade Authelia via Helm
+      kubernetes.core.helm:
+        name: authelia
+        chart_ref: authelia/{{ authelia_helm_chart }}
+        chart_version: "{{ authelia_helm_version }}"
+        release_namespace: "{{ authelia_namespace }}"
+        create_namespace: true
+        wait: true
+        wait_timeout: 600s
+        values_files:
+          - "{{ temp_dir.path }}/values.yaml"
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    # =========================================================================
+    # Wait for Authelia to be Ready
+    # =========================================================================
+    - name: Wait for Authelia deployment to be ready
+      kubernetes.core.k8s_info:
+        api_version: apps/v1
+        kind: Deployment
+        name: authelia
+        namespace: "{{ authelia_namespace }}"
+      register: authelia_deployment
+      until: >
+        authelia_deployment.resources | length > 0 and
+        authelia_deployment.resources[0].status.readyReplicas | default(0) >= 1
+      retries: 60
+      delay: 5
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    # =========================================================================
+    # Apply IngressRoute and Middleware
+    # =========================================================================
+    - name: Copy IngressRoute to node
+      ansible.builtin.copy:
+        src: "{{ authelia_manifests_path }}/ingressroute.yaml"
+        dest: "{{ temp_dir.path }}/ingressroute.yaml"
+        mode: '0600'
+
+    - name: Apply IngressRoute
+      kubernetes.core.k8s:
+        state: present
+        src: "{{ temp_dir.path }}/ingressroute.yaml"
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    - name: Copy Middleware to node
+      ansible.builtin.copy:
+        src: "{{ authelia_manifests_path }}/middleware.yaml"
+        dest: "{{ temp_dir.path }}/middleware.yaml"
+        mode: '0600'
+
+    - name: Apply Middleware
+      kubernetes.core.k8s:
+        state: present
+        src: "{{ temp_dir.path }}/middleware.yaml"
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    # =========================================================================
+    # Cleanup
+    # =========================================================================
+    - name: Clean up remote temporary directory
+      ansible.builtin.file:
+        path: "{{ temp_dir.path }}"
+        state: absent
+
+    - name: Clean up local temporary directory
+      ansible.builtin.file:
+        path: "{{ local_temp_dir.path }}"
+        state: absent
+      delegate_to: localhost
+      become: false
+
+    # =========================================================================
+    # Completion Message
+    # =========================================================================
+    - name: Display completion message
+      ansible.builtin.debug:
+        msg: |
+          ========================================
+          ✅ Authelia SSO Deployed Successfully
+          ========================================
+          
+          Access URL: https://{{ authelia_domain }}
+          
+          Default Credentials:
+            Username: admin
+            Password: (from secrets.yml)
+          
+          OIDC Endpoints:
+            Discovery: https://{{ authelia_domain }}/.well-known/openid-configuration
+            Authorize: https://{{ authelia_domain }}/api/oidc/authorization
+            Token: https://{{ authelia_domain }}/api/oidc/token
+            UserInfo: https://{{ authelia_domain }}/api/oidc/userinfo
+          
+          ForwardAuth Middleware:
+            Name: authelia-forward-auth
+            Namespace: authelia
+          
+          Next Steps:
+            1. Wait for TLS certificate to be issued
+            2. Test login at https://{{ authelia_domain }}
+            3. Update Grafana and ArgoCD OIDC configuration
