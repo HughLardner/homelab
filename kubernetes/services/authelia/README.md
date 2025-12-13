@@ -13,11 +13,11 @@ Lightweight Single Sign-On (SSO) solution for the homelab. Replaces Authentik wi
 
 ## Components
 
-| Component | Purpose |
-|-----------|---------|
+| Component       | Purpose                          |
+| --------------- | -------------------------------- |
 | Authelia Server | SSO, OIDC provider, forward auth |
-| Redis | Session storage |
-| SQLite | User data, OIDC tokens |
+| Redis           | Session storage                  |
+| SQLite          | User data, OIDC tokens           |
 
 ## Access
 
@@ -27,20 +27,20 @@ Lightweight Single Sign-On (SSO) solution for the homelab. Replaces Authentik wi
 
 ## OIDC Clients
 
-| Client ID | Application | Redirect URI |
-|-----------|-------------|--------------|
-| grafana | Grafana | https://grafana.silverseekers.org/login/generic_oauth |
-| argocd | ArgoCD | https://argocd.silverseekers.org/auth/callback |
+| Client ID | Application | Redirect URI                                          |
+| --------- | ----------- | ----------------------------------------------------- |
+| grafana   | Grafana     | https://grafana.silverseekers.org/login/generic_oauth |
+| argocd    | ArgoCD      | https://argocd.silverseekers.org/auth/callback        |
 
 ## User Groups
 
-| Group | Access |
-|-------|--------|
-| admins | Full access to all services |
-| grafana_admins | Grafana Admin role |
-| grafana_editors | Grafana Editor role |
-| grafana_viewers | Grafana Viewer role |
-| argocd_admins | ArgoCD admin access |
+| Group           | Access                      |
+| --------------- | --------------------------- |
+| admins          | Full access to all services |
+| grafana_admins  | Grafana Admin role          |
+| grafana_editors | Grafana Editor role         |
+| grafana_viewers | Grafana Viewer role         |
+| argocd_admins   | ArgoCD admin access         |
 
 ## ForwardAuth Middleware
 
@@ -107,16 +107,19 @@ docker run --rm authelia/authelia:latest authelia crypto hash generate pbkdf2 --
 ## Troubleshooting
 
 ### Check logs
+
 ```bash
 kubectl logs -n authelia deployment/authelia -f
 ```
 
 ### Verify OIDC discovery
+
 ```bash
 curl -s https://auth.silverseekers.org/.well-known/openid-configuration | jq
 ```
 
 ### Test forward auth
+
 ```bash
 curl -I -H "X-Forwarded-Proto: https" -H "X-Forwarded-Host: grafana.silverseekers.org" http://authelia.authelia.svc.cluster.local:9091/api/authz/forward-auth
 ```
