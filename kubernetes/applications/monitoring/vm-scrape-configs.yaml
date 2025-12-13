@@ -119,3 +119,127 @@ spec:
           action: replace
           targetLabel: pod
 
+---
+# =============================================================================
+# Traefik Metrics Scrape
+# =============================================================================
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMPodScrape
+metadata:
+  name: traefik
+  namespace: monitoring
+spec:
+  namespaceSelector:
+    matchNames:
+      - traefik
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: traefik
+  podMetricsEndpoints:
+    - port: metrics
+      interval: "30s"
+      path: /metrics
+
+---
+# =============================================================================
+# ArgoCD Metrics Scrapes
+# =============================================================================
+# ArgoCD Application Controller
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMPodScrape
+metadata:
+  name: argocd-application-controller
+  namespace: monitoring
+spec:
+  namespaceSelector:
+    matchNames:
+      - argocd
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: argocd-application-controller
+  podMetricsEndpoints:
+    - port: metrics
+      interval: "30s"
+      path: /metrics
+
+---
+# ArgoCD Server
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMPodScrape
+metadata:
+  name: argocd-server
+  namespace: monitoring
+spec:
+  namespaceSelector:
+    matchNames:
+      - argocd
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: argocd-server
+  podMetricsEndpoints:
+    - port: metrics
+      interval: "30s"
+      path: /metrics
+
+---
+# ArgoCD Repo Server
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMPodScrape
+metadata:
+  name: argocd-repo-server
+  namespace: monitoring
+spec:
+  namespaceSelector:
+    matchNames:
+      - argocd
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: argocd-repo-server
+  podMetricsEndpoints:
+    - port: metrics
+      interval: "30s"
+      path: /metrics
+
+---
+# =============================================================================
+# Longhorn Metrics Scrape
+# =============================================================================
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMServiceScrape
+metadata:
+  name: longhorn
+  namespace: monitoring
+spec:
+  namespaceSelector:
+    matchNames:
+      - longhorn-system
+  selector:
+    matchLabels:
+      app: longhorn-manager
+  endpoints:
+    - port: manager
+      interval: "30s"
+      path: /metrics
+
+---
+# =============================================================================
+# Cert-Manager Metrics Scrape
+# =============================================================================
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMServiceScrape
+metadata:
+  name: cert-manager
+  namespace: monitoring
+spec:
+  namespaceSelector:
+    matchNames:
+      - cert-manager
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: controller
+      app.kubernetes.io/instance: cert-manager
+  endpoints:
+    - port: tcp-prometheus-servicemonitor
+      interval: "60s"
+      path: /metrics
+
