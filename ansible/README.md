@@ -1,6 +1,6 @@
 # Homelab Ansible - K3s Deployment
 
-Simplified Ansible automation for deploying K3s clusters on Proxmox VMs.
+Ansible automation for deploying a K3s cluster on Proxmox VMs. Currently configured for single-node deployment (scalable to 3-node HA).
 
 ## Quick Start
 
@@ -68,7 +68,7 @@ make deploy            # Alias for deploy-services
 
 # Utilities
 make ping              # Test connectivity to all nodes
-make ssh-node1         # SSH to first node
+make ssh-node          # SSH to the cluster node
 ```
 
 ## Project Structure

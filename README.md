@@ -6,30 +6,31 @@ Production-ready Kubernetes (K3s) platform on Proxmox VE with complete GitOps wo
 
 ### Infrastructure (Terraform)
 
-- **Multi-cluster management** via Terraform workspaces
+- **Single-node deployment** optimized for low-power hardware (12GB RAM)
 - **Automated VM provisioning** on Proxmox VE
-- **Firewall integration** with automated IPSet/security groups
-- **VLAN support** with UniFi controller integration
 - **Dynamic inventory generation** for Ansible
+- **Cloud-init configuration** for consistent node setup
 
 ### Platform Services (Ansible)
 
-- **K3s cluster** with HA embedded etcd (3 control plane nodes)
-- **MetalLB** LoadBalancer (192.168.10.150-159)
-- **Longhorn** distributed block storage
-- **Cert-Manager** automated TLS certificates via Let's Encrypt
+- **K3s cluster** single-node deployment (can scale to HA with 3 control plane nodes)
+- **MetalLB** LoadBalancer (192.168.10.150-165)
+- **Longhorn** distributed block storage (1 replica for single node)
+- **Cert-Manager** automated TLS certificates via Let's Encrypt + Cloudflare DNS
 - **Traefik** ingress controller with HTTPS
 - **ArgoCD** GitOps continuous delivery platform
 - **Sealed Secrets** encrypted secrets for GitOps workflow
+- **Authelia** SSO/2FA authentication portal
 
 ### Applications (ArgoCD/GitOps)
 
-- **Monitoring Stack** (Prometheus + Grafana)
+- **Monitoring Stack** (Victoria Metrics + Grafana)
   - Grafana metrics visualization (https://grafana.silverseekers.org)
-  - Prometheus metrics collection and alerting
+  - VMSingle time-series database (lightweight Prometheus alternative)
+  - VMAgent metrics scraper
+  - VMAlert + VMAlertmanager for alerting
   - Node exporters on all cluster nodes
   - Kube-state-metrics for cluster state monitoring
-- **Kured** automated node reboots during maintenance window (04:00-08:00 UTC)
 
 ## Quick Start
 
@@ -116,9 +117,7 @@ make monitoring-secrets    # Create monitoring secrets (required first)
 make monitoring-deploy     # Deploy monitoring via ArgoCD (GitOps)
 make monitoring-status     # Check monitoring stack status
 make grafana-ui            # Open Grafana dashboard
-make kured-deploy          # Deploy Kured via ArgoCD (automated node reboots)
-make kured-status          # Check Kured status
-make kured-logs            # View Kured logs
+make vmsingle-ui           # Port-forward Victoria Metrics UI
 
 # GitOps (ArgoCD)
 make root-app-deploy   # Deploy App-of-Apps pattern
@@ -127,9 +126,7 @@ make apps-status       # Show application sync status
 
 # Utilities
 make ping              # Test node connectivity
-make ssh-node1         # SSH to node 1
-make ssh-node2         # SSH to node 2
-make ssh-node3         # SSH to node 3
+make ssh-node          # SSH to the cluster node
 make workspace-list    # List Terraform workspaces
 make help              # Show all commands
 ```
@@ -156,7 +153,7 @@ make help              # Show all commands
 - [Traefik README](kubernetes/services/traefik/README.md) - Ingress controller
 - [ArgoCD README](kubernetes/services/argocd/README.md) - GitOps platform
 - [Sealed Secrets README](kubernetes/services/sealed-secrets/README.md) - Secret encryption
-- [Kured README](kubernetes/services/kured/README.md) - Automated node reboots
+- [Authelia README](kubernetes/services/authelia/README.md) - SSO/2FA authentication
 
 ### Monitoring
 
@@ -171,31 +168,31 @@ make help              # Show all commands
 ```
 ┌─────────────────────────────────────────────┐
 │ Proxmox VE Infrastructure (Terraform)       │
-│  • 3 VMs (192.168.10.20-22)                 │
-│  • VLAN + Firewall configuration            │
+│  • 1 VM (192.168.10.20) - 12GB RAM, 100GB   │
+│  • Cloud-init configuration                 │
 └─────────────────────────────────────────────┘
                      ↓
 ┌─────────────────────────────────────────────┐
 │ K3s Cluster (Ansible)                       │
-│  • 3 control plane nodes with HA etcd       │
-│  • MetalLB: 192.168.10.150-159              │
+│  • Single-node cluster (scalable to HA)     │
+│  • MetalLB: 192.168.10.150-165              │
 └─────────────────────────────────────────────┘
                      ↓
 ┌─────────────────────────────────────────────┐
 │ Core Platform Services (Ansible)            │
 │  • Longhorn (Storage)                       │
 │  • Cert-Manager (TLS)                       │
-│  • Traefik (Ingress @ 192.168.10.145)       │
+│  • Traefik (Ingress @ 192.168.10.150)       │
 │  • ArgoCD (GitOps)                          │
 │  • Sealed Secrets (Secret Encryption)       │
+│  • Authelia (SSO/2FA)                       │
 └─────────────────────────────────────────────┘
                      ↓
 ┌─────────────────────────────────────────────┐
 │ Applications (ArgoCD/GitOps)                │
-│  • Monitoring Stack (Prometheus + Grafana)  │
+│  • Monitoring Stack (Victoria Metrics)      │
 │    - Grafana: https://grafana.silverseekers.org
-│    - Prometheus + Alertmanager              │
-│  • Kured (Automated Node Reboots)           │
+│    - VMSingle + VMAlert + VMAlertmanager    │
 │  • Your Applications                        │
 │    - Deployed via GitOps workflow           │
 │    - Secrets encrypted with Sealed Secrets  │
@@ -204,20 +201,21 @@ make help              # Show all commands
 
 ## Access Points
 
-| Service               | URL                               | Credentials              |
-| --------------------- | --------------------------------- | ------------------------ |
-| **Traefik Dashboard** | https://traefik.silverseekers.org | admin / (from Terraform) |
-| **ArgoCD**            | https://argocd.silverseekers.org  | admin / (via secrets)    |
-| **Grafana**           | https://grafana.silverseekers.org | admin / (from Terraform) |
-| **Longhorn UI**       | Port-forward or LoadBalancer      | N/A                      |
+| Service               | URL                                | Credentials              |
+| --------------------- | ---------------------------------- | ------------------------ |
+| **Traefik Dashboard** | https://traefik.silverseekers.org  | admin / (from Terraform) |
+| **ArgoCD**            | https://argocd.silverseekers.org   | admin / (via secrets)    |
+| **Grafana**           | https://grafana.silverseekers.org  | admin / (from Terraform) |
+| **Authelia**          | https://auth.silverseekers.org     | (configured users)       |
+| **Longhorn UI**       | https://longhorn.silverseekers.org | N/A                      |
 
 ## Network Configuration
 
 - **Cluster Network**: 192.168.10.0/24
-- **Node IPs**: 192.168.10.20-22
+- **Node IP**: 192.168.10.20 (single-node cluster)
 - **kube-vip (K8s API)**: 192.168.10.15
-- **MetalLB Pool**: 192.168.10.145-161
-- **Traefik LoadBalancer**: 192.168.10.145
+- **MetalLB Pool**: 192.168.10.150-165 (/28 range)
+- **Traefik LoadBalancer**: 192.168.10.150
 
 ### DNS Configuration (UniFi Gateway)
 

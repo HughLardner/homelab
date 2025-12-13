@@ -1,6 +1,6 @@
 # K3s Cluster - Quick Start Guide
 
-Get your K3s cluster running in 3 commands!
+Get your K3s cluster running in 3 commands! Currently configured for single-node deployment.
 
 ## Prerequisites
 
@@ -41,13 +41,13 @@ export KUBECONFIG=~/.kube/config-homelab
 kubectl get nodes
 ```
 
-Expected output:
+Expected output (single-node):
 ```
 NAME              STATUS   ROLES                       AGE   VERSION
 homelab-node-0    Ready    control-plane,etcd,master   2m    v1.33.5+k3s1
-homelab-node-1    Ready    control-plane,etcd,master   1m    v1.33.5+k3s1
-homelab-node-2    Ready    control-plane,etcd,master   1m    v1.33.5+k3s1
 ```
+
+For a 3-node HA cluster, you would see all three nodes.
 
 ## Quick Commands
 
@@ -58,10 +58,8 @@ make ping
 # Check K3s status
 make k3s-status
 
-# SSH to nodes
-make ssh-node1
-make ssh-node2
-make ssh-node3
+# SSH to node
+make ssh-node
 
 # View cluster info
 kubectl get nodes -o wide
@@ -78,7 +76,6 @@ Deploy everything from scratch:
 ```bash
 # 1. Provision infrastructure
 cd terraform
-terraform workspace select homelab
 terraform apply
 
 # 2. Deploy K3s
@@ -91,10 +88,12 @@ export KUBECONFIG=~/.kube/config-homelab
 kubectl get nodes
 ```
 
-Or use the combined command:
+Or use the combined commands:
 
 ```bash
-make deploy  # Does terraform apply + inventory + k3s install
+make deploy-all       # Deploy everything (infra + platform + services + apps)
+make deploy-services  # Deploy infrastructure + K3s + all core services
+make deploy-platform  # Deploy infrastructure + K3s cluster only
 ```
 
 ## Upgrading K3s
