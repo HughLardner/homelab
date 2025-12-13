@@ -26,21 +26,28 @@ service:
 ingress:
   enabled: false
 
-# Resources (no sidecars = much lower memory)
+# Resources (with sidecars enabled)
 resources:
   requests:
-    cpu: 50m
-    memory: 128Mi
-  limits:
-    cpu: 300m
+    cpu: 100m
     memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
 
-# Disable sidecars (major memory savings)
+# Enable sidecars for auto-loading dashboards/datasources from ConfigMaps
 sidecar:
   dashboards:
-    enabled: false
+    enabled: true
+    label: grafana_dashboard
+    labelValue: "1"
+    folder: /tmp/dashboards
+    searchNamespace: ALL
   datasources:
-    enabled: false
+    enabled: true
+    label: grafana_datasource
+    labelValue: "1"
+    searchNamespace: ALL
 
 # Grafana configuration
 grafana.ini:
