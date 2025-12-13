@@ -80,10 +80,15 @@ grafana.ini:
     login_attribute_path: preferred_username
     # Map Authelia groups to Grafana roles
     role_attribute_path: contains(groups[*], 'grafana_admins') && 'Admin' || contains(groups[*], 'grafana_editors') && 'Editor' || 'Viewer'
+    # Allow OAuth users to be assigned Grafana admin role
+    allow_assign_grafana_admin: true
     # Auto-login disabled - users can choose local or SSO
     auto_login: false
     # Use PKCE for enhanced security
     use_pkce: true
+  # Allow linking OAuth identity to existing users by email
+  auth:
+    oauth_allow_insecure_email_lookup: true
 
 # Environment from secret
 envFromSecret: grafana-admin-secret

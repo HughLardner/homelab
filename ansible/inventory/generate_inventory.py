@@ -87,6 +87,7 @@ def generate_inventory(cluster_name="homelab"):
                         "authentik_storage_class": config.get("authentik_storage_class", "longhorn"),
                         "authentik_cert_issuer": config.get("authentik_cert_issuer") or config.get("default_cert_issuer", "letsencrypt-staging"),
                         # Longhorn configuration
+                        "longhorn_domain": config.get("longhorn_domain", ""),
                         "longhorn_cert_issuer": config.get("longhorn_cert_issuer") or config.get("default_cert_issuer", "letsencrypt-staging")
                     }
                 }

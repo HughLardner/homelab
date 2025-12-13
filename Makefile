@@ -185,6 +185,16 @@ longhorn-ui:
 		open "http://$$LONGHORN_IP" 2>/dev/null || xdg-open "http://$$LONGHORN_IP" 2>/dev/null || echo "Open http://$$LONGHORN_IP in your browser"; \
 	fi
 
+# Configure Longhorn IngressRoute (requires Traefik + cert-manager)
+# Run after traefik-install to enable https://longhorn.silverseekers.org
+longhorn-ingress: inventory
+	@echo "Configuring Longhorn IngressRoute..."
+	cd ansible && ansible-playbook playbooks/longhorn.yml \
+	  -e "longhorn_domain={{ longhorn_domain }}" \
+	  -e "longhorn_cert_issuer={{ longhorn_cert_issuer }}" \
+	  --tags ingress 2>/dev/null || \
+	cd ansible && ansible-playbook playbooks/longhorn.yml
+
 cert-manager-install: inventory
 	@echo "Installing cert-manager..."
 	cd ansible && ansible-playbook playbooks/cert-manager.yml
@@ -569,6 +579,9 @@ deploy-services: deploy-platform
 	@echo ""
 	@echo "Installing Sealed Secrets (Secret Encryption)..."
 	$(MAKE) sealed-secrets-install
+	@echo ""
+	@echo "Sealing secrets with cluster key..."
+	$(MAKE) seal-secrets
 	@echo ""
 	@echo "Applying Authelia Secrets..."
 	$(MAKE) authelia-secrets
