@@ -51,6 +51,8 @@ resource "local_file" "cluster_config_json" {
     external_dns_domain = var.cluster.external_dns_domain
     # Authentik SSO configuration
     authentik_domain = var.cluster.authentik_domain
+    # Longhorn configuration
+    longhorn_domain = var.cluster.longhorn_domain
   })
   filename = "../ansible/tmp/${var.cluster.cluster_name}/cluster_config.json"
 }

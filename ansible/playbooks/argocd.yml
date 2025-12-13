@@ -158,6 +158,60 @@
       changed_when: "'patched' in password_update.stdout"
 
     # =========================================================================
+    # Apply ArgoCD OIDC Sealed Secret
+    # =========================================================================
+    - name: Check if ArgoCD OIDC sealed secret exists
+      ansible.builtin.stat:
+        path: "{{ playbook_dir }}/../../kubernetes/services/argocd/secrets/argocd-oidc-sealed.yaml"
+      register: argocd_oidc_sealed
+      delegate_to: localhost
+      become: false
+
+    - name: Copy ArgoCD OIDC sealed secret to node
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../../kubernetes/services/argocd/secrets/argocd-oidc-sealed.yaml"
+        dest: /tmp/argocd-oidc-sealed.yaml
+        mode: '0600'
+      when: argocd_oidc_sealed.stat.exists
+
+    - name: Apply ArgoCD OIDC sealed secret
+      kubernetes.core.k8s:
+        state: present
+        src: /tmp/argocd-oidc-sealed.yaml
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      when: argocd_oidc_sealed.stat.exists
+
+    - name: Clean up OIDC sealed secret temp file
+      ansible.builtin.file:
+        path: /tmp/argocd-oidc-sealed.yaml
+        state: absent
+      when: argocd_oidc_sealed.stat.exists
+
+    - name: Wait for ArgoCD OIDC secret to be unsealed
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Secret
+        name: argocd-oidc-secret
+        namespace: "{{ argocd_namespace }}"
+      register: argocd_oidc_secret
+      until: argocd_oidc_secret.resources | length > 0
+      retries: 30
+      delay: 2
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      when: argocd_oidc_sealed.stat.exists
+
+    - name: Copy OIDC client secret to main argocd-secret
+      ansible.builtin.shell: |
+        OIDC_SECRET=$(/usr/local/bin/k3s kubectl get secret argocd-oidc-secret -n {{ argocd_namespace }} -o jsonpath='{.data.oidc\.authelia\.clientSecret}')
+        /usr/local/bin/k3s kubectl patch secret argocd-secret -n {{ argocd_namespace }} --type='json' \
+          -p="[{\"op\": \"add\", \"path\": \"/data/oidc.authelia.clientSecret\", \"value\": \"$OIDC_SECRET\"}]"
+      register: oidc_patch
+      changed_when: "'patched' in oidc_patch.stdout"
+      when: argocd_oidc_sealed.stat.exists
+
+    # =========================================================================
     # Wait for ArgoCD Components
     # =========================================================================
     - name: Wait for ArgoCD server deployment

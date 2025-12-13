@@ -189,6 +189,30 @@
       changed_when: false
       failed_when: "'Running' not in traefik_status.stdout"
 
+    # =========================================================================
+    # Configure CoreDNS for Internal DNS Resolution
+    # =========================================================================
+    - name: Get current CoreDNS NodeHosts
+      ansible.builtin.shell: |
+        /usr/local/bin/k3s kubectl get configmap coredns -n kube-system -o jsonpath='{.data.NodeHosts}'
+      register: current_nodehosts
+      changed_when: false
+
+    - name: Update CoreDNS with service domains
+      ansible.builtin.shell: |
+        NODE_IP=$(echo "{{ current_nodehosts.stdout }}" | grep homelab-node | head -1 || echo "")
+        /usr/local/bin/k3s kubectl patch configmap coredns -n kube-system --type=json -p='[
+          {"op": "replace", "path": "/data/NodeHosts", "value": "'"$NODE_IP"'\n{{ traefik_lb_ip.stdout }} auth.silverseekers.org\n{{ traefik_lb_ip.stdout }} argocd.silverseekers.org\n{{ traefik_lb_ip.stdout }} grafana.silverseekers.org\n{{ traefik_lb_ip.stdout }} traefik.silverseekers.org\n"}
+        ]'
+      register: coredns_patch
+      changed_when: "'patched' in coredns_patch.stdout"
+      when: traefik_lb_ip.stdout != ""
+
+    - name: Restart CoreDNS to apply changes
+      ansible.builtin.command:
+        cmd: /usr/local/bin/k3s kubectl rollout restart deployment coredns -n kube-system
+      when: coredns_patch.changed | default(false)
+
     - name: Cleanup temporary files
       ansible.builtin.file:
         path: "/tmp/{{ item }}"
