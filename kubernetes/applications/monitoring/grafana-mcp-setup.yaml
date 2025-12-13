@@ -2,14 +2,13 @@
 # =============================================================================
 # Grafana MCP Service Account Setup Job
 # =============================================================================
-# This Job creates a service account in Grafana with a fixed API token
+# This Job creates a service account in Grafana with an API token
 # for use by the mcp-grafana AI assistant integration.
 #
 # The Job runs after Grafana is ready and uses ArgoCD sync-waves to ensure
 # proper ordering.
 # =============================================================================
 
----
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -36,34 +35,37 @@ data:
     SA_RESPONSE=$(curl -sf -u "${GF_ADMIN_USER}:${GF_ADMIN_PASSWORD}" \
       "${GRAFANA_URL}/api/serviceaccounts/search?query=${SA_NAME}" 2>/dev/null || echo '{"serviceAccounts":[]}')
 
-    SA_ID=$(echo "${SA_RESPONSE}" | grep -o '"id":[0-9]*' | head -1 | grep -o '[0-9]*' || echo "")
+    SA_ID=$(echo "${SA_RESPONSE}" | sed -n 's/.*"id":\([0-9]*\).*/\1/p' | head -1)
 
     if [ -z "${SA_ID}" ]; then
       echo "Creating service account '${SA_NAME}'..."
       CREATE_RESPONSE=$(curl -sf -X POST \
         -H "Content-Type: application/json" \
         -u "${GF_ADMIN_USER}:${GF_ADMIN_PASSWORD}" \
-        -d "{\"name\":\"${SA_NAME}\",\"role\":\"Admin\",\"isDisabled\":false}" \
+        -d '{"name":"'"${SA_NAME}"'","role":"Admin","isDisabled":false}' \
         "${GRAFANA_URL}/api/serviceaccounts")
 
-      SA_ID=$(echo "${CREATE_RESPONSE}" | grep -o '"id":[0-9]*' | grep -o '[0-9]*')
+      SA_ID=$(echo "${CREATE_RESPONSE}" | sed -n 's/.*"id":\([0-9]*\).*/\1/p')
       echo "Created service account with ID: ${SA_ID}"
     else
       echo "Service account already exists with ID: ${SA_ID}"
     fi
 
-    # Check if token already exists - if so, don't recreate (token is stable)
+    # Check if token already exists
     echo "Checking for existing tokens..."
     TOKENS_RESPONSE=$(curl -sf -u "${GF_ADMIN_USER}:${GF_ADMIN_PASSWORD}" \
       "${GRAFANA_URL}/api/serviceaccounts/${SA_ID}/tokens" 2>/dev/null || echo "[]")
 
-    TOKEN_EXISTS=$(echo "${TOKENS_RESPONSE}" | grep -o "\"name\":\"${TOKEN_NAME}\"" || echo "")
-
-    if [ -n "${TOKEN_EXISTS}" ]; then
-      echo "✅ Token '${TOKEN_NAME}' already exists - keeping existing token"
+    if echo "${TOKENS_RESPONSE}" | grep -q "\"name\":\"${TOKEN_NAME}\""; then
+      echo "=============================================="
+      echo "Token already exists!"
+      echo "=============================================="
+      echo "The token '${TOKEN_NAME}' was created previously."
+      echo "Check earlier Job logs for the token value, or"
+      echo "delete the service account in Grafana UI and re-run."
       echo ""
-      echo "To get the token value, check the Job logs from when the token was first created,"
-      echo "or delete the service account in Grafana UI to regenerate."
+      echo "Grafana UI: https://grafana.silverseekers.org/admin/serviceaccounts"
+      echo "=============================================="
       exit 0
     fi
 
@@ -72,44 +74,40 @@ data:
     TOKEN_RESPONSE=$(curl -sf -X POST \
       -H "Content-Type: application/json" \
       -u "${GF_ADMIN_USER}:${GF_ADMIN_PASSWORD}" \
-      -d "{\"name\":\"${TOKEN_NAME}\"}" \
+      -d '{"name":"'"${TOKEN_NAME}"'"}' \
       "${GRAFANA_URL}/api/serviceaccounts/${SA_ID}/tokens")
 
     # Extract the generated token
-    GENERATED_TOKEN=$(echo "${TOKEN_RESPONSE}" | grep -o '"key":"[^"]*"' | sed 's/"key":"//;s/"//')
+    GENERATED_TOKEN=$(echo "${TOKEN_RESPONSE}" | sed -n 's/.*"key":"\([^"]*\)".*/\1/p')
 
     if [ -n "${GENERATED_TOKEN}" ]; then
-      echo "✅ Service account token created successfully!"
       echo ""
-      echo "=================================================="
-      echo "⚠️  IMPORTANT: SAVE THIS TOKEN NOW!"
-      echo "=================================================="
-      echo "Grafana generates the token value - it cannot be retrieved later."
+      echo "=============================================="
+      echo "SUCCESS! MCP Service Account Token Created"
+      echo "=============================================="
+      echo ""
+      echo "SAVE THIS TOKEN - it cannot be retrieved later!"
       echo ""
       echo "Token: ${GENERATED_TOKEN}"
       echo ""
-      echo "=================================================="
-      echo "MCP Grafana Configuration"
-      echo "=================================================="
+      echo "=============================================="
       echo "Add to ~/.cursor/mcp.json:"
-      echo ""
-      cat << EOF
-{
-  "mcpServers": {
-    "grafana": {
-      "command": "docker",
-      "args": ["run", "--rm", "-i", "-e", "GRAFANA_URL", "-e", "GRAFANA_SERVICE_ACCOUNT_TOKEN", "mcp/grafana", "-t", "stdio"],
-      "env": {
-        "GRAFANA_URL": "https://grafana.silverseekers.org",
-        "GRAFANA_SERVICE_ACCOUNT_TOKEN": "${GENERATED_TOKEN}"
-      }
-    }
-  }
-}
-EOF
-      echo "=================================================="
+      echo "=============================================="
+      echo '{'
+      echo '  "mcpServers": {'
+      echo '    "grafana": {'
+      echo '      "command": "docker",'
+      echo '      "args": ["run", "--rm", "-i", "-e", "GRAFANA_URL", "-e", "GRAFANA_SERVICE_ACCOUNT_TOKEN", "mcp/grafana", "-t", "stdio"],'
+      echo '      "env": {'
+      echo '        "GRAFANA_URL": "https://grafana.silverseekers.org",'
+      echo "        \"GRAFANA_SERVICE_ACCOUNT_TOKEN\": \"${GENERATED_TOKEN}\""
+      echo '      }'
+      echo '    }'
+      echo '  }'
+      echo '}'
+      echo "=============================================="
     else
-      echo "❌ Failed to create token"
+      echo "Failed to create token"
       echo "Response: ${TOKEN_RESPONSE}"
       exit 1
     fi
@@ -126,7 +124,7 @@ metadata:
     argocd.argoproj.io/hook: PostSync
     argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
 spec:
-  ttlSecondsAfterFinished: 300
+  ttlSecondsAfterFinished: 600
   backoffLimit: 3
   template:
     spec:
@@ -156,4 +154,3 @@ spec:
           configMap:
             name: grafana-mcp-setup-script
             defaultMode: 0755
-
