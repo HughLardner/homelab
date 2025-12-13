@@ -53,12 +53,14 @@ secret:
   storageEncryptionKey:
     key: 'storage-encryption-key'
   
-  # Mount additional secret for OIDC JWKS
+  # Mount additional secrets for OIDC
   additionalSecrets:
     authelia-secrets:
       items:
         - key: 'oidc.jwks.RS256.pem'
           path: 'oidc.jwks.RS256.pem'
+        - key: 'oidc-hmac-secret'
+          path: 'oidc-hmac-secret'
 
 # Authelia configuration
 configMap:
