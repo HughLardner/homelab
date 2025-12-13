@@ -20,18 +20,18 @@ The Grafana MCP (Model Context Protocol) server allows AI assistants to:
 
 ## Setup Steps
 
-### 1. Create Grafana Service Account
+### 1. Service Account (GitOps Managed)
 
-Run the automated setup command:
+The MCP service account is automatically created by ArgoCD when the monitoring stack syncs.
+A Kubernetes Job (`grafana-mcp-setup`) creates:
+- A `mcp-grafana` service account with Admin role
+- A permanent API token stored in `grafana-mcp-token` secret
 
-```bash
-make grafana-mcp-setup
-```
+The token value is managed in `secrets.yml` and sealed for GitOps deployment.
 
-This will:
-- Create a `mcp-grafana` service account with Admin role
-- Generate an API token valid for 1 year
-- Output the configuration for your MCP client
+**Current Token:** `glsa_mcp_homelab_c85a9b0f05cf25aea447dc6c2f4a04aa34a254d4e380aff1`
+
+> ⚠️ If you need to regenerate the token, update `secrets.yml`, re-seal it, and push.
 
 ### 2. Configure Cursor MCP
 
@@ -55,7 +55,7 @@ Docker automatically pulls the image on first run. No manual installation needed
       ],
       "env": {
         "GRAFANA_URL": "https://grafana.silverseekers.org",
-        "GRAFANA_SERVICE_ACCOUNT_TOKEN": "<your-token-from-step-1>"
+        "GRAFANA_SERVICE_ACCOUNT_TOKEN": "glsa_mcp_homelab_c85a9b0f05cf25aea447dc6c2f4a04aa34a254d4e380aff1"
       }
     }
   }
@@ -88,7 +88,7 @@ Then configure:
       "args": [],
       "env": {
         "GRAFANA_URL": "https://grafana.silverseekers.org",
-        "GRAFANA_SERVICE_ACCOUNT_TOKEN": "<your-token-from-step-1>"
+        "GRAFANA_SERVICE_ACCOUNT_TOKEN": "glsa_mcp_homelab_c85a9b0f05cf25aea447dc6c2f4a04aa34a254d4e380aff1"
       }
     }
   }
@@ -141,12 +141,27 @@ The assistant will use `query_prometheus` to execute:
 
 ## Token Management
 
-### Generate New Token
+### Token is GitOps Managed
 
-If your token expires or you need a new one:
+The MCP token is managed declaratively:
+
+1. Token value is defined in `secrets.yml`
+2. Sealed with `kubeseal` and stored in `secrets/grafana-mcp-sealed.yaml`
+3. A Kubernetes Job creates the service account on each sync
+
+### Regenerate Token
+
+To regenerate the token:
 
 ```bash
-make grafana-mcp-token
+# Generate new token value
+NEW_TOKEN="glsa_mcp_homelab_$(openssl rand -hex 24)"
+echo "New token: $NEW_TOKEN"
+
+# Update secrets.yml with new token, then:
+make seal-secrets
+git add -A && git commit -m "chore: rotate grafana mcp token"
+git push
 ```
 
 ### Manage Tokens in UI
