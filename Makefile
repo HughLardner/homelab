@@ -1,4 +1,4 @@
-.PHONY: help init plan apply destroy ssh-node k3s-* metallb-* longhorn-* cert-manager-* traefik-* argocd-* authentik-* monitoring-* sealed-secrets-* seal-secrets kured-* root-app-deploy apps-list apps-status monitoring-secrets inventory clean deploy-infra deploy-platform deploy-services deploy-all deploy deploy-apps
+.PHONY: help init plan apply destroy ssh-node k3s-* metallb-* longhorn-* cert-manager-* traefik-* argocd-* authelia-* monitoring-* sealed-secrets-* seal-secrets kured-* root-app-deploy apps-list apps-status monitoring-secrets inventory clean deploy-infra deploy-platform deploy-services deploy-all deploy deploy-apps
 
 # Default target
 help:
@@ -37,12 +37,11 @@ help:
 	@echo "  make sealed-secrets-install - Install Sealed Secrets (Secret Encryption)"
 	@echo "  make sealed-secrets-status  - Check Sealed Secrets status"
 	@echo "  make seal-secrets           - Encrypt secrets from secrets.yml and commit to git"
-	@echo "  make authentik-secrets      - Apply Authentik sealed secrets (prerequisite)"
-	@echo "  make authentik-install      - Install Authentik SSO Platform"
-	@echo "  make authentik-configure    - Configure Authentik OIDC via API (fully declarative)"
-	@echo "  make authentik-status       - Check Authentik status"
-	@echo "  make authentik-ui           - Open Authentik SSO UI"
-	@echo "  make authentik-logs         - View Authentik logs"
+	@echo "  make authelia-secrets       - Apply Authelia sealed secrets (prerequisite)"
+	@echo "  make authelia-install       - Install Authelia SSO Platform"
+	@echo "  make authelia-status        - Check Authelia status"
+	@echo "  make authelia-ui            - Open Authelia SSO UI"
+	@echo "  make authelia-logs          - View Authelia logs"
 	@echo "  make kured-deploy           - Deploy Kured via ArgoCD (Automated Node Reboots)"
 	@echo "  make kured-status           - Check Kured status"
 	@echo "  make kured-logs             - View Kured logs"
@@ -303,55 +302,50 @@ seal-secrets:
 	@echo "Sealing secrets from secrets.yml..."
 	ansible-playbook ansible/playbooks/seal-secrets.yml
 
-authentik-secrets: inventory
-	@echo "Creating Authentik Kubernetes secrets..."
-	cd ansible && ansible-playbook playbooks/authentik-secrets.yml
+authelia-secrets: inventory
+	@echo "Creating Authelia Kubernetes secrets..."
+	cd ansible && ansible-playbook playbooks/authelia-secrets.yml
 
-authentik-install: inventory
-	@echo "Installing Authentik SSO Platform..."
-	cd ansible && ansible-playbook playbooks/authentik.yml
+authelia-install: inventory
+	@echo "Installing Authelia SSO Platform..."
+	cd ansible && ansible-playbook playbooks/authelia.yml
 
-authentik-configure: inventory
-	@echo "Configuring Authentik OIDC providers via API..."
-	cd ansible && ansible-playbook playbooks/authentik-configure.yml
-
-authentik-status:
-	@echo "Authentik Status:"
+authelia-status:
+	@echo "Authelia Status:"
 	@echo ""
 	@echo "Pods:"
-	@kubectl get pods -n authentik
+	@kubectl get pods -n authelia
 	@echo ""
 	@echo "Services:"
-	@kubectl get svc -n authentik
+	@kubectl get svc -n authelia
 	@echo ""
 	@echo "PVCs:"
-	@kubectl get pvc -n authentik
+	@kubectl get pvc -n authelia
 	@echo ""
 	@echo "IngressRoute:"
-	@kubectl get ingressroute -n authentik
+	@kubectl get ingressroute -n authelia
 	@echo ""
 	@echo "Middleware:"
-	@kubectl get middleware -n authentik
+	@kubectl get middleware -n authelia
 	@echo ""
 	@echo "Certificate:"
-	@kubectl get certificate -n authentik
+	@kubectl get certificate -n authelia
 
-authentik-ui:
-	@echo "Accessing Authentik SSO..."
-	@AUTHENTIK_DOMAIN=$$(kubectl get ingressroute -n authentik authentik-server -o jsonpath='{.spec.routes[0].match}' 2>/dev/null | sed 's/.*Host(`\([^`]*\)`).*/\1/' || echo ""); \
-	if [ -z "$$AUTHENTIK_DOMAIN" ]; then \
+authelia-ui:
+	@echo "Accessing Authelia SSO..."
+	@AUTHELIA_DOMAIN=$$(kubectl get ingressroute -n authelia authelia -o jsonpath='{.spec.routes[0].match}' 2>/dev/null | sed 's/.*Host(`\([^`]*\)`).*/\1/' || echo ""); \
+	if [ -z "$$AUTHELIA_DOMAIN" ]; then \
 		echo "IngressRoute not found. Use port-forward:"; \
-		echo "  kubectl port-forward -n authentik svc/authentik-server 9000:80"; \
-		echo "  Then open: http://localhost:9000"; \
+		echo "  kubectl port-forward -n authelia svc/authelia 9091:9091"; \
+		echo "  Then open: http://localhost:9091"; \
 	else \
-		echo "Authentik: https://$$AUTHENTIK_DOMAIN"; \
-		echo "Admin UI:  https://$$AUTHENTIK_DOMAIN/if/admin/"; \
-		open "https://$$AUTHENTIK_DOMAIN" 2>/dev/null || xdg-open "https://$$AUTHENTIK_DOMAIN" 2>/dev/null || echo "Open https://$$AUTHENTIK_DOMAIN in your browser"; \
+		echo "Authelia: https://$$AUTHELIA_DOMAIN"; \
+		open "https://$$AUTHELIA_DOMAIN" 2>/dev/null || xdg-open "https://$$AUTHELIA_DOMAIN" 2>/dev/null || echo "Open https://$$AUTHELIA_DOMAIN in your browser"; \
 	fi
 
-authentik-logs:
-	@echo "Authentik Logs (Press Ctrl+C to exit):"
-	kubectl logs -n authentik -l app.kubernetes.io/component=server -f --tail=50
+authelia-logs:
+	@echo "Authelia Logs (Press Ctrl+C to exit):"
+	kubectl logs -n authelia -l app.kubernetes.io/name=authelia -f --tail=50
 
 kured-deploy:
 	@echo "Deploying Kured via ArgoCD..."
@@ -576,21 +570,18 @@ deploy-services: deploy-platform
 	@echo "Installing Sealed Secrets (Secret Encryption)..."
 	$(MAKE) sealed-secrets-install
 	@echo ""
-	@echo "Applying Authentik Secrets..."
-	$(MAKE) authentik-secrets
+	@echo "Applying Authelia Secrets..."
+	$(MAKE) authelia-secrets
 	@echo ""
-	@echo "Installing Authentik SSO Platform..."
-	$(MAKE) authentik-install
-	@echo ""
-	@echo "Configuring Authentik OIDC Providers..."
-	$(MAKE) authentik-configure
+	@echo "Installing Authelia SSO Platform..."
+	$(MAKE) authelia-install
 	@echo ""
 	@echo "✅ Core services deployment complete!"
 	@echo ""
 	@echo "Access Points:"
 	@echo "  Traefik:   https://traefik.silverseekers.org"
 	@echo "  ArgoCD:    https://argocd.silverseekers.org"
-	@echo "  Authentik: https://auth.silverseekers.org"
+	@echo "  Authelia:  https://auth.silverseekers.org"
 	@echo "  Longhorn:  http://192.168.10.144"
 	@echo ""
 	@echo "Storage Classes:"

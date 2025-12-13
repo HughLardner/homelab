@@ -32,6 +32,6 @@ spec:
       kind: Rule
       services:
         - name: authelia
-          port: 9091
+          port: 80
   tls:
     secretName: authelia-tls

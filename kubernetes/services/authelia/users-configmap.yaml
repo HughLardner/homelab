@@ -1,30 +1,26 @@
 ---
-# Authelia Users Database
-# This ConfigMap contains the user definitions for Authelia's file-based authentication
-#
-# To generate a password hash, use:
-#   docker run --rm authelia/authelia:latest authelia crypto hash generate argon2 --password 'your-password'
-#
-# Or use the authelia CLI if installed locally
+# Authelia Users Database Secret
+# This Secret contains the user definitions for Authelia's file-based authentication
+# Using a Secret instead of ConfigMap for password security
 #
 apiVersion: v1
-kind: ConfigMap
+kind: Secret
 metadata:
   name: authelia-users
   namespace: authelia
   labels:
     app.kubernetes.io/name: authelia
     app.kubernetes.io/component: users
-data:
-  users.yml: |
+type: Opaque
+stringData:
+  users_database.yml: |
     # Authelia Users Database
     # Format: https://www.authelia.com/reference/guides/passwords/
     users:
       admin:
         displayname: "Admin"
-        # Password hash will be set during deployment
-        # Generate with: docker run --rm authelia/authelia:latest authelia crypto hash generate argon2 --password 'your-password'
-        password: "$argon2id$v=19$m=65536,t=3,p=4$PLACEHOLDER_ADMIN_HASH"
+        # Hash generated with: authelia crypto hash generate argon2 --password 'mo8YevUsmo8YevUs!5'
+        password: "$argon2id$v=19$m=65536,t=3,p=4$gbKOe5YHEdW8xzJPzsaYsg$a5AzBLjOBeB8kzRFvqOQTHrne1qyFpZ1ymEMs9ClXBk"
         email: admin@silverseekers.org
         groups:
           - admins
