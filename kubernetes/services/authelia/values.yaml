@@ -41,6 +41,25 @@ persistence:
   storageClass: "longhorn"
   size: 1Gi
 
+# Secret configuration - use our existing sealed secret
+secret:
+  existingSecret: 'authelia-secrets'
+  
+  # Map our secret keys to what Authelia expects
+  jwt:
+    key: 'jwt-secret'
+  session:
+    key: 'session-secret'
+  storageEncryptionKey:
+    key: 'storage-encryption-key'
+  
+  # Mount additional secret for OIDC JWKS
+  additionalSecrets:
+    authelia-secrets:
+      items:
+        - key: 'oidc.jwks.RS256.pem'
+          path: 'oidc.jwks.RS256.pem'
+
 # Authelia configuration
 configMap:
   # Theme
@@ -65,7 +84,7 @@ configMap:
   webauthn:
     disable: true
   
-  # Authentication backend (file-based) - MUST HAVE enabled: true
+  # Authentication backend (file-based)
   authentication_backend:
     password_reset:
       disable: true
@@ -88,14 +107,13 @@ configMap:
       password:
         disabled: true
   
-  # Storage backend (SQLite) - MUST HAVE enabled: true
-  # Note: PV is mounted at /config, so use that path
+  # Storage backend (SQLite)
   storage:
     local:
       enabled: true
       path: /config/db.sqlite3
   
-  # Notifier (filesystem for homelab) - MUST HAVE enabled: true
+  # Notifier (filesystem for homelab)
   notifier:
     disable_startup_check: true
     filesystem:
@@ -106,20 +124,64 @@ configMap:
   access_control:
     default_policy: one_factor
     rules:
-      # Allow API endpoints for OIDC
+      # Allow OIDC/API endpoints without auth
       - domain: auth.silverseekers.org
         policy: bypass
         resources:
           - "^/api/.*$"
           - "^/.well-known/.*$"
   
-  # Identity Providers (OIDC) - DISABLED for now
-  # OIDC requires JWKS key pair which adds complexity
-  # Using ForwardAuth for all services instead
-  # TODO: Enable OIDC after configuring JWKS properly
+  # Identity Providers (OIDC)
   identity_providers:
     oidc:
-      enabled: false
+      enabled: true
+      
+      # HMAC secret for OIDC (from existing secret)
+      hmac_secret:
+        secret_name: 'authelia-secrets'
+        path: 'oidc-hmac-secret'
+      
+      # JWKS configuration
+      jwks:
+        - key_id: 'authelia-rs256'
+          algorithm: 'RS256'
+          use: 'sig'
+          key:
+            path: '/secrets/authelia-secrets/oidc.jwks.RS256.pem'
+      
+      # OIDC Clients
+      clients:
+        # Grafana OIDC Client
+        - client_id: grafana
+          client_name: Grafana
+          client_secret: '$pbkdf2-sha512$310000$ElVYx59phkHrnkm09lzr0g$P.Pt82FGcxZfF5.5eyK9kECIvJPgVhzuUA/twroeW2iJOt2IuyVnNJTdbLpTZ6xa5r0h7BfX8m0rtLPaM84VZg'
+          public: false
+          authorization_policy: one_factor
+          consent_mode: implicit
+          redirect_uris:
+            - https://grafana.silverseekers.org/login/generic_oauth
+          scopes:
+            - openid
+            - profile
+            - email
+            - groups
+          token_endpoint_auth_method: client_secret_post
+        
+        # ArgoCD OIDC Client
+        - client_id: argocd
+          client_name: ArgoCD
+          client_secret: '$pbkdf2-sha512$310000$GaxFT9scw26dIW9LlfnsXQ$vGu5sTaK5tFPT6EED0q.xOzsMhpc7Ny0Uin3DzXCCHDRHgRxUd17Xo7V1J2TbjjZRvkvJxL5Yx4yzOb5rEeJ3w'
+          public: false
+          authorization_policy: one_factor
+          consent_mode: implicit
+          redirect_uris:
+            - https://argocd.silverseekers.org/auth/callback
+          scopes:
+            - openid
+            - profile
+            - email
+            - groups
+          token_endpoint_auth_method: client_secret_basic
 
 # Redis subchart
 redis:
