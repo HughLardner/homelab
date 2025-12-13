@@ -24,4 +24,3 @@ resources:
 
   # Grafana MCP service account setup (for AI assistant integration)
   - grafana-mcp-setup.yaml
-  - secrets/grafana-mcp-sealed.yaml

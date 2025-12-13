@@ -52,7 +52,7 @@ data:
       echo "Service account already exists with ID: ${SA_ID}"
     fi
 
-    # Check if token already exists
+    # Check if token already exists - if so, don't recreate (token is stable)
     echo "Checking for existing tokens..."
     TOKENS_RESPONSE=$(curl -sf -u "${GF_ADMIN_USER}:${GF_ADMIN_PASSWORD}" \
       "${GRAFANA_URL}/api/serviceaccounts/${SA_ID}/tokens" 2>/dev/null || echo "[]")
@@ -60,46 +60,53 @@ data:
     TOKEN_EXISTS=$(echo "${TOKENS_RESPONSE}" | grep -o "\"name\":\"${TOKEN_NAME}\"" || echo "")
 
     if [ -n "${TOKEN_EXISTS}" ]; then
-      echo "Token '${TOKEN_NAME}' already exists. Deleting to recreate with new value..."
-      TOKEN_ID=$(echo "${TOKENS_RESPONSE}" | grep -o '"id":[0-9]*' | head -1 | grep -o '[0-9]*')
-      if [ -n "${TOKEN_ID}" ]; then
-        curl -sf -X DELETE \
-          -u "${GF_ADMIN_USER}:${GF_ADMIN_PASSWORD}" \
-          "${GRAFANA_URL}/api/serviceaccounts/${SA_ID}/tokens/${TOKEN_ID}"
-        echo "Deleted existing token"
-      fi
+      echo "✅ Token '${TOKEN_NAME}' already exists - keeping existing token"
+      echo ""
+      echo "To get the token value, check the Job logs from when the token was first created,"
+      echo "or delete the service account in Grafana UI to regenerate."
+      exit 0
     fi
 
-    # Create token with our specific value
-    # Note: Grafana API doesn't allow setting custom token values via the standard API
-    # We use the key parameter which sets the actual token value (Grafana 9.1+)
+    # Create new token - Grafana generates the value
     echo "Creating service account token..."
     TOKEN_RESPONSE=$(curl -sf -X POST \
       -H "Content-Type: application/json" \
       -u "${GF_ADMIN_USER}:${GF_ADMIN_PASSWORD}" \
-      -d "{\"name\":\"${TOKEN_NAME}\",\"key\":\"${MCP_TOKEN}\"}" \
+      -d "{\"name\":\"${TOKEN_NAME}\"}" \
       "${GRAFANA_URL}/api/serviceaccounts/${SA_ID}/tokens")
 
-    if echo "${TOKEN_RESPONSE}" | grep -q '"key"'; then
+    # Extract the generated token
+    GENERATED_TOKEN=$(echo "${TOKEN_RESPONSE}" | grep -o '"key":"[^"]*"' | sed 's/"key":"//;s/"//')
+
+    if [ -n "${GENERATED_TOKEN}" ]; then
       echo "✅ Service account token created successfully!"
+      echo ""
+      echo "=================================================="
+      echo "⚠️  IMPORTANT: SAVE THIS TOKEN NOW!"
+      echo "=================================================="
+      echo "Grafana generates the token value - it cannot be retrieved later."
+      echo ""
+      echo "Token: ${GENERATED_TOKEN}"
       echo ""
       echo "=================================================="
       echo "MCP Grafana Configuration"
       echo "=================================================="
       echo "Add to ~/.cursor/mcp.json:"
       echo ""
-      echo "{"
-      echo "  \"mcpServers\": {"
-      echo "    \"grafana\": {"
-      echo "      \"command\": \"docker\","
-      echo "      \"args\": [\"run\", \"--rm\", \"-i\", \"-e\", \"GRAFANA_URL\", \"-e\", \"GRAFANA_SERVICE_ACCOUNT_TOKEN\", \"mcp/grafana\", \"-t\", \"stdio\"],"
-      echo "      \"env\": {"
-      echo "        \"GRAFANA_URL\": \"https://grafana.silverseekers.org\","
-      echo "        \"GRAFANA_SERVICE_ACCOUNT_TOKEN\": \"${MCP_TOKEN}\""
-      echo "      }"
-      echo "    }"
-      echo "  }"
-      echo "}"
+      cat << EOF
+{
+  "mcpServers": {
+    "grafana": {
+      "command": "docker",
+      "args": ["run", "--rm", "-i", "-e", "GRAFANA_URL", "-e", "GRAFANA_SERVICE_ACCOUNT_TOKEN", "mcp/grafana", "-t", "stdio"],
+      "env": {
+        "GRAFANA_URL": "https://grafana.silverseekers.org",
+        "GRAFANA_SERVICE_ACCOUNT_TOKEN": "${GENERATED_TOKEN}"
+      }
+    }
+  }
+}
+EOF
       echo "=================================================="
     else
       echo "❌ Failed to create token"
@@ -141,11 +148,6 @@ spec:
                 secretKeyRef:
                   name: grafana-admin-secret
                   key: admin-password
-            - name: MCP_TOKEN
-              valueFrom:
-                secretKeyRef:
-                  name: grafana-mcp-token
-                  key: token
           volumeMounts:
             - name: scripts
               mountPath: /scripts
