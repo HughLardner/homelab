@@ -26,7 +26,7 @@ kubectl logs -n metallb-system -l app=metallb -l component=controller
 ### `ipaddresspool.yaml`
 Defines IP address pools that MetalLB can assign to LoadBalancer services.
 
-**Default Pool**: `192.168.10.150/28` (IPs: 150-159)
+**Default Pool**: `192.168.10.150/28` (IPs: 150-165, 16 addresses)
 
 **Key Fields**:
 - `addresses`: IP ranges in CIDR or range notation
