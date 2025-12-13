@@ -56,6 +56,9 @@
       when: certmanager_check.rc != 0
       register: crds_install
       changed_when: "'created' in crds_install.stdout or 'configured' in crds_install.stdout"
+      retries: 5
+      delay: 10
+      until: crds_install.rc == 0
 
     - name: Install cert-manager
       ansible.builtin.command:
@@ -63,6 +66,9 @@
       when: certmanager_check.rc != 0
       register: certmanager_install
       changed_when: "'created' in certmanager_install.stdout or 'configured' in certmanager_install.stdout"
+      retries: 5
+      delay: 10
+      until: certmanager_install.rc == 0
 
     - name: Wait for cert-manager controller to be ready
       ansible.builtin.command:
