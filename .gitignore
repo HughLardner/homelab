@@ -22,6 +22,9 @@ sealed-secrets-private-key.pem
 sealed-secrets-public-key.pem
 sealed-secrets-key-backup.yaml
 
+# Let's Encrypt certificate backup (contains private keys!)
+letsencrypt-certs-backup.yaml
+
 # Plain secrets file (NEVER commit this!)
 secrets.yml
 secrets.yaml

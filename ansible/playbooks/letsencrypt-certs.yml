@@ -1,0 +1,204 @@
+---
+# Let's Encrypt Certificate Backup and Restore
+# Preserves production certificates across cluster rebuilds to avoid rate limits
+#
+# Usage:
+#   Backup:  ansible-playbook playbooks/letsencrypt-certs.yml -e cert_action=backup
+#   Restore: ansible-playbook playbooks/letsencrypt-certs.yml -e cert_action=restore
+#   List:    ansible-playbook playbooks/letsencrypt-certs.yml -e cert_action=list
+#
+# Rate Limit Context:
+#   Let's Encrypt allows 5 certificates per exact set of hostnames per 168 hours.
+#   During development with frequent cluster rebuilds, you'll hit this limit quickly.
+#   This playbook preserves certs locally so they can be restored after rebuilds.
+
+- name: Let's Encrypt Certificate Management
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  become: false
+
+  vars:
+    backup_file: "{{ playbook_dir }}/../../letsencrypt-certs-backup.yaml"
+    
+    # All secrets to backup/restore (TLS certs + account keys)
+    secrets_to_backup:
+      # TLS Certificates
+      - namespace: argocd
+        name: argocd-server-tls
+      - namespace: authelia
+        name: authelia-tls
+      - namespace: longhorn-system
+        name: longhorn-frontend-tls
+      - namespace: monitoring
+        name: grafana-tls
+      - namespace: traefik
+        name: traefik-dashboard-tls
+      # Account keys (for certificate renewal)
+      - namespace: cert-manager
+        name: letsencrypt-prod-account-key
+      - namespace: cert-manager
+        name: letsencrypt-staging-account-key
+
+  tasks:
+    # =========================================================================
+    # BACKUP TASKS
+    # =========================================================================
+    - name: Backup - Export each secret
+      ansible.builtin.shell: |
+        kubectl get secret {{ item.name }} -n {{ item.namespace }} -o yaml 2>/dev/null | \
+          grep -v 'resourceVersion:' | \
+          grep -v 'uid:' | \
+          grep -v 'creationTimestamp:' | \
+          grep -v 'kubectl.kubernetes.io/last-applied-configuration' || true
+      loop: "{{ secrets_to_backup }}"
+      register: secret_exports
+      when: cert_action == "backup"
+      changed_when: false
+
+    - name: Backup - Create backup file header
+      ansible.builtin.copy:
+        content: |
+          # Let's Encrypt Certificate Backup
+          # Generated: {{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%SZ') }}
+          # WARNING: This file contains private keys - DO NOT COMMIT TO GIT
+          #
+          # To restore: make certs-restore
+          ---
+          apiVersion: v1
+          kind: List
+          items:
+        dest: "{{ backup_file }}"
+        mode: '0600'
+      when: cert_action == "backup"
+
+    - name: Backup - Append secrets to backup file
+      ansible.builtin.shell: |
+        if [ -n "{{ item.stdout | trim }}" ] && echo "{{ item.stdout }}" | grep -q 'kind: Secret'; then
+          echo "{{ item.stdout | b64encode }}" | base64 -d | sed 's/^/  /' >> "{{ backup_file }}"
+          echo "" >> "{{ backup_file }}"
+        fi
+      loop: "{{ secret_exports.results }}"
+      when: 
+        - cert_action == "backup"
+        - item.stdout | length > 0
+        - "'kind: Secret' in item.stdout"
+      changed_when: false
+
+    - name: Backup - Count backed up secrets
+      ansible.builtin.set_fact:
+        backed_up_count: "{{ secret_exports.results | selectattr('stdout', 'search', 'kind: Secret') | list | length }}"
+      when: cert_action == "backup"
+
+    - name: Backup - Show summary
+      ansible.builtin.debug:
+        msg: |
+          ✅ Certificate backup completed!
+          
+          Backup file: {{ backup_file }}
+          Secrets backed up: {{ backed_up_count | default(0) }}
+          
+          Status:
+          {% for result in secret_exports.results %}
+          {% if result.stdout and 'kind: Secret' in result.stdout %}
+            ✓ {{ result.item.namespace }}/{{ result.item.name }}
+          {% else %}
+            ✗ {{ result.item.namespace }}/{{ result.item.name }} (not found or empty)
+          {% endif %}
+          {% endfor %}
+          
+          ⚠️  This file contains private keys - ensure it stays in .gitignore
+      when: cert_action == "backup"
+
+    # =========================================================================
+    # RESTORE TASKS
+    # =========================================================================
+    - name: Restore - Check if backup file exists
+      ansible.builtin.stat:
+        path: "{{ backup_file }}"
+      register: backup_stat
+      when: cert_action == "restore"
+
+    - name: Restore - Fail if no backup exists
+      ansible.builtin.fail:
+        msg: |
+          No backup file found at {{ backup_file }}
+          
+          Run 'make certs-backup' first to create a backup,
+          or obtain a backup from a previous cluster.
+      when: cert_action == "restore" and not backup_stat.stat.exists
+
+    - name: Restore - Ensure namespaces exist
+      ansible.builtin.shell: |
+        kubectl create namespace {{ item.namespace }} --dry-run=client -o yaml | kubectl apply -f - 2>/dev/null || true
+      loop: "{{ secrets_to_backup }}"
+      when: cert_action == "restore" and backup_stat.stat.exists
+      changed_when: false
+
+    - name: Restore - Apply backup secrets
+      ansible.builtin.shell: |
+        kubectl apply -f "{{ backup_file }}" 2>&1 || true
+      register: restore_result
+      when: cert_action == "restore" and backup_stat.stat.exists
+
+    - name: Restore - Show summary
+      ansible.builtin.debug:
+        msg: |
+          ✅ Certificate restore completed!
+          
+          {{ restore_result.stdout | default('No output') }}
+          
+          Note: 
+          - Certificate resources will see existing secrets and skip Let's Encrypt requests
+          - You may need to restart pods if they cached old certificates
+          - Run 'make certs-list' to verify the restore
+      when: cert_action == "restore" and backup_stat.stat.exists
+
+    # =========================================================================
+    # LIST TASKS
+    # =========================================================================
+    - name: List - Get current certificates
+      ansible.builtin.shell: |
+        echo "=== Certificate Resources ==="
+        kubectl get certificates -A -o wide 2>/dev/null || echo "No certificates found"
+        echo ""
+        echo "=== TLS Secrets in Cluster ==="
+        for item in argocd/argocd-server-tls authelia/authelia-tls longhorn-system/longhorn-frontend-tls monitoring/grafana-tls traefik/traefik-dashboard-tls cert-manager/letsencrypt-prod-account-key cert-manager/letsencrypt-staging-account-key; do
+          ns=$(echo $item | cut -d/ -f1)
+          name=$(echo $item | cut -d/ -f2)
+          if kubectl get secret $name -n $ns >/dev/null 2>&1; then
+            issuer=$(kubectl get secret $name -n $ns -o jsonpath='{.metadata.annotations.cert-manager\.io/issuer-name}' 2>/dev/null || echo "n/a")
+            echo "  ✓ $item (issuer: $issuer)"
+          else
+            echo "  ✗ $item (not found)"
+          fi
+        done
+      register: cluster_status
+      when: cert_action == "list"
+      changed_when: false
+
+    - name: List - Check backup file
+      ansible.builtin.stat:
+        path: "{{ backup_file }}"
+      register: backup_file_stat
+      when: cert_action == "list"
+
+    - name: List - Build backup status
+      ansible.builtin.set_fact:
+        backup_status_lines: |
+          
+          === Local Backup Status ===
+          {% if backup_file_stat.stat.exists %}
+          Backup file: {{ backup_file }}
+          Size: {{ backup_file_stat.stat.size }} bytes
+          Modified: {{ '%Y-%m-%d %H:%M:%S' | strftime(backup_file_stat.stat.mtime) }}
+          {% else %}
+          No backup file found.
+          Run 'make certs-backup' to create one.
+          {% endif %}
+      when: cert_action == "list"
+
+    - name: List - Display status
+      ansible.builtin.debug:
+        msg: "{{ (cluster_status.stdout_lines + backup_status_lines.split('\n')) | select() | list }}"
+      when: cert_action == "list"

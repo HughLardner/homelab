@@ -1,8 +1,8 @@
 ---
 # Authelia TLS Certificate
 # Automatically issued by cert-manager
-# NOTE: Using staging issuer to avoid rate limits during testing
-# Change to letsencrypt-prod for trusted certificates in production
+# NOTE: Using staging issuer temporarily due to Let's Encrypt rate limits
+# TODO: Switch to letsencrypt-prod when rate limit resets
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
