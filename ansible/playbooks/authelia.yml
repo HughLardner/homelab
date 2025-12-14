@@ -131,11 +131,15 @@
         release_namespace: "{{ authelia_namespace }}"
         create_namespace: true
         wait: true
-        wait_timeout: 600s
+        wait_timeout: 900s
         values_files:
           - "{{ temp_dir.path }}/values.yaml"
       environment:
         KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      register: helm_result
+      retries: 3
+      delay: 30
+      until: helm_result is succeeded
 
     # =========================================================================
     # Wait for Authelia to be Ready
@@ -229,3 +233,4 @@
             1. Wait for TLS certificate to be issued
             2. Test login at https://{{ authelia_domain }}
             3. Update Grafana and ArgoCD OIDC configuration
+

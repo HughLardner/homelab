@@ -1,4 +1,4 @@
-.PHONY: help init plan apply destroy ssh-node k3s-* metallb-* longhorn-* cert-manager-* traefik-* argocd-* authelia-* monitoring-* sealed-secrets-* seal-secrets kured-* root-app-deploy apps-list apps-status monitoring-secrets inventory clean deploy-infra deploy-platform deploy-services deploy-all deploy deploy-apps
+.PHONY: help init plan apply destroy ssh-node k3s-* metallb-* longhorn-* cert-manager-* certs-* traefik-* argocd-* authelia-* monitoring-* sealed-secrets-* seal-secrets kured-* root-app-deploy apps-list apps-status monitoring-secrets inventory clean clean-backups deploy-infra deploy-platform deploy-services deploy-all deploy deploy-apps
 
 # Default target
 help:
@@ -28,6 +28,9 @@ help:
 	@echo "  make longhorn-ui       - Open Longhorn UI"
 	@echo "  make cert-manager-install - Install cert-manager (TLS)"
 	@echo "  make cert-manager-status  - Check cert-manager status"
+	@echo "  make certs-backup         - Backup Let's Encrypt certs locally (avoid rate limits)"
+	@echo "  make certs-restore        - Restore Let's Encrypt certs from local backup"
+	@echo "  make certs-list           - List current certificates and backup status"
 	@echo "  make traefik-install      - Install Traefik (Ingress Controller)"
 	@echo "  make traefik-status       - Check Traefik status"
 	@echo "  make traefik-dashboard    - Open Traefik dashboard"
@@ -37,6 +40,8 @@ help:
 	@echo "  make argocd-ui            - Open ArgoCD web UI"
 	@echo "  make sealed-secrets-install - Install Sealed Secrets (Secret Encryption)"
 	@echo "  make sealed-secrets-status  - Check Sealed Secrets status"
+	@echo "  make sealed-secrets-backup  - Backup encryption keys (before cluster rebuild)"
+	@echo "  make sealed-secrets-restore - Restore encryption keys (after rebuild, before install)"
 	@echo "  make seal-secrets           - Encrypt secrets from secrets.yml and commit to git"
 	@echo "  make authelia-secrets       - Apply Authelia sealed secrets (prerequisite)"
 	@echo "  make authelia-install       - Install Authelia SSO Platform"
@@ -81,6 +86,7 @@ help:
 	@echo ""
 	@echo "Utility Commands:"
 	@echo "  make clean         - Clean temporary files"
+	@echo "  make clean-backups - Remove cert and sealed-secrets backups (fresh start)"
 	@echo "  make logs          - Show Ansible logs"
 
 # ============================================================================
@@ -97,6 +103,24 @@ apply:
 	cd terraform && terraform apply -auto-approve
 
 destroy:
+	@echo "========================================"
+	@echo "🔐 Backing up secrets before destroy..."
+	@echo "========================================"
+	@# Backup certs if cluster is accessible
+	@if kubectl cluster-info >/dev/null 2>&1; then \
+		echo "Backing up TLS certificates..."; \
+		$(MAKE) certs-backup || echo "⚠️  Cert backup failed (cluster may not have certs)"; \
+		echo ""; \
+		echo "Backing up Sealed Secrets keys..."; \
+		$(MAKE) sealed-secrets-backup || echo "⚠️  Sealed secrets backup failed (may not be installed)"; \
+		echo ""; \
+	else \
+		echo "⚠️  Cluster not accessible - skipping backups"; \
+		echo ""; \
+	fi
+	@echo "========================================"
+	@echo "🗑️  Destroying infrastructure..."
+	@echo "========================================"
 	cd terraform && terraform destroy -auto-approve
 
 output:
@@ -208,6 +232,32 @@ cert-manager-status:
 	@echo "ClusterIssuers:"
 	@kubectl get clusterissuer
 
+# ============================================================================
+# Let's Encrypt Certificate Backup/Restore
+# Preserves production certs to avoid rate limits during development
+# ============================================================================
+
+certs-backup:
+	@echo "Backing up Let's Encrypt certificates..."
+	@echo "This preserves certs locally to avoid rate limits during cluster rebuilds."
+	@echo ""
+	cd ansible && ansible-playbook playbooks/letsencrypt-certs.yml -e cert_action=backup
+
+certs-restore:
+	@echo "Restoring Let's Encrypt certificates from backup..."
+	@echo ""
+	cd ansible && ansible-playbook playbooks/letsencrypt-certs.yml -e cert_action=restore
+	@echo ""
+	@echo "Note: Run this AFTER cert-manager-install but BEFORE services request new certs."
+
+certs-list:
+	@echo "Certificate Status:"
+	@echo ""
+	cd ansible && ansible-playbook playbooks/letsencrypt-certs.yml -e cert_action=list
+	@echo ""
+	@echo "Local backup file:"
+	@ls -la letsencrypt-certs-backup.yaml 2>/dev/null || echo "  No backup found. Run 'make certs-backup' to create one."
+
 traefik-install: inventory
 	@echo "Installing Traefik ingress controller..."
 	cd ansible && ansible-playbook playbooks/traefik.yml
@@ -298,6 +348,23 @@ sealed-secrets-status:
 	@echo "  Linux:  See kubernetes/services/sealed-secrets/README.md"
 	@echo ""
 	@echo "📖 Documentation: kubernetes/services/sealed-secrets/README.md"
+
+sealed-secrets-backup:
+	@echo "Backing up Sealed Secrets encryption keys..."
+	@echo "This preserves keys so existing sealed secrets remain decryptable after cluster rebuilds."
+	@echo ""
+	cd ansible && ansible-playbook playbooks/sealed-secrets-key.yml -e key_action=backup
+
+sealed-secrets-restore:
+	@echo "Restoring Sealed Secrets encryption keys from backup..."
+	@echo "Run this BEFORE sealed-secrets-install to preserve existing sealed secrets."
+	@echo ""
+	cd ansible && ansible-playbook playbooks/sealed-secrets-key.yml -e key_action=restore
+
+sealed-secrets-list:
+	@echo "Sealed Secrets Key Status:"
+	@echo ""
+	cd ansible && ansible-playbook playbooks/sealed-secrets-key.yml -e key_action=list
 
 seal-secrets:
 	@if [ ! -f secrets.yml ]; then \
@@ -610,6 +677,29 @@ clean:
 	rm -rf ansible/.cache
 	@echo "✅ Cleaned temporary files"
 
+clean-backups:
+	@echo "🗑️  Removing secret backup files..."
+	@echo ""
+	@if [ -f letsencrypt-certs-backup.yaml ]; then \
+		rm -f letsencrypt-certs-backup.yaml; \
+		echo "  ✓ Removed letsencrypt-certs-backup.yaml"; \
+	else \
+		echo "  - letsencrypt-certs-backup.yaml (not found)"; \
+	fi
+	@if [ -f sealed-secrets-key-backup.yaml ]; then \
+		rm -f sealed-secrets-key-backup.yaml; \
+		echo "  ✓ Removed sealed-secrets-key-backup.yaml"; \
+	else \
+		echo "  - sealed-secrets-key-backup.yaml (not found)"; \
+	fi
+	@echo ""
+	@echo "✅ Backup files removed"
+	@echo ""
+	@echo "⚠️  Next cluster deployment will:"
+	@echo "   - Request new Let's Encrypt certificates (watch rate limits!)"
+	@echo "   - Generate new sealed-secrets encryption keys"
+	@echo "   - Require re-sealing all secrets with: make seal-secrets"
+
 logs:
 	@if [ -f ansible/logs/ansible.log ]; then \
 		tail -f ansible/logs/ansible.log; \
@@ -667,6 +757,12 @@ deploy-services: deploy-platform
 	@echo "Installing Cert-Manager (TLS)..."
 	$(MAKE) cert-manager-install
 	@echo ""
+	@# Restore TLS certificates if backup exists (avoids Let's Encrypt rate limits)
+	@if [ -f letsencrypt-certs-backup.yaml ]; then \
+		echo "📦 Restoring TLS certificates from backup..."; \
+		$(MAKE) certs-restore; \
+		echo ""; \
+	fi
 	@echo "Installing Traefik (Ingress)..."
 	$(MAKE) traefik-install
 	@echo ""
@@ -676,11 +772,22 @@ deploy-services: deploy-platform
 	@echo "Installing ArgoCD (GitOps)..."
 	$(MAKE) argocd-install
 	@echo ""
+	@# Restore Sealed Secrets keys BEFORE installing controller (preserves existing sealed secrets)
+	@if [ -f sealed-secrets-key-backup.yaml ]; then \
+		echo "🔐 Restoring Sealed Secrets encryption keys from backup..."; \
+		$(MAKE) sealed-secrets-restore; \
+		echo ""; \
+	fi
 	@echo "Installing Sealed Secrets (Secret Encryption)..."
 	$(MAKE) sealed-secrets-install
 	@echo ""
-	@echo "Sealing secrets with cluster key..."
-	$(MAKE) seal-secrets
+	@# Only re-seal if no backup was restored (new cluster) or if secrets.yml has new entries
+	@if [ ! -f sealed-secrets-key-backup.yaml ]; then \
+		echo "Sealing secrets with new cluster key..."; \
+		$(MAKE) seal-secrets; \
+	else \
+		echo "ℹ️  Skipping seal-secrets (using restored keys - existing sealed secrets will work)"; \
+	fi
 	@echo ""
 	@echo "Applying Authelia Secrets..."
 	$(MAKE) authelia-secrets
