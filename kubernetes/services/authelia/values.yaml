@@ -96,18 +96,11 @@ configMap:
       password:
         algorithm: argon2
   
-  # Session configuration
+  # Session configuration (in-memory for single replica - no Redis needed)
   session:
     cookies:
       - domain: silverseekers.org
         authelia_url: https://auth.silverseekers.org
-    redis:
-      enabled: true
-      enabledSecret: false
-      host: authelia-redis-master
-      port: 6379
-      password:
-        disabled: true
   
   # Storage backend (SQLite)
   storage:
@@ -185,21 +178,7 @@ configMap:
             - groups
           token_endpoint_auth_method: client_secret_basic
 
-# Redis subchart
+# Redis subchart - disabled for single-replica homelab (in-memory sessions work fine)
 redis:
-  enabled: true
-  architecture: standalone
-  auth:
-    enabled: false
-  master:
-    persistence:
-      enabled: true
-      storageClass: "longhorn"
-      size: 1Gi
-    resources:
-      requests:
-        cpu: "10m"
-        memory: "16Mi"
-      limits:
-        cpu: "100m"
-        memory: "64Mi"
+  enabled: false
+
