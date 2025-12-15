@@ -137,7 +137,8 @@
 
     - name: Restore - Apply backup secrets
       ansible.builtin.shell: |
-        kubectl apply -f "{{ backup_file }}" 2>&1 || true
+        # Use --server-side and --force-conflicts to handle metadata conflicts
+        kubectl apply --server-side --force-conflicts -f "{{ backup_file }}" 2>&1 || true
       register: restore_result
       when: cert_action == "restore" and backup_stat.stat.exists
 

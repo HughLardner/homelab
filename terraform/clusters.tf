@@ -58,7 +58,7 @@ variable "cluster" {
     cert_manager_domain        = "silverseekers.org"
     cloudflare_email           = "hughlardner@gmail.com"
     # TLS Issuer: "letsencrypt-staging" for testing, "letsencrypt-prod" for trusted certs
-    default_cert_issuer        = "letsencrypt-staging"
+    default_cert_issuer        = "letsencrypt-prod"
     traefik_dashboard_domain   = "traefik.silverseekers.org"
     longhorn_domain            = "longhorn.silverseekers.org"
     # ArgoCD GitOps

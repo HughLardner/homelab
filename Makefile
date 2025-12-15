@@ -6,69 +6,100 @@ help:
 	@echo ""
 	@echo "Single-Node K3s Cluster (12GB RAM, Longhorn + local-path storage)"
 	@echo ""
-	@echo "Terraform Commands:"
-	@echo "  make init          - Initialize Terraform"
-	@echo "  make plan          - Plan infrastructure changes"
-	@echo "  make apply         - Apply infrastructure changes"
-	@echo "  make destroy       - Destroy infrastructure"
-	@echo "  make output        - Show Terraform outputs"
+	@echo "═══════════════════════════════════════════════════════════════════"
+	@echo "  TERRAFORM (Infrastructure)"
+	@echo "═══════════════════════════════════════════════════════════════════"
+	@echo "  make init              - Initialize Terraform"
+	@echo "  make plan              - Plan infrastructure changes"
+	@echo "  make apply             - Apply infrastructure changes"
+	@echo "  make destroy           - Destroy infrastructure"
+	@echo "  make output            - Show Terraform outputs"
 	@echo ""
-	@echo "Ansible Commands:"
+	@echo "═══════════════════════════════════════════════════════════════════"
+	@echo "  LAYER 0: Cluster Bootstrap"
+	@echo "═══════════════════════════════════════════════════════════════════"
 	@echo "  make inventory         - Generate Ansible inventory from Terraform"
 	@echo "  make node-prep         - Prepare nodes (update packages, configure system)"
 	@echo "  make node-prep-reboot  - Prepare nodes with auto-reboot after upgrade"
 	@echo "  make k3s-install       - Install K3s cluster"
 	@echo "  make k3s-status        - Check K3s cluster status"
 	@echo "  make k3s-destroy       - Uninstall K3s from all nodes"
-	@echo "  make metallb-install   - Install MetalLB (LoadBalancer)"
-	@echo "  make metallb-test      - Install MetalLB with LoadBalancer testing"
-	@echo "  make longhorn-install  - Install Longhorn (Distributed Storage)"
-	@echo "  make longhorn-ingress  - Configure Longhorn IngressRoute (after Traefik)"
-	@echo "  make longhorn-status   - Check Longhorn status"
-	@echo "  make longhorn-ui       - Open Longhorn UI"
-	@echo "  make cert-manager-install - Install cert-manager (TLS)"
-	@echo "  make cert-manager-status  - Check cert-manager status"
-	@echo "  make certs-backup         - Backup Let's Encrypt certs locally (avoid rate limits)"
-	@echo "  make certs-restore        - Restore Let's Encrypt certs from local backup"
-	@echo "  make certs-list           - List current certificates and backup status"
-	@echo "  make traefik-install      - Install Traefik (Ingress Controller)"
-	@echo "  make traefik-status       - Check Traefik status"
-	@echo "  make traefik-dashboard    - Open Traefik dashboard"
-	@echo "  make argocd-install       - Install ArgoCD (GitOps)"
-	@echo "  make argocd-status        - Check ArgoCD status"
-	@echo "  make argocd-password      - Get ArgoCD admin password"
-	@echo "  make argocd-ui            - Open ArgoCD web UI"
-	@echo "  make sealed-secrets-install - Install Sealed Secrets (Secret Encryption)"
-	@echo "  make sealed-secrets-status  - Check Sealed Secrets status"
-	@echo "  make sealed-secrets-backup  - Backup encryption keys (before cluster rebuild)"
-	@echo "  make sealed-secrets-restore - Restore encryption keys (after rebuild, before install)"
-	@echo "  make seal-secrets           - Encrypt secrets from secrets.yml and commit to git"
+	@echo "  make ping              - Test connectivity to all nodes"
+	@echo ""
+	@echo "═══════════════════════════════════════════════════════════════════"
+	@echo "  LAYER 1: Foundation (no dependencies)"
+	@echo "═══════════════════════════════════════════════════════════════════"
+	@echo "  make metallb-install       - Install MetalLB (LoadBalancer provider)"
+	@echo "  make metallb-test          - Install MetalLB with LoadBalancer testing"
+	@echo "  make longhorn-install      - Install Longhorn (Distributed Storage)"
+	@echo "  make longhorn-status       - Check Longhorn status"
+	@echo "  make longhorn-ui           - Open Longhorn UI"
+	@echo ""
+	@echo "═══════════════════════════════════════════════════════════════════"
+	@echo "  LAYER 2: Secrets Infrastructure"
+	@echo "═══════════════════════════════════════════════════════════════════"
+	@echo "  make sealed-secrets-install  - Install Sealed Secrets controller"
+	@echo "  make sealed-secrets-status   - Check Sealed Secrets status"
+	@echo "  make seal-secrets            - Encrypt secrets from secrets.yml"
+	@echo ""
+	@echo "═══════════════════════════════════════════════════════════════════"
+	@echo "  LAYER 3: Platform Services (need Layer 1-2)"
+	@echo "═══════════════════════════════════════════════════════════════════"
+	@echo "  make cert-manager-install   - Install cert-manager (TLS certificates)"
+	@echo "  make cert-manager-status    - Check cert-manager status"
+	@echo "  make traefik-install        - Install Traefik (Ingress Controller)"
+	@echo "  make traefik-status         - Check Traefik status"
+	@echo "  make traefik-dashboard      - Open Traefik dashboard"
+	@echo "  make longhorn-ingress       - Configure Longhorn IngressRoute (after Traefik)"
+	@echo ""
+	@echo "═══════════════════════════════════════════════════════════════════"
+	@echo "  LAYER 4: GitOps & Identity (need Layer 1-3)"
+	@echo "═══════════════════════════════════════════════════════════════════"
+	@echo "  make argocd-install         - Install ArgoCD (GitOps)"
+	@echo "  make argocd-status          - Check ArgoCD status"
+	@echo "  make argocd-password        - Get ArgoCD admin password"
+	@echo "  make argocd-ui              - Open ArgoCD web UI"
 	@echo "  make authelia-secrets       - Apply Authelia sealed secrets (prerequisite)"
 	@echo "  make authelia-install       - Install Authelia SSO Platform"
 	@echo "  make authelia-status        - Check Authelia status"
 	@echo "  make authelia-ui            - Open Authelia SSO UI"
 	@echo "  make authelia-logs          - View Authelia logs"
-	@echo "  make kured-deploy           - Deploy Kured via ArgoCD (Automated Node Reboots)"
+	@echo ""
+	@echo "═══════════════════════════════════════════════════════════════════"
+	@echo "  LAYER 5: Applications (deployed via ArgoCD)"
+	@echo "═══════════════════════════════════════════════════════════════════"
+	@echo "  make root-app-deploy        - Deploy App-of-Apps (manages all applications)"
+	@echo "  make apps-list              - List all ArgoCD applications"
+	@echo "  make apps-status            - Show status of all applications"
+	@echo "  make monitoring-secrets     - Create monitoring Kubernetes secrets"
+	@echo "  make monitoring-deploy      - Deploy monitoring via ArgoCD"
+	@echo "  make monitoring-sync        - Sync monitoring application"
+	@echo "  make monitoring-status      - Check monitoring stack status"
+	@echo "  make kured-deploy           - Deploy Kured (Automated Node Reboots)"
 	@echo "  make kured-status           - Check Kured status"
 	@echo "  make kured-logs             - View Kured logs"
 	@echo ""
-	@echo "ArgoCD GitOps Commands:"
-	@echo "  make root-app-deploy       - Deploy App-of-Apps (manages all applications)"
-	@echo "  make apps-list             - List all ArgoCD applications"
-	@echo "  make apps-status           - Show status of all applications"
-	@echo "  make monitoring-secrets    - Create monitoring Kubernetes secrets (prerequisite)"
-	@echo "  make monitoring-deploy     - Deploy monitoring via ArgoCD (GitOps)"
-	@echo "  make monitoring-sync       - Sync monitoring application"
-	@echo "  make monitoring-install    - Install monitoring via Ansible (legacy)"
-	@echo "  make monitoring-status     - Check monitoring stack status"
-	@echo "  make grafana-ui            - Open Grafana dashboard"
-	@echo "  make grafana-mcp-token     - Get Grafana MCP service account token"
-	@echo "  make grafana-mcp-configure - Auto-configure .cursor/mcp.json with Grafana token"
+	@echo "═══════════════════════════════════════════════════════════════════"
+	@echo "  Grafana & Monitoring UI"
+	@echo "═══════════════════════════════════════════════════════════════════"
+	@echo "  make grafana-ui             - Open Grafana dashboard"
+	@echo "  make grafana-mcp-token      - Get Grafana MCP service account token"
+	@echo "  make grafana-mcp-configure  - Auto-configure .cursor/mcp.json"
 	@echo "  make grafana-mcp-regenerate - Regenerate the Grafana MCP token"
-	@echo "  make vmsingle-ui           - Port-forward Victoria Metrics UI"
-	@echo "  make ping                 - Test connectivity to all nodes"
+	@echo "  make vmsingle-ui            - Port-forward Victoria Metrics UI"
 	@echo ""
-	@echo "Full Stack Deployment:"
+	@echo "═══════════════════════════════════════════════════════════════════"
+	@echo "  Backup & Restore"
+	@echo "═══════════════════════════════════════════════════════════════════"
+	@echo "  make certs-backup           - Backup Let's Encrypt certs (avoid rate limits)"
+	@echo "  make certs-restore          - Restore Let's Encrypt certs from backup"
+	@echo "  make certs-list             - List certificates and backup status"
+	@echo "  make sealed-secrets-backup  - Backup encryption keys (before rebuild)"
+	@echo "  make sealed-secrets-restore - Restore encryption keys (after rebuild)"
+	@echo ""
+	@echo "═══════════════════════════════════════════════════════════════════"
+	@echo "  Full Stack Deployment"
+	@echo "═══════════════════════════════════════════════════════════════════"
 	@echo "  make deploy-infra      - Deploy infrastructure only (Terraform VMs)"
 	@echo "  make deploy-platform   - Deploy infrastructure + K3s cluster"
 	@echo "  make deploy-services   - Deploy infrastructure + K3s + all core services"
@@ -76,18 +107,16 @@ help:
 	@echo "  make deploy            - Alias for deploy-services (most common)"
 	@echo "  make deploy-apps       - Deploy only applications (assumes services exist)"
 	@echo ""
-	@echo "SSH Commands:"
-	@echo "  make ssh-node      - SSH to the K3s node"
-	@echo ""
-	@echo "Workspace Commands:"
-	@echo "  make workspace-list    - List all workspaces"
+	@echo "═══════════════════════════════════════════════════════════════════"
+	@echo "  Utility Commands"
+	@echo "═══════════════════════════════════════════════════════════════════"
+	@echo "  make ssh-node          - SSH to the K3s node"
+	@echo "  make workspace-list    - List all Terraform workspaces"
 	@echo "  make workspace-show    - Show current workspace"
 	@echo "  make workspace WS=name - Switch to workspace"
-	@echo ""
-	@echo "Utility Commands:"
-	@echo "  make clean         - Clean temporary files"
-	@echo "  make clean-backups - Remove cert and sealed-secrets backups (fresh start)"
-	@echo "  make logs          - Show Ansible logs"
+	@echo "  make clean             - Clean temporary files"
+	@echo "  make clean-backups     - Remove cert and sealed-secrets backups"
+	@echo "  make logs              - Show Ansible logs"
 
 # ============================================================================
 # Terraform Commands
@@ -523,9 +552,20 @@ monitoring-sync:
 		echo "  kubectl -n argocd patch app monitoring --type merge -p '{\"operation\":{\"initiatedBy\":{\"username\":\"admin\"},\"sync\":{\"revision\":\"HEAD\"}}}'"; \
 	fi
 
-monitoring-install: inventory
-	@echo "Installing Monitoring Stack (Victoria Metrics + Grafana)..."
-	cd ansible && ansible-playbook playbooks/monitoring.yml
+monitoring-install:
+	@echo "════════════════════════════════════════════════════════════════════"
+	@echo "⚠️  DEPRECATED: monitoring-install (Ansible) is no longer supported"
+	@echo "════════════════════════════════════════════════════════════════════"
+	@echo ""
+	@echo "Use ArgoCD-based deployment instead:"
+	@echo ""
+	@echo "  1. Create secrets:  make monitoring-secrets"
+	@echo "  2. Deploy via ArgoCD:  make monitoring-deploy"
+	@echo "  3. Sync if needed:  make monitoring-sync"
+	@echo ""
+	@echo "This ensures GitOps-managed, declarative monitoring deployment."
+	@echo ""
+	@exit 1
 
 monitoring-status:
 	@echo "Monitoring Stack Status:"
@@ -743,17 +783,50 @@ deploy-platform: deploy-infra
 	@echo "Next: make deploy-services"
 
 # Deploy infrastructure + K3s + all core services
+# Deployment order follows layer dependencies:
+#   Layer 1: MetalLB, Longhorn (no deps)
+#   Layer 2: Sealed Secrets (no deps, but needed before secrets are applied)
+#   Layer 3: Cert-Manager, Traefik (need MetalLB)
+#   Layer 4: ArgoCD (needs Traefik, cert-manager, sealed-secrets for OIDC)
+#   Layer 4: Authelia (needs all of the above)
 deploy-services: deploy-platform
 	@echo ""
 	@echo "========================================"
 	@echo "🚀 Deploying Core Services"
 	@echo "========================================"
+	@echo ""
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@echo "Layer 1: Foundation"
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 	@echo "Installing MetalLB (LoadBalancer)..."
 	$(MAKE) metallb-install
 	@echo ""
 	@echo "Installing Longhorn (Distributed Storage)..."
 	$(MAKE) longhorn-install
 	@echo ""
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@echo "Layer 2: Secrets Infrastructure"
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@# Restore Sealed Secrets keys BEFORE installing controller (preserves existing sealed secrets)
+	@if [ -f sealed-secrets-key-backup.yaml ]; then \
+		echo "🔐 Restoring Sealed Secrets encryption keys from backup..."; \
+		$(MAKE) sealed-secrets-restore; \
+		echo ""; \
+	fi
+	@echo "Installing Sealed Secrets (Secret Encryption)..."
+	$(MAKE) sealed-secrets-install
+	@echo ""
+	@# Only re-seal if no backup was restored (new cluster)
+	@if [ ! -f sealed-secrets-key-backup.yaml ]; then \
+		echo "Sealing secrets with new cluster key..."; \
+		$(MAKE) seal-secrets; \
+	else \
+		echo "ℹ️  Skipping seal-secrets (using restored keys - existing sealed secrets will work)"; \
+	fi
+	@echo ""
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@echo "Layer 3: Platform Services"
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 	@echo "Installing Cert-Manager (TLS)..."
 	$(MAKE) cert-manager-install
 	@echo ""
@@ -766,28 +839,14 @@ deploy-services: deploy-platform
 	@echo "Installing Traefik (Ingress)..."
 	$(MAKE) traefik-install
 	@echo ""
-	@echo "Configuring Longhorn IngressRoute..."
+	@echo "Configuring Longhorn IngressRoute (requires Traefik)..."
 	$(MAKE) longhorn-ingress
 	@echo ""
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@echo "Layer 4: GitOps & Identity"
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 	@echo "Installing ArgoCD (GitOps)..."
 	$(MAKE) argocd-install
-	@echo ""
-	@# Restore Sealed Secrets keys BEFORE installing controller (preserves existing sealed secrets)
-	@if [ -f sealed-secrets-key-backup.yaml ]; then \
-		echo "🔐 Restoring Sealed Secrets encryption keys from backup..."; \
-		$(MAKE) sealed-secrets-restore; \
-		echo ""; \
-	fi
-	@echo "Installing Sealed Secrets (Secret Encryption)..."
-	$(MAKE) sealed-secrets-install
-	@echo ""
-	@# Only re-seal if no backup was restored (new cluster) or if secrets.yml has new entries
-	@if [ ! -f sealed-secrets-key-backup.yaml ]; then \
-		echo "Sealing secrets with new cluster key..."; \
-		$(MAKE) seal-secrets; \
-	else \
-		echo "ℹ️  Skipping seal-secrets (using restored keys - existing sealed secrets will work)"; \
-	fi
 	@echo ""
 	@echo "Applying Authelia Secrets..."
 	$(MAKE) authelia-secrets
@@ -795,7 +854,9 @@ deploy-services: deploy-platform
 	@echo "Installing Authelia SSO Platform..."
 	$(MAKE) authelia-install
 	@echo ""
+	@echo "========================================"
 	@echo "✅ Core services deployment complete!"
+	@echo "========================================"
 	@echo ""
 	@echo "Access Points:"
 	@echo "  Traefik:   https://traefik.silverseekers.org"
