@@ -361,21 +361,21 @@
       when: not (ingress_crds_available | default(false))
 
     - name: Deploy ArgoCD Ingress resources via Helm
-      kubernetes.core.helm:
-        name: argocd-ingress
-        chart_ref: "{{ argocd_manifests_path }}"
-        release_namespace: "{{ argocd_namespace }}"
-        create_namespace: false
-        values_files:
-          - "{{ playbook_dir }}/../../config/homelab.yaml"
-        wait: true
-        wait_timeout: 300s
+      ansible.builtin.command:
+        cmd: >
+          helm upgrade --install argocd-ingress
+          {{ argocd_manifests_path }}
+          --namespace {{ argocd_namespace }}
+          --values {{ playbook_dir }}/../../config/homelab.yaml
+          --wait
+          --timeout=5m
       environment:
         KUBECONFIG: "{{ lookup('env', 'HOME') }}/.kube/config-homelab"
       delegate_to: localhost
       become: false
       when: ingress_crds_available | default(false)
       register: argocd_ingress_result
+      changed_when: "'has been upgraded' in argocd_ingress_result.stdout or 'has been installed' in argocd_ingress_result.stdout"
 
     # =========================================================================
     # Configure Repository Connection

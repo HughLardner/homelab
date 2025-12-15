@@ -141,20 +141,20 @@
       until: crd_check.rc == 0
 
     - name: Deploy Traefik Ingress resources via Helm
-      kubernetes.core.helm:
-        name: traefik-ingress
-        chart_ref: "{{ playbook_dir }}/../../kubernetes/services/traefik"
-        release_namespace: "{{ traefik_namespace }}"
-        create_namespace: false
-        values_files:
-          - "{{ playbook_dir }}/../../config/homelab.yaml"
-        wait: true
-        wait_timeout: 300s
+      ansible.builtin.command:
+        cmd: >
+          helm upgrade --install traefik-ingress
+          {{ playbook_dir }}/../../kubernetes/services/traefik
+          --namespace {{ traefik_namespace }}
+          --values {{ playbook_dir }}/../../config/homelab.yaml
+          --wait
+          --timeout=5m
       environment:
         KUBECONFIG: "{{ lookup('env', 'HOME') }}/.kube/config-homelab"
       delegate_to: localhost
       become: false
       register: traefik_ingress_result
+      changed_when: "'has been upgraded' in traefik_ingress_result.stdout or 'has been installed' in traefik_ingress_result.stdout"
 
     - name: Wait for dashboard certificate to be ready
       ansible.builtin.shell: |
