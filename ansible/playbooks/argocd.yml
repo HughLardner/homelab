@@ -150,6 +150,95 @@
         KUBECONFIG: /etc/rancher/k3s/k3s.yaml
 
     # =========================================================================
+    # Configure TLS Trust for Let's Encrypt Staging
+    # =========================================================================
+    # ArgoCD needs to trust the Let's Encrypt staging CA when connecting to
+    # OIDC providers (like Authelia) using staging certificates
+    - name: Check if using staging certificates
+      ansible.builtin.set_fact:
+        use_staging_certs: "{{ (argocd_cert_issuer | default('letsencrypt-staging')) == 'letsencrypt-staging' or (authelia_cert_issuer | default('letsencrypt-staging')) == 'letsencrypt-staging' }}"
+
+    - name: Get Authelia domain for TLS trust
+      ansible.builtin.set_fact:
+        authelia_oidc_domain: "{{ authelia_domain | default('auth.silverseekers.org') }}"
+
+    # Let's Encrypt Staging Root CA - "(STAGING) Pretend Pear X1"
+    # https://letsencrypt.org/docs/staging-environment/
+    - name: Set Let's Encrypt staging CA certificate
+      ansible.builtin.set_fact:
+        letsencrypt_staging_ca: |
+          -----BEGIN CERTIFICATE-----
+          MIIFmDCCA4CgAwIBAgIQU9C87nMpOIFKYpfvOHFHFDANBgkqhkiG9w0BAQsFADBm
+          MQswCQYDVQQGEwJVUzEzMDEGA1UEChMqKFNUQUdJTkcpIEludGVybmV0IFNlY3Vy
+          aXR5IFJlc2VhcmNoIEdyb3VwMSIwIAYDVQQDExkoU1RBR0lORykgUHJldGVuZCBQ
+          ZWFyIFgxMB4XDTE1MDYwNDExMDQzOFoXDTM1MDYwNDExMDQzOFowZjELMAkGA1UE
+          BhMCVVMxMzAxBgNVBAoTKihTVEFHSU5HKSBJbnRlcm5ldCBTZWN1cml0eSBSZXNl
+          YXJjaCBHcm91cDEiMCAGA1UEAxMZKFNUQUdJTkcpIFByZXRlbmQgUGVhciBYMTCC
+          AiIwDQYJKoZIhvcNAQEBBQADggIPADCCAgoCggIBALbagEdDTa1QgGBWSYkyMhsc
+          ZXENOBaVRTMX1hceJENgsL0Ma49D3MilI4KS38mtkmdF6cPWnL++fgehT0FbRHZg
+          jOEr8UAN4jH6VVXmo304v4HKWBaRCSQ+WJUbRlZMPd4gakb7jQr2BI8GsA3RJX2R
+          bKqo7a+wLA0GR9qn/r/ABPXjwwI6+W9/4wXDPHPyRNBl0xAT/cSfLD9MLLGdSN1r
+          EJe8rKgcPEfJWi7jVmXVAV9VplVD4WJTjEvdgyFvMjNd9K0f0owa2DFXLMi2nvnW
+          lbF9F0kLMbJpYAN0FHMkl7iq1uMqf8MOMDQpwW4NKl5bDbKxCNCALgAEJP2XFXEB
+          LJhWtHl+RLdfHUlWpvvWpcoPrL3e7lcZS4FQJmMBbMPhHYe0n/qDd/gdLRuTjZ2j
+          W60ikdHBrL02pZgLb3M2RdNoMgI0AEn8+u7OqONlMBSeqwJjN+f8UgSh+Uqv9YyR
+          KEBfv/O1mXKLIJa2Xq4dTJEHv6qHkqz4vUxlljzIYbmMV6Y0bP0Mi2wGBaAZHmb6
+          UHBPjFoGNi3jhMXvJ8Snn+8gPAG3BsM9fOWFVzwMQi8t6hjL8DPfaV9AJkUT4l78
+          IqBRVF27G4nHrdC1TrfFYxJfVOL6Y/aemR8AS+2K5l0rJPka3FAoacBb/NX9pba/
+          RA6lFlhT3LLVLk1ppnILAgMBAAGjQjBAMA4GA1UdDwEB/wQEAwIBBjAPBgNVHRMB
+          Af8EBTADAQH/MB0GA1UdDgQWBBS182Xy/rAKkh/7PH3zRKCsYyXDFDANBgkqhkiG
+          9w0BAQsFAAOCAgEAncDZNytDbrrVe68UT6py1lfF2h6Tm2p8ro42i87WWyP2LK8Y
+          nLHC0hvNfWeWmjZQYBQfGC5c7aQRezak+tHLdmrNKHkn5kn+9E9LCjCaEsyIIn2j
+          qdHlAkepu/C3KnNtVx5tW07e5bvIjJScwkCDbP3akWQixPpRFAsnP+ULx7k0aO1x
+          qAeaAhQ2rgo1F58hcflgqKTXnpPM02intVfiVVkX5GXpJjK5EoQtLceyGOrkxlM/
+          sTPq4UrnypmsqSagWV3HcUlYtDinc+nukFk6eR4XkzXBbwKOCQ0Y04cGE0T44Ej8
+          2PB4VHCz4RBhb5b8D0U7GBrHtNgWy7nAScpC+PQn1H5qlkSFD7sV2l8aBOvCMoD4
+          1jN/J8A4LAVSprqvMdIL94xvt2kMP9T1u4fwTFD+ABeNJLnBF8s1lbvJ4UwZxVMh
+          /Lna+5k/5l3T6PCMTHrFrBjVotGNhvWm1mFv4TtWBWuk5vlYJEBl95ML9E2JNlrM
+          +ysOxaMLVAkZlvBjMkr2YODC3PR+WlDgOTnYjg6BFbjW3LUALQF4RhvruPF0AJ8g
+          A0nEjgS8qR/uYWUFlNz/1T6yUlUvV8M9VlDfEP9p9RLf2fG9G3/xq2h56eZSLfCX
+          9Q2UnNslxDqo9phK5YRhz6RXgvqg5tbVBMb1I/JAz5OnNgG1mCzRgHlffaw=
+          -----END CERTIFICATE-----
+      when: use_staging_certs | bool
+
+    - name: Build TLS certs ConfigMap data
+      ansible.builtin.set_fact:
+        tls_certs_data: "{{ {authelia_oidc_domain: letsencrypt_staging_ca} }}"
+      when: use_staging_certs | bool
+
+    - name: Configure ArgoCD to trust Let's Encrypt staging CA
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: argocd-tls-certs-cm
+            namespace: "{{ argocd_namespace }}"
+          data: "{{ tls_certs_data }}"
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      register: tls_certs_cm_result
+      when: use_staging_certs | bool
+
+    - name: Display TLS trust configuration status
+      ansible.builtin.debug:
+        msg: "{{ 'Configured ArgoCD to trust Lets Encrypt staging CA for ' + authelia_oidc_domain if use_staging_certs else 'Using production certificates - no staging CA trust needed' }}"
+
+    - name: Restart ArgoCD server to pick up TLS trust config
+      ansible.builtin.command:
+        cmd: /usr/local/bin/k3s kubectl rollout restart deployment/argocd-server -n {{ argocd_namespace }}
+      register: argocd_restart
+      changed_when: "'restarted' in argocd_restart.stdout"
+      when: use_staging_certs | bool and tls_certs_cm_result is changed
+
+    - name: Wait for ArgoCD server restart to complete
+      ansible.builtin.command:
+        cmd: /usr/local/bin/k3s kubectl rollout status deployment/argocd-server -n {{ argocd_namespace }} --timeout=120s
+      changed_when: false
+      when: use_staging_certs | bool and tls_certs_cm_result is changed
+
+    # =========================================================================
     # Set Admin Password
     # =========================================================================
     - name: Get current time for password modification time
@@ -365,6 +454,9 @@
 
           🔑 OIDC Secret:
           {{ '✅ Applied' if (argocd_oidc_sealed.stat.exists and sealedsecrets_crd_available | default(false)) else '⏭️  SKIPPED - Run again after sealed-secrets install' if argocd_oidc_sealed.stat.exists else 'Not configured (no sealed secret file)' }}
+
+          🔒 TLS Trust (Staging CA):
+          {{ '✅ Configured - ArgoCD trusts LE staging CA for ' + authelia_oidc_domain if use_staging_certs else '⏭️  Not needed - using production certificates' }}
 
           📦 Repository Connection:
           {{ 'Configured: ' + argocd_github_repo_url if github_repo_configured else 'Not configured (no GitHub URL/token provided)' }}
