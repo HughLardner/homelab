@@ -57,11 +57,14 @@ spec:
       targetRevision: HEAD
       ref: values
 
-    # 6. Additional resources (VM CRDs, IngressRoute) via Kustomize
+    # 6. Ingress resources (Certificate, IngressRoute) via Helm
     - repoURL: https://github.com/HughLardner/homelab.git
       targetRevision: HEAD
       path: kubernetes/applications/monitoring
-      kustomize: {}
+      helm:
+        releaseName: monitoring-ingress
+        valueFiles:
+          - $values/config/homelab.yaml
 
   destination:
     server: https://kubernetes.default.svc

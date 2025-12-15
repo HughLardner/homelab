@@ -22,12 +22,19 @@
   become: true
   gather_facts: true
 
+  vars_files:
+    - "{{ playbook_dir }}/../../config/homelab.yaml"
+
   vars:
     argocd_namespace: argocd
     argocd_helm_repo: https://argoproj.github.io/argo-helm
     argocd_helm_chart: argo-cd
     argocd_helm_version: "7.7.10"  # Latest stable version
     argocd_manifests_path: "{{ playbook_dir }}/../../kubernetes/services/argocd"
+    # Variables loaded from config/homelab.yaml via vars_files
+    argocd_domain: "{{ services.argocd.domain }}"
+    argocd_cert_issuer: "{{ services.argocd.cert_issuer | default(global.cert_issuer) }}"
+    argocd_replicas: "{{ services.argocd.replicas | default(1) }}"
 
   tasks:
     # =========================================================================

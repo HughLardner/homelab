@@ -137,8 +137,13 @@
 
     - name: Restore - Apply backup secrets
       ansible.builtin.shell: |
-        # Use --server-side and --force-conflicts to handle metadata conflicts
-        kubectl apply --server-side --force-conflicts -f "{{ backup_file }}" 2>&1 || true
+        # Strip cluster-specific metadata before applying to new cluster
+        # The backup file is YAML but we can still apply it directly
+        # Use grep to remove metadata lines that cause conflicts
+        cat "{{ backup_file }}" | \
+          grep -v '^\s*uid:' | \
+          grep -v '^\s*resourceVersion:' | \
+          kubectl apply -f - 2>&1 || true
       register: restore_result
       when: cert_action == "restore" and backup_stat.stat.exists
 

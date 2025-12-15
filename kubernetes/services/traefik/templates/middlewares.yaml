@@ -5,7 +5,7 @@ apiVersion: traefik.io/v1alpha1
 kind: Middleware
 metadata:
   name: traefik-dashboard-auth
-  namespace: traefik
+  namespace: {{ .Release.Namespace }}
 spec:
   basicAuth:
     secret: traefik-dashboard-auth
@@ -17,7 +17,7 @@ apiVersion: traefik.io/v1alpha1
 kind: Middleware
 metadata:
   name: security-headers
-  namespace: traefik
+  namespace: {{ .Release.Namespace }}
 spec:
   headers:
     frameDeny: true
@@ -36,7 +36,7 @@ apiVersion: traefik.io/v1alpha1
 kind: Middleware
 metadata:
   name: rate-limit
-  namespace: traefik
+  namespace: {{ .Release.Namespace }}
 spec:
   rateLimit:
     average: 100
@@ -50,7 +50,7 @@ apiVersion: traefik.io/v1alpha1
 kind: Middleware
 metadata:
   name: compress
-  namespace: traefik
+  namespace: {{ .Release.Namespace }}
 spec:
   compress: {}
 
@@ -61,7 +61,7 @@ apiVersion: traefik.io/v1alpha1
 kind: Middleware
 metadata:
   name: https-redirect
-  namespace: traefik
+  namespace: {{ .Release.Namespace }}
 spec:
   redirectScheme:
     scheme: https
@@ -74,7 +74,7 @@ apiVersion: traefik.io/v1alpha1
 kind: Middleware
 metadata:
   name: ip-whitelist-local
-  namespace: traefik
+  namespace: {{ .Release.Namespace }}
 spec:
   ipWhiteList:
     sourceRange:
@@ -96,7 +96,7 @@ apiVersion: traefik.io/v1alpha1
 kind: Middleware
 metadata:
   name: authelia-forward-auth
-  namespace: traefik
+  namespace: {{ .Release.Namespace }}
 spec:
   forwardAuth:
     # Points to Authelia's forward auth endpoint
@@ -108,3 +108,4 @@ spec:
       - Remote-Groups
       - Remote-Email
       - Remote-Name
+

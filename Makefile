@@ -396,16 +396,16 @@ sealed-secrets-list:
 	cd ansible && ansible-playbook playbooks/sealed-secrets-key.yml -e key_action=list
 
 seal-secrets:
-	@if [ ! -f secrets.yml ]; then \
-		echo "❌ secrets.yml not found!"; \
+	@if [ ! -f config/secrets.yml ]; then \
+		echo "❌ config/secrets.yml not found!"; \
 		echo ""; \
 		echo "Create it from the template:"; \
-		echo "  cp secrets.example.yml secrets.yml"; \
+		echo "  cp secrets.example.yml config/secrets.yml"; \
 		echo ""; \
 		echo "Then fill in your secret values and run this command again."; \
 		exit 1; \
 	fi
-	@echo "Sealing secrets from secrets.yml..."
+	@echo "Sealing secrets from config/secrets.yml..."
 	ansible-playbook ansible/playbooks/seal-secrets.yml
 
 authelia-secrets: inventory

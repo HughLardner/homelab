@@ -1,0 +1,11 @@
+apiVersion: v2
+name: argocd-ingress
+description: ArgoCD IngressRoute and Certificate for Traefik
+type: application
+version: 1.0.0
+appVersion: "2.9"
+
+# This chart creates the ingress resources for ArgoCD
+# The main ArgoCD application is deployed using the official ArgoCD Helm chart
+# with argocd-values.yaml
+

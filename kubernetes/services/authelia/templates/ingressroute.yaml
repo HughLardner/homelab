@@ -1,0 +1,21 @@
+---
+# Authelia IngressRoute
+# Access at: https://{{ .Values.services.authelia.domain }}
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: authelia
+  namespace: { { .Release.Namespace } }
+  annotations:
+    kubernetes.io/ingress.class: traefik
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`{{ .Values.services.authelia.domain }}`)
+      kind: Rule
+      services:
+        - name: authelia
+          port: 80
+  tls:
+    secretName: authelia-tls

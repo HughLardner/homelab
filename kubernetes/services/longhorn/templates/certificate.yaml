@@ -1,0 +1,16 @@
+---
+# Longhorn Frontend TLS Certificate
+# Automatically issued by cert-manager
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: longhorn-frontend-tls
+  namespace: {{ .Release.Namespace }}
+spec:
+  secretName: longhorn-frontend-tls
+  issuerRef:
+    name: {{ .Values.services.longhorn.cert_issuer | default .Values.global.cert_issuer }}
+    kind: ClusterIssuer
+  dnsNames:
+    - {{ .Values.services.longhorn.domain }}
+

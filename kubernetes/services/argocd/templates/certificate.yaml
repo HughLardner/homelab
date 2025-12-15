@@ -1,0 +1,16 @@
+---
+# ArgoCD TLS Certificate
+# Automatically issued by cert-manager
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: argocd-server-tls
+  namespace: {{ .Release.Namespace }}
+spec:
+  secretName: argocd-server-tls
+  issuerRef:
+    name: {{ .Values.services.argocd.cert_issuer | default .Values.global.cert_issuer }}
+    kind: ClusterIssuer
+  dnsNames:
+    - {{ .Values.services.argocd.domain }}
+

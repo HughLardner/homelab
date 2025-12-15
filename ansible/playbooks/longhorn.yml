@@ -29,13 +29,19 @@
   become: true
   gather_facts: true
 
+  vars_files:
+    - "{{ playbook_dir }}/../../config/homelab.yaml"
+
   vars:
     longhorn_version: "v1.6.0"
     longhorn_namespace: "longhorn-system"
-    longhorn_replica_count: 1  # Single node - increase to 2 when adding second node
-    longhorn_data_path: "/var/lib/longhorn"
-    longhorn_ui_service_type: "LoadBalancer"
     longhorn_manifests_path: "{{ playbook_dir }}/../../kubernetes/services/longhorn"
+    # Variables loaded from config/homelab.yaml via vars_files
+    longhorn_domain: "{{ services.longhorn.domain }}"
+    longhorn_cert_issuer: "{{ services.longhorn.cert_issuer | default(global.cert_issuer) }}"
+    longhorn_replica_count: "{{ services.longhorn.replica_count | default(1) }}"
+    longhorn_data_path: "{{ services.longhorn.data_path | default('/var/lib/longhorn') }}"
+    longhorn_ui_service_type: "{{ services.longhorn.ui_service_type | default('LoadBalancer') }}"
 
   pre_tasks:
     - name: Wait for K3s to be ready

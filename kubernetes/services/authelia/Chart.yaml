@@ -1,0 +1,10 @@
+apiVersion: v2
+name: authelia-ingress
+description: Authelia IngressRoute, Certificate, and Middlewares for Traefik
+type: application
+version: 1.0.0
+appVersion: "4.38"
+# This chart creates the ingress resources for Authelia
+# The main Authelia application is deployed using the official Authelia Helm chart
+# with authelia-values.yaml
+

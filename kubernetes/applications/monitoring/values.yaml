@@ -1,0 +1,19 @@
+# Default values for monitoring-ingress chart
+# These are overridden by config/homelab.yaml when deploying
+
+global:
+  domain: silverseekers.org
+  cert_issuer: letsencrypt-prod
+
+services:
+  grafana:
+    domain: grafana.silverseekers.org
+    storage_size: 5Gi
+    # cert_issuer: letsencrypt-prod  # Falls back to global.cert_issuer if not set
+  
+  monitoring:
+    storage_class: longhorn
+    prometheus_storage_size: 10Gi
+    prometheus_retention: 15d
+    alertmanager_storage_size: 2Gi
+
