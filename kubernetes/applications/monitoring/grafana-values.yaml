@@ -74,6 +74,9 @@ grafana.ini:
     auth_url: https://auth.silverseekers.org/api/oidc/authorization
     token_url: https://auth.silverseekers.org/api/oidc/token
     api_url: https://auth.silverseekers.org/api/oidc/userinfo
+    # Skip TLS verification for Let's Encrypt staging certificates
+    # TODO: Remove this when switching to production certificates
+    # tls_skip_verify_insecure: true
     # Token endpoint auth method - must match Authelia's client config (client_secret_post)
     # Options: AutoDetect, inParams (client_secret_post), inHeader (client_secret_basic)
     auth_style: inParams
