@@ -370,6 +370,8 @@
           - "{{ playbook_dir }}/../../config/homelab.yaml"
         wait: true
         wait_timeout: 300s
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
       when: ingress_crds_available | default(false)
       register: argocd_ingress_result
 
