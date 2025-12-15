@@ -24,6 +24,7 @@
 
   vars_files:
     - "{{ playbook_dir }}/../../config/homelab.yaml"
+    - "{{ playbook_dir }}/../../config/secrets.yml"
 
   vars:
     argocd_namespace: argocd
@@ -35,6 +36,7 @@
     argocd_domain: "{{ services.argocd.domain }}"
     argocd_cert_issuer: "{{ services.argocd.cert_issuer | default(global.cert_issuer) }}"
     argocd_replicas: "{{ services.argocd.replicas | default(1) }}"
+    # argocd_password is loaded directly from config/secrets.yml via vars_files
 
   tasks:
     # =========================================================================
