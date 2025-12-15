@@ -86,6 +86,9 @@ def generate_inventory(cluster_name="homelab"):
                         "authentik_domain": config.get("authentik_domain", "auth.silverseekers.org"),
                         "authentik_storage_class": config.get("authentik_storage_class", "longhorn"),
                         "authentik_cert_issuer": config.get("authentik_cert_issuer") or config.get("default_cert_issuer", "letsencrypt-staging"),
+                        # Authelia SSO configuration (alternative to Authentik)
+                        "authelia_domain": config.get("authelia_domain") or config.get("authentik_domain", "auth.silverseekers.org"),
+                        "authelia_cert_issuer": config.get("authelia_cert_issuer") or config.get("default_cert_issuer", "letsencrypt-staging"),
                         # Longhorn configuration
                         "longhorn_domain": config.get("longhorn_domain", ""),
                         "longhorn_cert_issuer": config.get("longhorn_cert_issuer") or config.get("default_cert_issuer", "letsencrypt-staging")
