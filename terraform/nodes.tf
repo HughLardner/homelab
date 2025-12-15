@@ -6,7 +6,7 @@ resource "proxmox_virtual_environment_vm" "node" {
   description = "Managed by Terraform"
   vm_id       = each.value.vm_id
   name        = each.value.name
-  tags        = [var.cluster.cluster_name,"k3s"]
+  tags        = [local.cluster_config.cluster_name,"k3s"]
   node_name   = local.proxmox_node
 
   clone {
@@ -69,13 +69,13 @@ resource "proxmox_virtual_environment_vm" "node" {
     ip_config {
       ipv4 {
         address = "${each.value.ip_address}/24"
-        gateway = var.cluster.gateway
+        gateway = local.cluster_config.gateway
       }
     }
 
     dns {
       domain  = "lan"
-      servers = var.cluster.dns_servers
+      servers = local.cluster_config.dns_servers
     }
   }
 
@@ -89,7 +89,7 @@ resource "proxmox_virtual_environment_vm" "node" {
   migrate         = false  # Single host, no migration
   on_boot         = true
   started         = true
-  pool_id         = upper(var.cluster.cluster_name)
+  pool_id         = upper(local.cluster_config.cluster_name)
 
   lifecycle {
     ignore_changes = [
