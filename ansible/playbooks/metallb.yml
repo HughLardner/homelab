@@ -7,15 +7,20 @@
   become: true
   gather_facts: true
 
+  vars_files:
+    - "{{ playbook_dir }}/../../config/homelab.yaml"
+
   vars:
     metallb_version: "v0.14.9"
     metallb_namespace: "metallb-system"
     metallb_test_loadbalancer: false
+    # Map config structure to expected variable name
+    metallb_ipv4_pools: "{{ services.metallb.ipv4_pools }}"
 
   pre_tasks:
     - name: Verify metallb_ipv4_pools is defined
       ansible.builtin.fail:
-        msg: "metallb_ipv4_pools is not defined in inventory"
+        msg: "metallb_ipv4_pools is not defined in config/homelab.yaml"
       when: metallb_ipv4_pools is not defined or metallb_ipv4_pools == ""
 
     - name: Wait for K3s to be ready
