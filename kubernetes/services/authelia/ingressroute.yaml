@@ -1,8 +1,6 @@
 ---
 # Authelia TLS Certificate
 # Automatically issued by cert-manager
-# NOTE: Using staging issuer temporarily due to Let's Encrypt rate limits
-# TODO: Switch to letsencrypt-prod when rate limit resets
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
@@ -11,14 +9,14 @@ metadata:
 spec:
   secretName: authelia-tls
   issuerRef:
-    name: letsencrypt-staging
+    name: "{{ authelia_cert_issuer | default(default_cert_issuer) | default('letsencrypt-prod') }}"
     kind: ClusterIssuer
   dnsNames:
-    - auth.silverseekers.org
+    - "{{ authelia_domain }}"
 
 ---
 # Authelia IngressRoute
-# Access at: https://auth.silverseekers.org
+# Access at: https://{{ authelia_domain }}
 apiVersion: traefik.io/v1alpha1
 kind: IngressRoute
 metadata:
@@ -30,7 +28,7 @@ spec:
   entryPoints:
     - websecure
   routes:
-    - match: Host(`auth.silverseekers.org`)
+    - match: Host(`{{ authelia_domain }}`)
       kind: Rule
       services:
         - name: authelia
