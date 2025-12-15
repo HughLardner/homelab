@@ -23,12 +23,23 @@
   become: true
   gather_facts: true
 
+  vars_files:
+    - "{{ playbook_dir }}/../../config/homelab.yaml"
+
   vars:
     monitoring_namespace: monitoring
     monitoring_helm_repo: https://prometheus-community.github.io/helm-charts
     monitoring_helm_chart: kube-prometheus-stack
     monitoring_helm_version: "79.12.0"  # Latest stable version
     monitoring_manifests_path: "{{ playbook_dir }}/../../kubernetes/applications/monitoring"
+    # Variables loaded from config/homelab.yaml via vars_files
+    grafana_domain: "{{ services.grafana.domain }}"
+    grafana_cert_issuer: "{{ services.grafana.cert_issuer | default(global.cert_issuer) }}"
+    monitoring_storage_class: "{{ services.monitoring.storage_class | default('longhorn') }}"
+    prometheus_storage_size: "{{ services.monitoring.prometheus_storage_size | default('10Gi') }}"
+    grafana_storage_size: "{{ services.grafana.storage_size | default('5Gi') }}"
+    prometheus_retention: "{{ services.monitoring.prometheus_retention | default('15d') }}"
+    alertmanager_storage_size: "{{ services.monitoring.alertmanager_storage_size | default('2Gi') }}"
 
   tasks:
     # =========================================================================

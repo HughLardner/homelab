@@ -1,0 +1,10 @@
+apiVersion: v2
+name: monitoring-ingress
+description: Grafana IngressRoute and Certificate for Traefik
+type: application
+version: 1.0.0
+appVersion: "10.0"
+
+# This chart creates the ingress resources for Grafana
+# The main monitoring stack is deployed using VictoriaMetrics and Grafana Helm charts
+

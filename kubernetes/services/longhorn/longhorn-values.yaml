@@ -1,0 +1,111 @@
+---
+# Longhorn Helm Values
+# ⚠️  SINGLE SOURCE OF TRUTH: This file is used by both Ansible and manual operations
+#
+# Deployment Methods:
+# 1. Automated (Ansible): make longhorn-install
+#    - Templates variables from inventory
+#    - Applies to cluster automatically
+#
+# 2. Manual (Helm): helm upgrade --install longhorn longhorn/longhorn --values values.yaml
+#    - Apply configuration changes directly
+#    - Useful for day-2 operations
+
+# Default settings
+defaultSettings:
+  # Number of replicas for volumes
+  # Single node = 1, increase to 2 when adding second node
+  defaultReplicaCount: {{ longhorn_replica_count | default(1) }}
+
+  # Storage path on each node
+  defaultDataPath: {{ longhorn_data_path | default('/var/lib/longhorn') }}
+
+  # Automatically clean up snapshot when volume is deleted
+  autoCleanupSystemGeneratedSnapshot: true
+
+  # Enable automatic salvage
+  autoSalvage: true
+
+  # Concurrent automatic engine upgrade per node limit
+  concurrentAutomaticEngineUpgradePerNodeLimit: 1
+
+  # Storage over-provisioning percentage
+  storageOverProvisioningPercentage: 200
+
+  # Storage minimal available percentage
+  storageMinimalAvailablePercentage: 25
+
+# Persistence settings
+persistence:
+  # Set as default StorageClass (false = local-path remains default for ephemeral data)
+  defaultClass: false
+
+  # Default filesystem type
+  defaultFsType: ext4
+
+  # Default replica count for StorageClass
+  # Single node = 1, increase to 2 when adding second node
+  defaultClassReplicaCount: {{ longhorn_replica_count | default(1) }}
+
+  # Reclaim policy
+  reclaimPolicy: Delete
+
+# Service configuration for Longhorn UI
+service:
+  ui:
+    # Service type: ClusterIP, LoadBalancer, or NodePort
+    type: {{ longhorn_ui_service_type | default('LoadBalancer') }}
+    # NodePort (only if type is NodePort)
+    # nodePort: 30000
+    annotations:
+      metallb.universe.tf/loadBalancerIPs: "192.168.10.144"  # Lock static IP
+
+# Ingress configuration (disabled by default - enable via ArgoCD later)
+ingress:
+  enabled: false
+  # Enable after Traefik is installed:
+  # enabled: true
+  # ingressClassName: traefik
+  # host: longhorn.{{ traefik_domain | default('localhost') }}
+  # tls: true
+  # tlsSecret: longhorn-tls
+  # annotations:
+  #   cert-manager.io/cluster-issuer: letsencrypt-prod
+
+# Resource limits for Longhorn manager
+resources:
+  limits:
+    cpu: 200m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+# Enable CSI snapshotter
+# Single node = 1 replica each, increase when adding more nodes
+csi:
+  kubeletRootDir: /var/lib/kubelet
+  attacherReplicaCount: 1
+  provisionerReplicaCount: 1
+  resizerReplicaCount: 1
+  snapshotterReplicaCount: 1
+
+# Image pull policy
+image:
+  pullPolicy: IfNotPresent
+
+# Node selector (optional - deploy to specific nodes)
+# nodeSelector:
+#   storage: "true"
+
+# Tolerations (optional - tolerate taints)
+# tolerations:
+# - key: "node-role.kubernetes.io/storage"
+#   operator: "Exists"
+#   effect: "NoSchedule"
+
+# Enable Longhorn system backup
+# systemBackup:
+#   enabled: true
+#   recurringJob:
+#     schedule: "0 2 * * *"  # Daily at 2 AM

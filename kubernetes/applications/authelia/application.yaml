@@ -1,0 +1,45 @@
+---
+# ArgoCD Application for Authelia Ingress Resources
+# Deploys: Certificate, IngressRoute, Middlewares, Users Secret
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: authelia-ingress
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+
+  sources:
+    # Helm chart source
+    - repoURL: https://github.com/HughLardner/homelab.git
+      targetRevision: HEAD
+      path: kubernetes/services/authelia
+      helm:
+        releaseName: authelia-ingress
+        valueFiles:
+          - $values/config/homelab.yaml
+    
+    # Values source (this repo) - referenced by $values
+    - repoURL: https://github.com/HughLardner/homelab.git
+      targetRevision: HEAD
+      ref: values
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: authelia
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+

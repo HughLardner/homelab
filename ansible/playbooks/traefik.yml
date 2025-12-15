@@ -7,18 +7,18 @@
   become: true
   gather_facts: true
 
+  vars_files:
+    - "{{ playbook_dir }}/../../config/homelab.yaml"
+
   vars:
     traefik_version: "v28.0.0"  # Helm chart version
     traefik_namespace: "traefik"
-    # Variables from inventory (no need to redefine):
-    # - traefik_replicas
-    # - traefik_service_type
-    # - traefik_loadbalancer_ip
-    # - traefik_storage_class
-    # - traefik_dashboard_domain
-    # - traefik_cert_issuer
-    # - traefik_dashboard_username
-    # - traefik_dashboard_password
+    # Variables loaded from config/homelab.yaml via vars_files
+    traefik_dashboard_domain: "{{ services.traefik.domain }}"
+    traefik_cert_issuer: "{{ services.traefik.cert_issuer | default(global.cert_issuer) }}"
+    traefik_replicas: "{{ services.traefik.replicas | default(2) }}"
+    traefik_service_type: "{{ services.traefik.service_type | default('LoadBalancer') }}"
+    traefik_storage_class: "{{ services.traefik.storage_class | default('longhorn') }}"
 
   pre_tasks:
     - name: Verify required variables are defined

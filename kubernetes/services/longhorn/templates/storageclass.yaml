@@ -14,13 +14,11 @@ allowVolumeExpansion: true
 reclaimPolicy: Delete
 volumeBindingMode: Immediate
 parameters:
-  numberOfReplicas: "2"
+  numberOfReplicas: "{{ .Values.services.longhorn.replica_count | default 1 }}"
   staleReplicaTimeout: "30"
   fromBackup: ""
   fsType: "ext4"
-  # SSD nodes only
-  # nodeSelector: "storage-type:ssd"
-  # diskSelector: "ssd"
+
 ---
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
@@ -33,7 +31,8 @@ allowVolumeExpansion: true
 reclaimPolicy: Retain  # Keep PV when PVC is deleted
 volumeBindingMode: Immediate
 parameters:
-  numberOfReplicas: "3"
+  numberOfReplicas: "{{ .Values.services.longhorn.replica_count | default 1 }}"
   staleReplicaTimeout: "30"
   fromBackup: ""
   fsType: "ext4"
+

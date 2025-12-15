@@ -1,0 +1,105 @@
+---
+# Homelab Configuration - Single Source of Truth
+# This file is consumed by Terraform, Ansible, Helm, and ArgoCD
+# All tools read from this file to ensure consistency
+
+# =============================================================================
+# Cluster Configuration
+# =============================================================================
+cluster:
+  name: homelab
+  id: 1
+
+# =============================================================================
+# Infrastructure Configuration (Proxmox VMs)
+# =============================================================================
+infrastructure:
+  node_count: 1 # Single node cluster (saves 8GB RAM on Proxmox)
+  node_start_ip: 20 # First node IP: subnet_prefix.node_start_ip
+  cores: 4 # 4 cores for single node (plenty for homelab)
+  cpu_type: host # Use host CPU for best performance
+  memory: 12288 # 12GB for single node (leaves ~3GB for Proxmox)
+  disk_size: 100 # 100GB disk (more space for local-path storage)
+  vlan_id: null # No VLAN tag - handled by Unifi switch port
+  subnet_prefix: "192.168.10"
+  gateway: "192.168.10.1"
+  dns_servers:
+    - "1.1.1.1"
+    - "1.0.0.1"
+  kube_vip: "192.168.10.15"
+  kube_vip_hostname: homelab-api
+  lb_cidrs: "192.168.10.150/28"
+  ssh_user: ubuntu
+
+# =============================================================================
+# Global Settings
+# =============================================================================
+global:
+  domain: silverseekers.org
+  cert_issuer: letsencrypt-prod # Options: letsencrypt-staging, letsencrypt-prod
+  email: hughlardner@gmail.com
+  cloudflare_email: hughlardner@gmail.com
+
+# =============================================================================
+# Service Configuration
+# =============================================================================
+services:
+  # ---------------------------------------------------------------------------
+  # Traefik Ingress Controller
+  # ---------------------------------------------------------------------------
+  traefik:
+    domain: traefik.silverseekers.org
+    replicas: 2
+    service_type: LoadBalancer
+    storage_class: longhorn
+
+  # ---------------------------------------------------------------------------
+  # ArgoCD GitOps
+  # ---------------------------------------------------------------------------
+  argocd:
+    domain: argocd.silverseekers.org
+    replicas: 1
+    github_repo_url: https://github.com/HughLardner/homelab.git
+
+  # ---------------------------------------------------------------------------
+  # Authelia SSO
+  # ---------------------------------------------------------------------------
+  authelia:
+    domain: auth.silverseekers.org
+
+  # ---------------------------------------------------------------------------
+  # Grafana Monitoring
+  # ---------------------------------------------------------------------------
+  grafana:
+    domain: grafana.silverseekers.org
+    storage_size: 5Gi
+
+  # ---------------------------------------------------------------------------
+  # Longhorn Storage
+  # ---------------------------------------------------------------------------
+  longhorn:
+    domain: longhorn.silverseekers.org
+    replica_count: 1
+    data_path: /var/lib/longhorn
+    ui_service_type: LoadBalancer
+
+  # ---------------------------------------------------------------------------
+  # Monitoring Stack (VictoriaMetrics)
+  # ---------------------------------------------------------------------------
+  monitoring:
+    storage_class: longhorn
+    prometheus_storage_size: 10Gi
+    prometheus_retention: 15d
+    alertmanager_storage_size: 2Gi
+
+  # ---------------------------------------------------------------------------
+  # MetalLB Load Balancer
+  # ---------------------------------------------------------------------------
+  metallb:
+    ipv4_pools: "192.168.10.150/28"
+
+  # ---------------------------------------------------------------------------
+  # External DNS
+  # ---------------------------------------------------------------------------
+  external_dns:
+    domain: silverseekers.org

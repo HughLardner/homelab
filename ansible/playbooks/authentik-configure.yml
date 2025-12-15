@@ -46,9 +46,9 @@
     # =========================================================================
     # Load Secrets
     # =========================================================================
-    - name: Load secrets from secrets.yml
+    - name: Load secrets from config/secrets.yml
       ansible.builtin.include_vars:
-        file: "{{ playbook_dir }}/../../secrets.yml"
+        file: "{{ playbook_dir }}/../../config/secrets.yml"
       no_log: true
 
     - name: Extract bootstrap token

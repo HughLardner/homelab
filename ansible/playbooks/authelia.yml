@@ -17,18 +17,22 @@
   become: true
   gather_facts: false
 
+  vars_files:
+    - "{{ playbook_dir }}/../../config/homelab.yaml"
+
   vars:
     authelia_namespace: authelia
     authelia_helm_repo: https://charts.authelia.com
     authelia_helm_chart: authelia
     authelia_helm_version: "0.9.0"
-    authelia_domain: "{{ hostvars[inventory_hostname]['authelia_domain'] | default('auth.silverseekers.org') }}"
-    authelia_cert_issuer: "{{ hostvars[inventory_hostname]['authelia_cert_issuer'] | default('letsencrypt-prod') }}"
-    authelia_storage_class: "{{ hostvars[inventory_hostname]['authelia_storage_class'] | default('longhorn') }}"
-    base_domain: "{{ hostvars[inventory_hostname]['external_dns_domain'] | default('silverseekers.org') }}"
+    # Variables loaded from config/homelab.yaml via vars_files
+    authelia_domain: "{{ services.authelia.domain }}"
+    authelia_cert_issuer: "{{ services.authelia.cert_issuer | default(global.cert_issuer) }}"
+    authelia_storage_class: "{{ services.monitoring.storage_class | default('longhorn') }}"
+    base_domain: "{{ global.domain }}"
     
     # Paths
-    authelia_values_path: "{{ playbook_dir }}/../../kubernetes/services/authelia/values.yaml"
+    authelia_values_path: "{{ playbook_dir }}/../../kubernetes/services/authelia/authelia-values.yaml"
     authelia_manifests_path: "{{ playbook_dir }}/../../kubernetes/services/authelia"
 
   tasks:
