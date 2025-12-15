@@ -87,7 +87,7 @@
 
     - name: Template Traefik Helm values
       ansible.builtin.template:
-        src: ../../kubernetes/services/traefik/values.yaml
+        src: ../../kubernetes/services/traefik/traefik-values.yaml
         dest: /tmp/traefik-values.yaml
         mode: '0644'
 
