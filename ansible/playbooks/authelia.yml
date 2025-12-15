@@ -98,21 +98,8 @@
         dest: "{{ temp_dir.path }}/values.yaml"
         mode: '0600'
 
-    # =========================================================================
-    # Deploy Users ConfigMap
-    # =========================================================================
-    - name: Copy users ConfigMap to node
-      ansible.builtin.copy:
-        src: "{{ authelia_manifests_path }}/users-configmap.yaml"
-        dest: "{{ temp_dir.path }}/users-configmap.yaml"
-        mode: '0600'
-
-    - name: Apply users ConfigMap
-      kubernetes.core.k8s:
-        state: present
-        src: "{{ temp_dir.path }}/users-configmap.yaml"
-      environment:
-        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+    # Note: Users database is now deployed as a Secret via the Helm chart
+    # See kubernetes/services/authelia/templates/users-secret.yaml
 
     # =========================================================================
     # Add Helm Repository
