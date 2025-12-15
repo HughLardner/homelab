@@ -2,11 +2,53 @@
 
 Ansible automation for deploying a K3s cluster on Proxmox VMs. Currently configured for single-node deployment (scalable to 3-node HA).
 
+## Configuration Architecture
+
+All configuration is centralized in `config/homelab.yaml` - the **single source of truth**.
+
+```
+config/
+├── homelab.yaml    # All non-secret configuration (domains, replicas, etc.)
+└── secrets.yml     # Secrets (gitignored, used by Ansible)
+```
+
+### How Ansible Uses Configuration
+
+```yaml
+# Playbooks load configuration via vars_files
+- name: Deploy Service
+  hosts: k3s_masters[0]
+  vars_files:
+    - "{{ playbook_dir }}/../../config/homelab.yaml"
+    - "{{ playbook_dir }}/../../config/secrets.yml"
+  tasks:
+    - name: Deploy via Helm
+      kubernetes.core.helm:
+        name: service-name
+        chart_ref: "{{ playbook_dir }}/../../kubernetes/services/service-name"
+        values_files:
+          - "{{ playbook_dir }}/../../config/homelab.yaml"
+```
+
+All service configuration (domains, replicas, cert issuers, etc.) comes from `config/homelab.yaml`.
+
 ## Quick Start
 
-### 1. Generate Inventory from Terraform
+### 1. Configure Your Homelab
 
-The inventory is automatically generated from Terraform's cluster configuration:
+```bash
+# Set up configuration
+cp config/homelab.yaml.example config/homelab.yaml
+vim config/homelab.yaml  # Edit your configuration
+
+# Set up secrets
+cp secrets.example.yml config/secrets.yml
+vim config/secrets.yml  # Add your secrets
+```
+
+### 2. Generate Inventory from Terraform
+
+The inventory only contains node IPs (dynamic data from Terraform). All service configuration comes from `config/homelab.yaml`.
 
 ```bash
 # From project root
@@ -17,7 +59,7 @@ cd ansible/inventory
 python3 generate_inventory.py --format yaml > hosts.yml
 ```
 
-### 2. Install K3s Cluster
+### 3. Install K3s Cluster
 
 ```bash
 # Using Makefile (recommended)
@@ -28,7 +70,7 @@ cd ansible
 ansible-playbook playbooks/k3s-cluster-setup.yml
 ```
 
-### 3. Access Your Cluster
+### 4. Access Your Cluster
 
 ```bash
 # Set kubeconfig
@@ -50,14 +92,14 @@ make k3s-install       # Install K3s cluster
 make k3s-status        # Check K3s service status
 make k3s-destroy       # Uninstall K3s from all nodes
 
-# Core Services
+# Core Services (deployed as Helm charts)
 make metallb-install         # Install MetalLB LoadBalancer
 make longhorn-install        # Install Longhorn storage
 make cert-manager-install    # Install cert-manager for TLS
 make traefik-install         # Install Traefik ingress controller
 make argocd-install          # Install ArgoCD GitOps platform
 make sealed-secrets-install  # Install Sealed Secrets controller
-make seal-secrets            # Encrypt secrets from secrets.yml
+make seal-secrets            # Encrypt secrets from config/secrets.yml
 
 # Full Stack Deployment
 make deploy-all        # Deploy everything (infra + platform + services + apps)
@@ -75,37 +117,96 @@ make ssh-node          # SSH to the cluster node
 
 ```
 ansible/
-├── ansible.cfg                      # Simplified Ansible configuration
+├── ansible.cfg                      # Ansible configuration
 ├── inventory/
-│   ├── generate_inventory.py       # Auto-generate from Terraform
-│   └── hosts.yml                    # Generated inventory (not committed)
+│   ├── generate_inventory.py       # Generates hosts.yml from Terraform output
+│   └── hosts.yml                   # Generated inventory (node IPs only)
 ├── playbooks/
 │   ├── k3s-cluster-setup.yml       # Main K3s installation playbook
-│   ├── node-prep.yml                # Node preparation tasks
-│   ├── metallb.yml                  # MetalLB LoadBalancer setup
-│   ├── longhorn.yml                 # Longhorn storage setup
-│   ├── cert-manager.yml             # Cert-manager for TLS certificates
-│   ├── traefik.yml                  # Traefik ingress controller
-│   ├── argocd.yml                   # ArgoCD GitOps platform
-│   ├── sealed-secrets.yml           # Sealed Secrets controller
-│   ├── seal-secrets.yml             # Encrypt secrets for GitOps
-│   ├── seal-secret-task.yml         # Individual secret processing
-│   ├── monitoring.yml               # Prometheus + Grafana stack
-│   └── monitoring-secrets.yml       # Create monitoring secrets
+│   ├── node-prep.yml               # Node preparation tasks
+│   ├── metallb.yml                 # MetalLB LoadBalancer setup
+│   ├── longhorn.yml                # Longhorn storage (via Helm)
+│   ├── cert-manager.yml            # Cert-manager for TLS
+│   ├── traefik.yml                 # Traefik ingress (via Helm)
+│   ├── argocd.yml                  # ArgoCD GitOps (via Helm)
+│   ├── authelia.yml                # Authelia SSO (via Helm)
+│   ├── sealed-secrets.yml          # Sealed Secrets controller
+│   ├── seal-secrets.yml            # Encrypt secrets for GitOps
+│   ├── monitoring.yml              # Victoria Metrics + Grafana (via Helm)
+│   └── monitoring-secrets.yml      # Create monitoring secrets
 └── roles/
     ├── k3s/
-    │   ├── defaults/main.yml        # Default variables
-    │   ├── vars/main.yml            # Internal variables
-    │   ├── handlers/main.yml        # Service handlers
+    │   ├── defaults/main.yml       # Default variables
+    │   ├── vars/main.yml           # Internal variables
+    │   ├── handlers/main.yml       # Service handlers
     │   └── tasks/
-    │       ├── main.yml             # Core installation logic
-    │       └── kubeconfig.yml       # Kubeconfig management
+    │       ├── main.yml            # Core installation logic
+    │       └── kubeconfig.yml      # Kubeconfig management
     └── node-prep/
-        ├── defaults/main.yml        # Node prep defaults
-        └── tasks/main.yml           # System preparation tasks
+        ├── defaults/main.yml       # Node prep defaults
+        └── tasks/main.yml          # System preparation tasks
 ```
 
+## How the Configuration Flow Works
+
+```
+┌────────────────────────────────────────────────────────────────┐
+│ config/homelab.yaml (Single Source of Truth)                   │
+│  - domains, replicas, cert issuers, etc.                       │
+└────────────────────────────────────────────────────────────────┘
+           ↓
+┌────────────────────────────────────────────────────────────────┐
+│ Ansible Playbook (vars_files loads config)                     │
+│  - kubernetes.core.helm deploys Helm charts                    │
+│  - Charts read values from config/homelab.yaml                 │
+└────────────────────────────────────────────────────────────────┘
+           ↓
+┌────────────────────────────────────────────────────────────────┐
+│ Helm Charts (kubernetes/services/*)                            │
+│  - Templates use {{ .Values.services.* }} from config          │
+│  - Certificates, IngressRoutes, etc. use consistent values     │
+└────────────────────────────────────────────────────────────────┘
+```
+
+### Inventory vs Configuration
+
+**`ansible/inventory/hosts.yml`** - Only contains:
+- Node IPs (dynamic, from Terraform)
+- SSH connection settings
+
+**`config/homelab.yaml`** - Contains all service configuration:
+- Domains (traefik, argocd, grafana, etc.)
+- Cert issuers, replicas, resource limits
+- Global settings
+
+This separation means:
+- Terraform generates node IPs → `hosts.yml`
+- Static configuration → `config/homelab.yaml`
+- Secrets → `config/secrets.yml`
+
 ## Configuration
+
+### Editing Configuration
+
+All service configuration is in `config/homelab.yaml`:
+
+```yaml
+global:
+  domain: silverseekers.org
+  cert_issuer: letsencrypt-prod
+  email: your@email.com
+
+services:
+  traefik:
+    domain: traefik.silverseekers.org
+    replicas: 2
+  argocd:
+    domain: argocd.silverseekers.org
+  authelia:
+    domain: auth.silverseekers.org
+  grafana:
+    domain: grafana.silverseekers.org
+```
 
 ### K3s Version
 
@@ -131,13 +232,13 @@ k3s_local_kubeconfig_name: "config-homelab"
 
 ### 1. Inventory Generation
 
-The `generate_inventory.py` script reads Terraform's `cluster_config.json` and generates a dynamic inventory:
+The `generate_inventory.py` script reads Terraform's output and generates a minimal inventory:
 
 - Reads: `ansible/tmp/<cluster>/cluster_config.json`
 - Outputs: `ansible/inventory/hosts.yml`
-- Includes: Node IPs, cluster vars, SSH settings
+- Contains: Node IPs and SSH connection settings only
 
-This ensures your inventory is always in sync with Terraform state.
+All service configuration comes from `config/homelab.yaml` via `vars_files`.
 
 ### 2. K3s Installation
 
@@ -149,24 +250,20 @@ The playbook installs K3s in sequence:
 4. **Verify**: Check all nodes are Ready
 5. **Kubeconfig**: Copy and configure local kubeconfig
 
-### 3. Serial Execution
+### 3. Service Deployment
 
-The playbook uses `serial: 1` to install nodes one at a time, ensuring:
-- First master is fully ready before additional masters join
-- Stable HA setup with embedded etcd
-- Better error handling and visibility
+Services are deployed as Helm charts:
 
-## Simplifications from Original
-
-This simplified version removes:
-
-- ❌ Excessive DNS validation (Terraform already validates)
-- ❌ Disk space pre-checks (fails naturally if insufficient)
-- ❌ Multiple validation layers (rely on K3s installer)
-- ❌ Complex error handling (fail fast, clear errors)
-- ❌ Manual inventory management (auto-generated)
-
-**Result**: 62% less code, faster execution, easier maintenance.
+```yaml
+- name: Deploy Authelia Ingress
+  kubernetes.core.helm:
+    name: authelia-ingress
+    chart_ref: "{{ playbook_dir }}/../../kubernetes/services/authelia"
+    release_namespace: authelia
+    create_namespace: true
+    values_files:
+      - "{{ playbook_dir }}/../../config/homelab.yaml"
+```
 
 ## Troubleshooting
 
@@ -177,7 +274,7 @@ This simplified version removes:
 make ping
 
 # Check SSH access
-make ssh-node1
+make ssh-node
 ```
 
 ### Installation Fails
@@ -213,67 +310,13 @@ make k3s-install
 The Ansible setup integrates seamlessly with Terraform:
 
 1. **Terraform** provisions VMs and writes `cluster_config.json`
-2. **Inventory Generator** reads the config and creates inventory
-3. **Ansible** deploys K3s using the generated inventory
+2. **Inventory Generator** reads the config and creates minimal inventory (node IPs only)
+3. **Ansible** loads `config/homelab.yaml` and deploys services
 
 This creates a clean separation:
-- Terraform = Infrastructure layer
-- Ansible = Application layer
-
-## MetalLB Installation
-
-After K3s is installed, deploy MetalLB for LoadBalancer services:
-
-### Install MetalLB
-
-```bash
-# Install MetalLB
-make metallb-install
-
-# Or with test LoadBalancer deployment
-make metallb-test
-```
-
-### Configuration
-
-MetalLB IP pool is configured in the inventory (`metallb_ipv4_pools` variable):
-
-```yaml
-all:
-  children:
-    k3s_cluster:
-      vars:
-        metallb_ipv4_pools: 192.168.10.150/28  # From Terraform cluster config
-```
-
-### Verify Installation
-
-```bash
-# Check MetalLB pods
-kubectl get pods -n metallb-system
-
-# View IP address pool
-kubectl get ipaddresspool -n metallb-system
-
-# View L2 advertisement
-kubectl get l2advertisement -n metallb-system
-```
-
-### Test LoadBalancer
-
-If you used `make metallb-test`, a test nginx service is deployed:
-
-```bash
-# Get the LoadBalancer IP
-kubectl get svc nginx-test
-
-# Test the service
-curl http://<EXTERNAL-IP>
-
-# Clean up test service
-kubectl delete deployment nginx-test
-kubectl delete service nginx-test
-```
+- Terraform = Infrastructure layer (VMs, node IPs)
+- config/homelab.yaml = Service configuration
+- Ansible = Deployment orchestration
 
 ## Secrets Management
 
@@ -281,8 +324,8 @@ This project uses **Sealed Secrets** to encrypt Kubernetes secrets for safe stor
 
 ```bash
 # 1. Create your secrets file from the template
-cp ../secrets.example.yml ../secrets.yml
-vim ../secrets.yml
+cp secrets.example.yml config/secrets.yml
+vim config/secrets.yml
 
 # 2. Encrypt secrets and commit to git
 make seal-secrets

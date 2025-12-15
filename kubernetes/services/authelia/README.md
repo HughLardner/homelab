@@ -11,6 +11,38 @@ Lightweight Single Sign-On (SSO) solution for the homelab. Replaces Authentik wi
 - **OIDC**: Grafana, ArgoCD
 - **Forward Auth**: Traefik dashboard, Longhorn UI, other services
 
+## Configuration
+
+This service is deployed as a **Helm chart** that reads configuration from `config/homelab.yaml`:
+
+```yaml
+# config/homelab.yaml
+global:
+  cert_issuer: letsencrypt-prod
+
+services:
+  authelia:
+    domain: auth.silverseekers.org
+```
+
+Secrets are stored in `config/secrets.yml` and sealed for GitOps.
+
+### Chart Structure
+
+```
+kubernetes/services/authelia/
+├── Chart.yaml              # Helm chart definition
+├── values.yaml             # Default values
+├── authelia-values.yaml    # Upstream Helm chart values
+├── templates/
+│   ├── certificate.yaml    # TLS certificate (uses config)
+│   ├── ingressroute.yaml   # Traefik IngressRoute
+│   ├── middleware.yaml     # Forward auth middleware
+│   └── users-secret.yaml   # User database secret
+└── secrets/
+    └── authelia-secrets-sealed.yaml
+```
+
 ## Components
 
 | Component       | Purpose                          |
@@ -21,9 +53,9 @@ Lightweight Single Sign-On (SSO) solution for the homelab. Replaces Authentik wi
 
 ## Access
 
-- **URL**: https://auth.silverseekers.org
+- **URL**: https://auth.silverseekers.org (configured in `config/homelab.yaml`)
 - **Admin User**: admin
-- **Password**: (from secrets.yml)
+- **Password**: (from `config/secrets.yml`)
 
 ## OIDC Clients
 
@@ -70,6 +102,8 @@ spec:
 
 ## Deployment
 
+### Via Makefile (Ansible)
+
 ```bash
 # Apply secrets first
 make authelia-secrets
@@ -80,6 +114,18 @@ make authelia-install
 # Check status
 make authelia-status
 ```
+
+### Via Helm Directly
+
+```bash
+helm upgrade --install authelia-ingress ./kubernetes/services/authelia \
+  -f ./config/homelab.yaml \
+  -n authelia --create-namespace
+```
+
+### Via ArgoCD (automatic)
+
+The service is managed by ArgoCD's app-of-apps pattern. Changes to `config/homelab.yaml` trigger automatic sync.
 
 ## Generating Password Hashes
 
@@ -123,3 +169,11 @@ curl -s https://auth.silverseekers.org/.well-known/openid-configuration | jq
 ```bash
 curl -I -H "X-Forwarded-Proto: https" -H "X-Forwarded-Host: grafana.silverseekers.org" http://authelia.authelia.svc.cluster.local:9091/api/authz/forward-auth
 ```
+
+### Check certificate status
+
+```bash
+kubectl get certificates -n authelia
+kubectl describe certificate authelia-tls -n authelia
+```
+

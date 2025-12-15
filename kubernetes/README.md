@@ -1,239 +1,319 @@
 # Kubernetes Manifests
 
-This directory contains Kubernetes manifest files for deploying and managing services and applications on your K3s clusters.
+This directory contains Kubernetes manifest files and Helm charts for deploying and managing services and applications on your K3s clusters.
+
+## Configuration Architecture
+
+All configuration is centralized in `config/homelab.yaml` - the **single source of truth**.
+
+```
+config/
+├── homelab.yaml    # All non-secret configuration
+└── secrets.yml     # Secrets (gitignored)
+```
+
+Services are packaged as **Helm charts** that read values from `config/homelab.yaml`:
+
+```
+kubernetes/services/<service>/
+├── Chart.yaml          # Helm chart definition
+├── values.yaml         # Default values (overridden by config)
+├── <app>-values.yaml   # Helm values for upstream chart (if applicable)
+└── templates/
+    ├── certificate.yaml    # TLS certificate
+    ├── ingressroute.yaml   # Traefik IngressRoute
+    └── ...
+```
 
 ## Directory Structure
 
 ```
 kubernetes/
-├── README.md              # This file
-├── applications/          # Applications managed by ArgoCD
-│   ├── README.md          # Applications documentation
-│   ├── root-app.yaml      # App-of-Apps pattern
-│   └── monitoring/        # Prometheus + Grafana stack
-│       ├── application.yaml
-│       ├── values.yaml
-│       ├── ingressroute.yaml
-│       └── README.md
-└── services/              # Infrastructure services
-    ├── metallb/           # MetalLB LoadBalancer
-    ├── longhorn/          # Distributed block storage
-    ├── cert-manager/      # TLS certificate automation
-    ├── traefik/           # Ingress controller
-    ├── argocd/            # GitOps platform
-    └── sealed-secrets/    # Secret encryption for GitOps
+├── README.md                    # This file
+├── applications/                # Applications managed by ArgoCD
+│   ├── root-app.yaml            # App-of-Apps pattern
+│   ├── monitoring/              # Victoria Metrics + Grafana (Helm chart)
+│   │   ├── Chart.yaml
+│   │   ├── values.yaml
+│   │   ├── templates/
+│   │   └── README.md
+│   ├── authelia/                # ArgoCD Application for authelia
+│   │   └── application.yaml
+│   ├── argocd-ingress/          # ArgoCD Application for argocd
+│   │   └── application.yaml
+│   ├── traefik-ingress/         # ArgoCD Application for traefik
+│   │   └── application.yaml
+│   └── longhorn-ingress/        # ArgoCD Application for longhorn
+│       └── application.yaml
+└── services/                    # Infrastructure services (Helm charts)
+    ├── metallb/                 # MetalLB LoadBalancer
+    ├── longhorn/                # Distributed block storage (Helm chart)
+    │   ├── Chart.yaml
+    │   ├── values.yaml
+    │   └── templates/
+    ├── cert-manager/            # TLS certificate automation
+    ├── traefik/                 # Ingress controller (Helm chart)
+    │   ├── Chart.yaml
+    │   ├── values.yaml
+    │   └── templates/
+    ├── argocd/                  # GitOps platform (Helm chart)
+    │   ├── Chart.yaml
+    │   ├── values.yaml
+    │   └── templates/
+    ├── authelia/                # SSO/2FA authentication (Helm chart)
+    │   ├── Chart.yaml
+    │   ├── values.yaml
+    │   └── templates/
+    └── sealed-secrets/          # Secret encryption for GitOps
+```
+
+## How Configuration Works
+
+### Single Source of Truth
+
+All services read configuration from `config/homelab.yaml`:
+
+```yaml
+# config/homelab.yaml
+global:
+  domain: silverseekers.org
+  cert_issuer: letsencrypt-prod
+  email: your@email.com
+
+services:
+  traefik:
+    domain: traefik.silverseekers.org
+    replicas: 2
+  argocd:
+    domain: argocd.silverseekers.org
+  authelia:
+    domain: auth.silverseekers.org
+  grafana:
+    domain: grafana.silverseekers.org
+```
+
+### Helm Charts Use Values from Config
+
+Each service's Helm templates access values via `{{ .Values }}`:
+
+```yaml
+# kubernetes/services/authelia/templates/certificate.yaml
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: authelia-tls
+spec:
+  issuerRef:
+    name: {{ .Values.services.authelia.cert_issuer | default .Values.global.cert_issuer }}
+  dnsNames:
+    - {{ .Values.services.authelia.domain }}
+```
+
+### Deployment Methods
+
+All methods use the same configuration file:
+
+**1. Helm directly:**
+```bash
+helm upgrade --install authelia-ingress ./kubernetes/services/authelia \
+  -f ./config/homelab.yaml -n authelia --create-namespace
+```
+
+**2. Ansible (via kubernetes.core.helm):**
+```yaml
+- name: Deploy via Helm
+  kubernetes.core.helm:
+    name: authelia-ingress
+    chart_ref: "{{ playbook_dir }}/../../kubernetes/services/authelia"
+    values_files:
+      - "{{ playbook_dir }}/../../config/homelab.yaml"
+```
+
+**3. ArgoCD (via multi-source Applications):**
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+spec:
+  sources:
+    - repoURL: https://github.com/HughLardner/homelab.git
+      path: kubernetes/services/authelia
+      helm:
+        valueFiles:
+          - $values/config/homelab.yaml
+    - repoURL: https://github.com/HughLardner/homelab.git
+      ref: values
 ```
 
 ## Purpose and Philosophy
 
 ### Infrastructure Layer Separation
 
-This directory represents the **application and service layer** of your infrastructure:
-
 | Layer | Tool | Purpose | Location |
 |-------|------|---------|----------|
+| **Configuration** | YAML | Single source of truth | `config/` |
 | **Infrastructure** | Terraform | VMs, networks, storage | `terraform/` |
 | **Platform** | Ansible | K3s, OS config | `ansible/` |
-| **Services** | kubectl/GitOps | Networking, storage, ingress | `kubernetes/services/` |
-| **Applications** | kubectl/GitOps | Your workloads | `kubernetes/apps/` |
+| **Services** | Helm/GitOps | Networking, storage, ingress | `kubernetes/services/` |
+| **Applications** | Helm/GitOps | Your workloads | `kubernetes/applications/` |
 
-### Deployment Methods
+### Chart Co-location
 
-**Option 1: Manual (kubectl)**
+Charts are **co-located with their service directories** rather than in a separate `charts/` folder:
+
+```
+kubernetes/services/authelia/    # Everything about authelia in one place
+├── Chart.yaml                   # Helm chart metadata
+├── values.yaml                  # Default values
+├── authelia-values.yaml         # Upstream Helm chart values
+├── templates/                   # Custom templates
+│   ├── certificate.yaml
+│   ├── ingressroute.yaml
+│   └── middleware.yaml
+├── secrets/                     # Sealed secrets
+│   └── authelia-secrets-sealed.yaml
+└── README.md                    # Service documentation
+```
+
+**Benefits:**
+- Everything about a service in one directory
+- Matches existing `kubernetes/services/` structure
+- Easier to navigate and maintain
+- No separate `charts/` directory to manage
+
+## Deployment Commands
+
+### Deploy Individual Service
+
 ```bash
-# Apply specific service
-kubectl apply -k kubernetes/services/metallb/
+# Via Helm directly
+helm upgrade --install <service>-ingress ./kubernetes/services/<service> \
+  -f ./config/homelab.yaml -n <namespace> --create-namespace
 
-# Apply all services
-kubectl apply -k kubernetes/services/
+# Via Ansible
+make <service>-install
+
+# Examples
+helm upgrade --install authelia-ingress ./kubernetes/services/authelia \
+  -f ./config/homelab.yaml -n authelia --create-namespace
+
+make traefik-install
+make argocd-install
 ```
 
-**Option 2: Automated (Ansible)**
-- Some services are deployed via Ansible (e.g., MetalLB)
-- Ansible uses these manifest files as templates
-- See individual service READMEs for details
+### Deploy All Services
 
-**Option 3: GitOps (Future)**
-- Point ArgoCD/Flux at this directory
-- Automated sync and drift detection
-- Recommended for production
+```bash
+# Full deployment (Terraform + Ansible + Services + Apps)
+make deploy-all
 
-## Directory Conventions
-
-### `services/` - Infrastructure Services
-
-**Purpose**: Core platform services that applications depend on
-
-**Examples**:
-- **metallb**: LoadBalancer IP assignment
-- **traefik**: Ingress controller / reverse proxy
-- **cert-manager**: TLS certificate management
-- **longhorn**: Distributed block storage
-- **argocd**: GitOps continuous delivery
-- **sealed-secrets**: Encrypted secrets for GitOps
-- **authelia**: SSO/2FA authentication
-
-**Structure**:
-```
-services/<service-name>/
-├── README.md              # Service-specific documentation
-├── kustomization.yaml     # Kustomize config for kubectl apply -k
-├── <resource>.yaml        # Kubernetes manifests
-└── values.yaml           # Helm values (if using Helm)
+# Just services
+make deploy-services
 ```
 
-### `apps/` - Application Workloads
+### ArgoCD GitOps
 
-**Purpose**: Your custom applications and workloads
+Once ArgoCD is running, services sync automatically:
 
-**Examples** (future):
-- Web applications
-- APIs
-- Background jobs
-- Databases
-- Stateful applications
+```bash
+# Deploy root application (app-of-apps pattern)
+make root-app-deploy
 
-**Structure**:
-```
-apps/<app-name>/
-├── deployment.yaml        # Deployment/StatefulSet
-├── service.yaml          # Service definition
-├── ingress.yaml          # Ingress routes
-├── configmap.yaml        # Configuration
-└── kustomization.yaml    # Kustomize config
+# Check application status
+make apps-status
+
+# List all applications
+make apps-list
 ```
 
 ## Services
 
-### MetalLB
+### Core Platform ✅ (Helm Charts)
 
-**Purpose**: Provides LoadBalancer support for bare-metal clusters
+Infrastructure services deployed as Helm charts:
 
-**Status**: ✅ Configured and deployed via Ansible
+| Service | Helm Chart | Namespace | Description |
+|---------|------------|-----------|-------------|
+| **MetalLB** | Kustomize | metallb-system | LoadBalancer IP assignment |
+| **Longhorn** | `services/longhorn/` | longhorn-system | Distributed block storage |
+| **Cert-Manager** | Upstream | cert-manager | TLS certificate automation |
+| **Traefik** | `services/traefik/` | traefik | Ingress controller |
+| **ArgoCD** | `services/argocd/` | argocd | GitOps platform |
+| **Sealed Secrets** | Upstream | sealed-secrets | Secret encryption |
+| **Authelia** | `services/authelia/` | authelia | SSO/2FA authentication |
 
-**Location**: [services/metallb/](services/metallb/)
+### Applications ✅ (ArgoCD GitOps)
 
-**Quick Start**:
-```bash
-# Deploy via Ansible (recommended)
-make metallb-install
+Applications managed via ArgoCD:
 
-# Or manually
-kubectl apply -k kubernetes/services/metallb/
+| Application | Helm Chart | Namespace | Description |
+|-------------|------------|-----------|-------------|
+| **Monitoring** | `applications/monitoring/` | monitoring | Victoria Metrics + Grafana |
 
-# Verify
-kubectl get ipaddresspool -n metallb-system
-kubectl get pods -n metallb-system
-```
-
-**Configuration**:
-- IP Pool: Configured from Terraform via Ansible inventory
-- Mode: Layer 2 (ARP-based)
-- See [services/metallb/README.md](services/metallb/README.md)
-
-### Traefik
-
-**Purpose**: Ingress controller and reverse proxy
-
-**Status**: ⚠️ Partial configuration (IngressRoute for dashboard)
-
-**Location**: [services/traefik/](services/traefik/)
-
-**Configuration**:
-- `traefik-config.yaml`: IngressRoute for Traefik dashboard
-- Access: http://traefik.localhost/dashboard
-- Note: K3s includes Traefik by default (disabled in our setup)
-
-## Common Tasks
-
-### Deploy a Service
-
-```bash
-# Option 1: Using kustomize
-kubectl apply -k kubernetes/services/<service-name>/
-
-# Option 2: Apply all manifests
-kubectl apply -f kubernetes/services/<service-name>/
-
-# Option 3: Via Ansible (if available)
-make <service>-install
-```
-
-### View Service Status
+## View Service Status
 
 ```bash
 # List all deployments in a namespace
 kubectl get all -n <namespace>
 
 # View pods
-kubectl get pods -n metallb-system
+kubectl get pods -n authelia
 kubectl get pods -n traefik
 
 # View services with external IPs
 kubectl get svc --all-namespaces | grep LoadBalancer
+
+# Check certificates
+kubectl get certificates -A
 ```
 
-### Update Configuration
+## Configuration Changes
 
-```bash
-# Edit the manifest
-vim kubernetes/services/metallb/ipaddresspool.yaml
+To change any service configuration:
 
-# Apply changes
-kubectl apply -k kubernetes/services/metallb/
-
-# Verify
-kubectl get ipaddresspool -n metallb-system -o yaml
+1. Edit `config/homelab.yaml`:
+```yaml
+services:
+  authelia:
+    domain: auth.example.org  # Changed domain
+    cert_issuer: letsencrypt-staging  # Override global cert issuer
 ```
 
-### Debug Issues
-
+2. Re-deploy:
 ```bash
-# View logs
-kubectl logs -n <namespace> <pod-name>
-kubectl logs -n metallb-system -l app=metallb
+# Via Helm
+helm upgrade authelia-ingress ./kubernetes/services/authelia \
+  -f ./config/homelab.yaml -n authelia
 
-# Describe resource
-kubectl describe pod -n <namespace> <pod-name>
+# Via Ansible
+make authelia-install
 
-# Check events
-kubectl get events -n <namespace> --sort-by='.lastTimestamp'
+# Via ArgoCD (automatic on git push)
+git commit -am "Update authelia domain"
+git push
 ```
 
 ## Best Practices
 
-### 1. Use Namespaces
+### 1. Single Source of Truth
 
-Organize services by namespace:
-- `metallb-system` - MetalLB components
-- `traefik` - Ingress controller
-- `cert-manager` - Certificate management
-- `monitoring` - Prometheus/Grafana
-- `default` or custom - Your applications
+All configuration in `config/homelab.yaml`:
+- ✅ One file to edit for any change
+- ✅ Consistent values across all deployment methods
+- ✅ No duplication between Terraform, Ansible, and Helm
 
-### 2. Version Control Everything
+### 2. Use Helm Charts
+
+Services are packaged as Helm charts:
+- ✅ Native templating (no Jinja2/ArgoCD conflicts)
+- ✅ Works with Ansible, ArgoCD, and kubectl
+- ✅ Consistent deployment experience
+
+### 3. Version Control Everything
 
 All manifests should be:
 - ✅ Committed to git
 - ✅ Reviewed before applying
-- ✅ Tagged with versions/releases
-
-### 3. Use Kustomize
-
-Each service should have `kustomization.yaml`:
-```yaml
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-namespace: metallb-system
-resources:
-  - ipaddresspool.yaml
-  - l2advertisement.yaml
-```
-
-Benefits:
-- Apply multiple files with one command
-- Namespace/label transformations
-- ConfigMap/Secret generators
+- ✅ Secrets encrypted with Sealed Secrets
 
 ### 4. Document Configuration
 
@@ -242,102 +322,59 @@ Each service should have:
 - Comments in YAML - Explain non-obvious settings
 - Examples - Common use cases
 
-### 5. Separate Configuration from Code
-
-Use ConfigMaps and Secrets:
-```yaml
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: app-config
-data:
-  database.host: postgres.default.svc
-  log.level: info
-```
-
 ## Integration with Infrastructure
 
-### Terraform → Ansible → Kubernetes
+### Configuration Flow
 
 ```
-1. Terraform
-   ├── Provisions VMs and networks
-   ├── Exports cluster_config.json
-   └── Defines IP pools for MetalLB
-
-2. Ansible
-   ├── Deploys K3s cluster
-   ├── Reads cluster_config.json
-   ├── Templates kubernetes manifests
-   └── Applies services (MetalLB)
-
-3. Kubernetes Manifests (this directory)
-   ├── Single source of truth
-   ├── Used by Ansible (templated)
-   ├── Used by kubectl (manual)
-   └── Used by GitOps (future)
+┌────────────────────────────────────────────────────────────────┐
+│ config/homelab.yaml (Single Source of Truth)                   │
+└────────────────────────────────────────────────────────────────┘
+           ↓                    ↓                    ↓
+    ┌──────────────┐    ┌──────────────┐    ┌──────────────┐
+    │  Terraform   │    │   Ansible    │    │   ArgoCD     │
+    │ (yamldecode) │    │ (vars_files) │    │ (valueFiles) │
+    └──────────────┘    └──────────────┘    └──────────────┘
+           ↓                    ↓                    ↓
+    ┌──────────────┐    ┌──────────────┐    ┌──────────────┐
+    │  Provisions  │    │   Deploys    │    │   Syncs      │
+    │     VMs      │    │ Helm Charts  │    │ Helm Charts  │
+    └──────────────┘    └──────────────┘    └──────────────┘
 ```
 
 ### Dynamic vs Static Configuration
 
-**Dynamic** (Templated by Ansible):
-- IP pools (from Terraform)
-- Node labels/taints
-- Cluster-specific settings
-
-**Static** (Version-controlled):
-- Service definitions
+**Static** (in `config/homelab.yaml`):
+- Service domains
+- Cert issuers
+- Replicas
 - Resource limits
-- Ingress rules
 - Everything else
 
-## Deployed Services
-
-### Core Platform ✅ (Ansible Bootstrap)
-Infrastructure services required before GitOps can function:
-- [x] **MetalLB** - LoadBalancer IP assignment (192.168.10.150-165)
-- [x] **Longhorn** - Distributed block storage (1 replica for single node)
-- [x] **Cert-Manager** - Automated TLS certificates via Let's Encrypt + Cloudflare DNS
-- [x] **Traefik** - Ingress controller with HTTPS (192.168.10.150)
-- [x] **ArgoCD** - GitOps continuous delivery platform
-- [x] **Sealed Secrets** - Encrypt secrets for safe storage in Git
-- [x] **Authelia** - SSO/2FA authentication (https://auth.silverseekers.org)
-
-### Applications ✅ (ArgoCD GitOps)
-Applications managed via GitOps after bootstrap services are ready:
-- [x] **Monitoring Stack** (Victoria Metrics)
-  - [x] **Grafana** - Metrics dashboards (https://grafana.silverseekers.org)
-  - [x] **VMSingle** - Time series database (lightweight Prometheus alternative)
-  - [x] **VMAgent** - Metrics scraper
-  - [x] **VMAlert** - Alerting rule evaluation
-  - [x] **VMAlertmanager** - Alert routing
-  - [x] **Node Exporters** - Node metrics
-  - [x] **Kube-state-metrics** - Cluster state metrics
+**Dynamic** (from Terraform):
+- Node IPs (written to inventory)
+- Infrastructure-specific settings
 
 ## Future Additions
 
 ### Networking
 - [ ] **external-dns** - Automatic DNS record creation (Cloudflare provider)
-- [ ] **local CoreDNS** - Local DNS server for offline resolution
 
 ### Storage
 - [ ] **minio** - S3-compatible object storage
-- [ ] **nfs-client-provisioner** - NFS storage class
 - [ ] **velero** - Backup and restore
 
 ### Observability
 - [ ] **loki** - Log aggregation
 - [ ] **tempo** - Distributed tracing
-- [ ] **jaeger** - Distributed tracing UI
 
 ### Security
 - [ ] **vault** - Secret management
 - [ ] **falco** - Runtime security
-- [ ] **trivy** - Vulnerability scanning
 
 ## References
 
+- [Helm Documentation](https://helm.sh/docs/)
 - [Kubernetes Documentation](https://kubernetes.io/docs/)
-- [Kustomize Guide](https://kustomize.io/)
+- [ArgoCD Documentation](https://argo-cd.readthedocs.io/)
 - [K3s Documentation](https://docs.k3s.io/)
-- [Service Mesh Comparison](https://kubevela.io/docs/platform-engineers/service-mesh/)

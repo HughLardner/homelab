@@ -1,0 +1,112 @@
+---
+# Homelab Configuration - Single Source of Truth
+#
+# INSTRUCTIONS:
+# 1. Copy this file to config/homelab.yaml
+# 2. Edit the values to match your environment
+# 3. This file is consumed by Terraform, Ansible, Helm, and ArgoCD
+#
+# All tools read from this file to ensure consistency.
+# Change a value once here, and it propagates everywhere.
+
+# =============================================================================
+# Cluster Configuration
+# =============================================================================
+cluster:
+  name: homelab              # Cluster name (used in VM names, kubeconfig)
+  id: 1                      # Cluster ID (used for VM ID prefix)
+
+# =============================================================================
+# Infrastructure Configuration (Proxmox VMs)
+# =============================================================================
+infrastructure:
+  node_count: 1              # Number of nodes (1 = single, 3 = HA)
+  node_start_ip: 20          # First node IP: subnet_prefix.node_start_ip
+  cores: 4                   # CPU cores per node
+  cpu_type: host             # Use host CPU for best performance
+  memory: 12288              # RAM per node in MB (12GB)
+  disk_size: 100             # Disk size per node in GB
+  vlan_id: null              # VLAN tag (null = no tagging)
+  subnet_prefix: "192.168.10"
+  gateway: "192.168.10.1"
+  dns_servers:
+    - "1.1.1.1"
+    - "1.0.0.1"
+  kube_vip: "192.168.10.15"           # K8s API VIP
+  kube_vip_hostname: homelab-api      # Hostname for kube-vip
+  lb_cidrs: "192.168.10.150/28"       # MetalLB IP range (16 IPs)
+  ssh_user: ubuntu
+
+# =============================================================================
+# Global Settings
+# =============================================================================
+global:
+  domain: example.org                 # Your base domain
+  cert_issuer: letsencrypt-prod       # Options: letsencrypt-staging, letsencrypt-prod
+  email: your@email.com               # Used for Let's Encrypt registration
+  cloudflare_email: your@email.com    # Cloudflare account email (for DNS challenges)
+
+# =============================================================================
+# Service Configuration
+# =============================================================================
+services:
+  # ---------------------------------------------------------------------------
+  # Traefik Ingress Controller
+  # ---------------------------------------------------------------------------
+  traefik:
+    domain: traefik.example.org
+    replicas: 2
+    service_type: LoadBalancer
+    storage_class: longhorn
+
+  # ---------------------------------------------------------------------------
+  # ArgoCD GitOps
+  # ---------------------------------------------------------------------------
+  argocd:
+    domain: argocd.example.org
+    replicas: 1
+    github_repo_url: https://github.com/your-username/your-repo.git
+
+  # ---------------------------------------------------------------------------
+  # Authelia SSO
+  # ---------------------------------------------------------------------------
+  authelia:
+    domain: auth.example.org
+
+  # ---------------------------------------------------------------------------
+  # Grafana Monitoring
+  # ---------------------------------------------------------------------------
+  grafana:
+    domain: grafana.example.org
+    storage_size: 5Gi
+
+  # ---------------------------------------------------------------------------
+  # Longhorn Storage
+  # ---------------------------------------------------------------------------
+  longhorn:
+    domain: longhorn.example.org
+    replica_count: 1            # 1 for single-node, 2-3 for multi-node
+    data_path: /var/lib/longhorn
+    ui_service_type: LoadBalancer
+
+  # ---------------------------------------------------------------------------
+  # Monitoring Stack (VictoriaMetrics)
+  # ---------------------------------------------------------------------------
+  monitoring:
+    storage_class: longhorn
+    prometheus_storage_size: 10Gi
+    prometheus_retention: 15d
+    alertmanager_storage_size: 2Gi
+
+  # ---------------------------------------------------------------------------
+  # MetalLB Load Balancer
+  # ---------------------------------------------------------------------------
+  metallb:
+    ipv4_pools: "192.168.10.150/28"   # 16 IPs for LoadBalancer services
+
+  # ---------------------------------------------------------------------------
+  # External DNS
+  # ---------------------------------------------------------------------------
+  external_dns:
+    domain: example.org
+

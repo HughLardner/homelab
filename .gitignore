@@ -28,6 +28,8 @@ letsencrypt-certs-backup.yaml
 # Plain secrets file (NEVER commit this!)
 secrets.yml
 secrets.yaml
+config/secrets.yml
+config/secrets.yaml
 ansible/secrets.yml
 ansible/secrets.yaml
 
