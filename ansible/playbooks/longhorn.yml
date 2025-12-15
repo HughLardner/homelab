@@ -197,21 +197,21 @@
       when: configure_ingress | bool and not (crds_available | default(false))
 
     - name: Deploy Longhorn Ingress via Helm
-      kubernetes.core.helm:
-        name: longhorn-ingress
-        chart_ref: "{{ longhorn_manifests_path }}"
-        release_namespace: "{{ longhorn_namespace }}"
-        create_namespace: false
-        values_files:
-          - "{{ playbook_dir }}/../../config/homelab.yaml"
-        wait: true
-        wait_timeout: 300s
+      ansible.builtin.command:
+        cmd: >
+          helm upgrade --install longhorn-ingress
+          {{ longhorn_manifests_path }}
+          --namespace {{ longhorn_namespace }}
+          --values {{ playbook_dir }}/../../config/homelab.yaml
+          --wait
+          --timeout=5m
       environment:
         KUBECONFIG: "{{ lookup('env', 'HOME') }}/.kube/config-homelab"
       delegate_to: localhost
       become: false
       when: configure_ingress | bool and (crds_available | default(false))
       register: helm_result
+      changed_when: "'has been upgraded' in helm_result.stdout or 'has been installed' in helm_result.stdout"
 
     - name: Get IngressRoute status
       ansible.builtin.command:
