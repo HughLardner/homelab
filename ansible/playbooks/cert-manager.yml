@@ -7,19 +7,23 @@
   become: true
   gather_facts: true
 
+  vars_files:
+    - "{{ playbook_dir }}/../../config/homelab.yaml"
+    - "{{ playbook_dir }}/../../config/secrets.yml"
+
   vars:
     cert_manager_version: "v1.14.0"
     cert_manager_namespace: "cert-manager"
-    # Variables from inventory (no need to redefine):
-    # - cert_manager_email
-    # - cert_manager_domain
-    # - cloudflare_email
-    # - cloudflare_api_token
+    # Map config structure to expected variable names
+    cert_manager_email: "{{ global.email }}"
+    cert_manager_domain: "{{ global.domain }}"
+    cloudflare_email: "{{ global.cloudflare_email }}"
+    # cloudflare_api_token comes from secrets.yml
 
   pre_tasks:
     - name: Verify required variables are defined
       ansible.builtin.fail:
-        msg: "Required variable '{{ item }}' is not defined in inventory"
+        msg: "Required variable '{{ item }}' is not defined"
       when: vars[item] is not defined or vars[item] == ""
       loop:
         - cert_manager_email

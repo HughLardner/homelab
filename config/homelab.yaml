@@ -36,7 +36,7 @@ infrastructure:
 # =============================================================================
 global:
   domain: silverseekers.org
-  cert_issuer: letsencrypt-prod # Options: letsencrypt-staging, letsencrypt-prod
+  cert_issuer: letsencrypt-staging # Options: letsencrypt-staging, letsencrypt-prod
   email: hughlardner@gmail.com
   cloudflare_email: hughlardner@gmail.com
 
