@@ -129,12 +129,6 @@
       changed_when: "'created' in auth_secret_result.stdout"
       no_log: true
 
-    - name: Template Traefik dashboard IngressRoute
-      ansible.builtin.template:
-        src: ../../kubernetes/services/traefik/dashboard-ingressroute.yaml
-        dest: /tmp/traefik-dashboard-ingressroute.yaml
-        mode: '0644'
-
     - name: Wait for Traefik CRDs to be available
       ansible.builtin.command:
         cmd: /usr/local/bin/k3s kubectl get crd ingressroutes.traefik.io
@@ -144,23 +138,17 @@
       delay: 2
       until: crd_check.rc == 0
 
-    - name: Apply Traefik dashboard IngressRoute
-      ansible.builtin.command:
-        cmd: /usr/local/bin/k3s kubectl apply -f /tmp/traefik-dashboard-ingressroute.yaml
-      register: dashboard_result
-      changed_when: "'created' in dashboard_result.stdout or 'configured' in dashboard_result.stdout"
-
-    - name: Copy Traefik middlewares
-      ansible.builtin.copy:
-        src: ../../kubernetes/services/traefik/middlewares.yaml
-        dest: /tmp/traefik-middlewares.yaml
-        mode: '0644'
-
-    - name: Apply Traefik middlewares
-      ansible.builtin.command:
-        cmd: /usr/local/bin/k3s kubectl apply -f /tmp/traefik-middlewares.yaml
-      register: middlewares_result
-      changed_when: "'created' in middlewares_result.stdout or 'configured' in middlewares_result.stdout"
+    - name: Deploy Traefik Ingress resources via Helm
+      kubernetes.core.helm:
+        name: traefik-ingress
+        chart_ref: "{{ playbook_dir }}/../../kubernetes/services/traefik"
+        release_namespace: "{{ traefik_namespace }}"
+        create_namespace: false
+        values_files:
+          - "{{ playbook_dir }}/../../config/homelab.yaml"
+        wait: true
+        wait_timeout: 300s
+      register: traefik_ingress_result
 
     - name: Wait for dashboard certificate to be ready
       ansible.builtin.shell: |
@@ -219,8 +207,6 @@
         state: absent
       loop:
         - traefik-values.yaml
-        - traefik-dashboard-ingressroute.yaml
-        - traefik-middlewares.yaml
 
   post_tasks:
     - name: Build completion message
