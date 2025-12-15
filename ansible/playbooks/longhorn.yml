@@ -207,7 +207,9 @@
         wait: true
         wait_timeout: 300s
       environment:
-        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+        KUBECONFIG: "{{ lookup('env', 'HOME') }}/.kube/config-homelab"
+      delegate_to: localhost
+      become: false
       when: configure_ingress | bool and (crds_available | default(false))
       register: helm_result
 
