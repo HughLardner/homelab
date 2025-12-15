@@ -196,26 +196,18 @@
           Run 'make longhorn-ingress' after installing Traefik and cert-manager to configure IngressRoute.
       when: configure_ingress | bool and not (crds_available | default(false))
 
-    - name: Create temporary directory for templated manifests
-      ansible.builtin.tempfile:
-        state: directory
-        prefix: longhorn_
-      register: temp_dir
+    - name: Deploy Longhorn Ingress via Helm
+      kubernetes.core.helm:
+        name: longhorn-ingress
+        chart_ref: "{{ longhorn_manifests_path }}"
+        release_namespace: "{{ longhorn_namespace }}"
+        create_namespace: false
+        values_files:
+          - "{{ playbook_dir }}/../../config/homelab.yaml"
+        wait: true
+        wait_timeout: 300s
       when: configure_ingress | bool and (crds_available | default(false))
-
-    - name: Template IngressRoute manifests
-      ansible.builtin.template:
-        src: "{{ longhorn_manifests_path }}/ingressroute.yaml"
-        dest: "{{ temp_dir.path }}/ingressroute.yaml"
-        mode: "0644"
-      when: configure_ingress | bool and (crds_available | default(false))
-
-    - name: Apply IngressRoute for Longhorn
-      ansible.builtin.command:
-        cmd: /usr/local/bin/k3s kubectl apply -f {{ temp_dir.path }}/ingressroute.yaml
-      register: ingressroute_result
-      changed_when: "'created' in ingressroute_result.stdout or 'configured' in ingressroute_result.stdout"
-      when: configure_ingress | bool and (crds_available | default(false))
+      register: helm_result
 
     - name: Get IngressRoute status
       ansible.builtin.command:
@@ -232,12 +224,6 @@
       changed_when: false
       failed_when: false
       when: configure_ingress | bool and (crds_available | default(false))
-
-    - name: Clean up temporary directory
-      ansible.builtin.file:
-        path: "{{ temp_dir.path }}"
-        state: absent
-      when: configure_ingress | bool and (crds_available | default(false)) and temp_dir.path is defined
 
   post_tasks:
     - name: Get Longhorn UI access information

@@ -176,4 +176,3 @@ curl -I -H "X-Forwarded-Proto: https" -H "X-Forwarded-Host: grafana.silverseeker
 kubectl get certificates -n authelia
 kubectl describe certificate authelia-tls -n authelia
 ```
-

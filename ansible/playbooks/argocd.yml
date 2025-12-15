@@ -360,19 +360,18 @@
           Run this playbook again after Traefik and cert-manager are installed.
       when: not (ingress_crds_available | default(false))
 
-    - name: Template IngressRoute manifests
-      ansible.builtin.template:
-        src: "{{ argocd_manifests_path }}/ingressroute.yaml"
-        dest: "{{ temp_dir.path }}/ingressroute.yaml"
-        mode: "0644"
+    - name: Deploy ArgoCD Ingress resources via Helm
+      kubernetes.core.helm:
+        name: argocd-ingress
+        chart_ref: "{{ argocd_manifests_path }}"
+        release_namespace: "{{ argocd_namespace }}"
+        create_namespace: false
+        values_files:
+          - "{{ playbook_dir }}/../../config/homelab.yaml"
+        wait: true
+        wait_timeout: 300s
       when: ingress_crds_available | default(false)
-
-    - name: Apply IngressRoute for ArgoCD
-      ansible.builtin.command:
-        cmd: /usr/local/bin/k3s kubectl apply -f {{ temp_dir.path }}/ingressroute.yaml
-      register: ingressroute_result
-      changed_when: "'created' in ingressroute_result.stdout or 'configured' in ingressroute_result.stdout"
-      when: ingress_crds_available | default(false)
+      register: argocd_ingress_result
 
     # =========================================================================
     # Configure Repository Connection

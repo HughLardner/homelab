@@ -164,33 +164,21 @@
         KUBECONFIG: /etc/rancher/k3s/k3s.yaml
 
     # =========================================================================
-    # Apply IngressRoute and Middleware
+    # Deploy Authelia Ingress resources via Helm
     # =========================================================================
-    - name: Copy IngressRoute to node
-      ansible.builtin.copy:
-        src: "{{ authelia_manifests_path }}/ingressroute.yaml"
-        dest: "{{ temp_dir.path }}/ingressroute.yaml"
-        mode: '0600'
-
-    - name: Apply IngressRoute
-      kubernetes.core.k8s:
-        state: present
-        src: "{{ temp_dir.path }}/ingressroute.yaml"
+    - name: Deploy Authelia Ingress resources via Helm
+      kubernetes.core.helm:
+        name: authelia-ingress
+        chart_ref: "{{ authelia_manifests_path }}"
+        release_namespace: "{{ authelia_namespace }}"
+        create_namespace: false
+        values_files:
+          - "{{ playbook_dir }}/../../config/homelab.yaml"
+        wait: true
+        wait_timeout: 300s
       environment:
         KUBECONFIG: /etc/rancher/k3s/k3s.yaml
-
-    - name: Copy Middleware to node
-      ansible.builtin.copy:
-        src: "{{ authelia_manifests_path }}/middleware.yaml"
-        dest: "{{ temp_dir.path }}/middleware.yaml"
-        mode: '0600'
-
-    - name: Apply Middleware
-      kubernetes.core.k8s:
-        state: present
-        src: "{{ temp_dir.path }}/middleware.yaml"
-      environment:
-        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      register: authelia_ingress_result
 
     # =========================================================================
     # Cleanup

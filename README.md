@@ -308,13 +308,13 @@ ansible-playbook ansible/playbooks/authelia.yml
 
 ## Access Points
 
-| Service               | URL                                | Credentials              |
-| --------------------- | ---------------------------------- | ------------------------ |
-| **Traefik Dashboard** | https://traefik.silverseekers.org  | admin / (from config)    |
-| **ArgoCD**            | https://argocd.silverseekers.org   | admin / (via secrets)    |
-| **Grafana**           | https://grafana.silverseekers.org  | admin / (from config)    |
-| **Authelia**          | https://auth.silverseekers.org     | (configured users)       |
-| **Longhorn UI**       | https://longhorn.silverseekers.org | N/A                      |
+| Service               | URL                                | Credentials           |
+| --------------------- | ---------------------------------- | --------------------- |
+| **Traefik Dashboard** | https://traefik.silverseekers.org  | admin / (from config) |
+| **ArgoCD**            | https://argocd.silverseekers.org   | admin / (via secrets) |
+| **Grafana**           | https://grafana.silverseekers.org  | admin / (from config) |
+| **Authelia**          | https://auth.silverseekers.org     | (configured users)    |
+| **Longhorn UI**       | https://longhorn.silverseekers.org | N/A                   |
 
 ## Network Configuration
 
