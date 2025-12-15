@@ -6,11 +6,33 @@ This document explains how to manage secrets in this homelab infrastructure usin
 
 This project uses **Sealed Secrets** to encrypt Kubernetes secrets that can be safely committed to Git. The workflow is:
 
-1. Store plain secrets in `secrets.yml` (gitignored, never committed)
+1. Store plain secrets in `config/secrets.yml` (gitignored, never committed)
 2. Run `make seal-secrets` to encrypt them with kubeseal
 3. Sealed secrets are saved to `kubernetes/` directories and committed to Git
 4. ArgoCD or kubectl applies the sealed secrets to the cluster
 5. The sealed-secrets controller automatically decrypts them
+
+## Configuration Architecture
+
+All configuration is centralized in the `config/` directory:
+
+```
+config/
+├── homelab.yaml    # All non-secret configuration (domains, replicas, etc.)
+└── secrets.yml     # Secrets (gitignored, never committed)
+```
+
+**Non-secrets** go in `config/homelab.yaml`:
+- Service domains
+- Cert issuers
+- Replicas
+- Resource limits
+
+**Secrets** go in `config/secrets.yml`:
+- API keys
+- Passwords
+- TLS certificates
+- OAuth credentials
 
 ## Quick Start
 
@@ -18,10 +40,10 @@ This project uses **Sealed Secrets** to encrypt Kubernetes secrets that can be s
 
 ```bash
 # Copy the template
-cp secrets.example.yml secrets.yml
+cp secrets.example.yml config/secrets.yml
 
 # Edit with your actual secret values
-vim secrets.yml
+vim config/secrets.yml
 ```
 
 ### 2. Seal and Commit Secrets
@@ -31,7 +53,7 @@ vim secrets.yml
 make seal-secrets
 
 # The playbook will:
-# - Validate secrets.yml format
+# - Validate config/secrets.yml format
 # - Encrypt each secret with kubeseal
 # - Save sealed secrets to kubernetes/ directories
 # - Git add and commit the sealed secrets
@@ -49,7 +71,7 @@ kubectl apply -f kubernetes/applications/monitoring/secrets/grafana-admin-sealed
 
 ## Secrets File Format
 
-The `secrets.yml` file uses this structure:
+The `config/secrets.yml` file uses this structure:
 
 ```yaml
 secrets:
@@ -137,7 +159,7 @@ secrets:
 
 ### Adding a New Secret
 
-1. Edit `secrets.yml`:
+1. Edit `config/secrets.yml`:
 ```yaml
 secrets:
   - name: new-api-key
@@ -170,15 +192,15 @@ git push
 
 ### Updating an Existing Secret
 
-1. Edit the secret value in `secrets.yml`
+1. Edit the secret value in `config/secrets.yml`
 2. Run `make seal-secrets` - the sealed secret will be regenerated
 3. Commit and push - ArgoCD will sync the update
 
 ### Rotating a Secret
 
 ```bash
-# 1. Update the value in secrets.yml
-vim secrets.yml
+# 1. Update the value in config/secrets.yml
+vim config/secrets.yml
 
 # 2. Regenerate sealed secret
 make seal-secrets
@@ -204,7 +226,7 @@ make sealed-secrets-install
 # Check status
 make sealed-secrets-status
 
-# Seal secrets from secrets.yml
+# Seal secrets from config/secrets.yml
 make seal-secrets
 
 # View help
@@ -215,26 +237,50 @@ make help
 
 ```
 homelab/
-├── secrets.yml                    # Your plain secrets (GITIGNORED!)
-├── secrets.example.yml            # Template (committed to git)
-├── SECRETS.md                     # This file
+├── config/
+│   ├── homelab.yaml              # Non-secret configuration
+│   └── secrets.yml               # Your plain secrets (GITIGNORED!)
+├── secrets.example.yml           # Template (committed to git)
+├── SECRETS.md                    # This file
 ├── kubernetes/
+│   ├── services/
+│   │   └── authelia/
+│   │       └── secrets/
+│   │           └── authelia-secrets-sealed.yaml  # Encrypted, safe for git
 │   └── applications/
 │       └── monitoring/
 │           └── secrets/
 │               ├── README.md
-│               └── grafana-admin-sealed.yaml  # Encrypted, safe for git
+│               └── grafana-admin-sealed.yaml     # Encrypted, safe for git
 └── ansible/
     └── playbooks/
         ├── seal-secrets.yml       # Main playbook
         └── seal-secret-task.yml   # Secret processing tasks
 ```
 
+## Integration with config/homelab.yaml
+
+The unified configuration architecture separates secrets from configuration:
+
+| File | Contains | In Git |
+|------|----------|--------|
+| `config/homelab.yaml` | Domains, replicas, settings | ✅ Yes |
+| `config/secrets.yml` | Passwords, API keys | ❌ No (gitignored) |
+| `kubernetes/**/secrets/*-sealed.yaml` | Encrypted secrets | ✅ Yes |
+
+Ansible playbooks load both files:
+
+```yaml
+vars_files:
+  - "{{ playbook_dir }}/../../config/homelab.yaml"   # Configuration
+  - "{{ playbook_dir }}/../../config/secrets.yml"    # Secrets
+```
+
 ## Security Best Practices
 
 ### ✅ DO
 
-- ✅ Keep `secrets.yml` in `.gitignore`
+- ✅ Keep `config/secrets.yml` in `.gitignore`
 - ✅ Commit sealed secrets to git (they're encrypted)
 - ✅ Use `strict` scope unless you have a specific reason
 - ✅ Backup the sealed-secrets encryption key (see below)
@@ -243,8 +289,8 @@ homelab/
 
 ### ❌ DON'T
 
-- ❌ Commit `secrets.yml` to git
-- ❌ Share `secrets.yml` via email/Slack
+- ❌ Commit `config/secrets.yml` to git
+- ❌ Share `config/secrets.yml` via email/Slack
 - ❌ Use weak passwords "because they're encrypted"
 - ❌ Manually edit sealed secret files (they'll be overwritten)
 - ❌ Commit the sealed-secrets private key to git
@@ -292,7 +338,7 @@ If you lose the encryption key:
 
 1. **You cannot decrypt existing sealed secrets**
 2. You must:
-   - Recreate all secrets from `secrets.yml` (if you have it)
+   - Recreate all secrets from `config/secrets.yml` (if you have it)
    - Or manually recreate secrets and seal them again
    - Update all sealed secrets in git
 
@@ -304,8 +350,8 @@ This is why backing up the encryption key is **CRITICAL**!
 
 ```bash
 # Create from template
-cp secrets.example.yml secrets.yml
-vim secrets.yml
+cp secrets.example.yml config/secrets.yml
+vim config/secrets.yml
 ```
 
 ### "kubeseal command not found"
@@ -350,8 +396,8 @@ If a sealed secret is corrupted or needs regeneration:
 # 1. Delete the sealed secret file
 rm kubernetes/applications/myapp/secrets/broken-sealed.yaml
 
-# 2. Ensure the secret is still in secrets.yml
-vim secrets.yml
+# 2. Ensure the secret is still in config/secrets.yml
+vim config/secrets.yml
 
 # 3. Regenerate
 make seal-secrets
@@ -379,7 +425,7 @@ ansible-playbook ansible/playbooks/seal-secrets.yml \
 
 ### Seal Single Secret
 
-Edit `secrets.yml` to contain only the secrets you want to seal, then run `make seal-secrets`.
+Edit `config/secrets.yml` to contain only the secrets you want to seal, then run `make seal-secrets`.
 
 ### Using Different Scopes
 

@@ -7,6 +7,21 @@ Get your K3s cluster running in 3 commands! Currently configured for single-node
 - ✅ VMs provisioned via Terraform
 - ✅ SSH access configured
 - ✅ Ansible installed locally
+- ✅ Configuration set up (see below)
+
+## Configuration Setup
+
+All configuration is centralized in `config/homelab.yaml`:
+
+```bash
+# 1. Set up configuration (one-time)
+cp config/homelab.yaml.example config/homelab.yaml
+vim config/homelab.yaml  # Edit your values
+
+# 2. Set up secrets (one-time)
+cp secrets.example.yml config/secrets.yml
+vim config/secrets.yml  # Add your secrets
+```
 
 ## Installation (3 Steps)
 
@@ -17,7 +32,7 @@ cd /Users/hlardner/projects/personal/homelab
 make inventory
 ```
 
-This reads Terraform's cluster configuration and generates the Ansible inventory automatically.
+This reads Terraform's cluster configuration and generates the Ansible inventory with node IPs.
 
 ### Step 2: Install K3s
 
@@ -74,16 +89,20 @@ make k3s-destroy
 Deploy everything from scratch:
 
 ```bash
-# 1. Provision infrastructure
+# 1. Set up configuration
+cp config/homelab.yaml.example config/homelab.yaml
+vim config/homelab.yaml
+
+# 2. Provision infrastructure
 cd terraform
 terraform apply
 
-# 2. Deploy K3s
+# 3. Deploy K3s
 cd ..
 make inventory
 make k3s-install
 
-# 3. Verify
+# 4. Verify
 export KUBECONFIG=~/.kube/config-homelab
 kubectl get nodes
 ```
@@ -136,22 +155,32 @@ make k3s-install
 
 K3s needs to download from `get.k3s.io`. Ensure:
 - VMs have internet access
-- DNS is working: `make ssh-node1` then `nslookup get.k3s.io`
+- DNS is working: `make ssh-node` then `nslookup get.k3s.io`
 
 ## Next Steps
 
 After successful installation:
 
-1. **Networking**: Install MetalLB for LoadBalancer services
+1. **Core Services**: Deploy all platform services
    ```bash
    make metallb-install
+   make longhorn-install
+   make cert-manager-install
+   make traefik-install
+   make argocd-install
+   make sealed-secrets-install
    ```
 
-2. **Storage**: Deploy Longhorn for persistent storage
+2. **Authentication**: Deploy Authelia for SSO
+   ```bash
+   make authelia-install
+   ```
 
-3. **GitOps**: Deploy ArgoCD for application management
-
-4. **Monitoring**: Install kube-prometheus-stack
+3. **Monitoring**: Install Victoria Metrics + Grafana
+   ```bash
+   make monitoring-secrets
+   make monitoring-install
+   ```
 
 See the main project docs for detailed guides.
 
@@ -168,7 +197,7 @@ cd terraform && terraform destroy
 
 # 3. Recreate everything
 terraform apply
-cd .. && make deploy
+cd .. && make deploy-all
 ```
 
 ## Help
@@ -181,3 +210,10 @@ For issues, check:
 - Ansible logs: `ansible/logs/ansible.log` (if enabled)
 - K3s logs: `journalctl -u k3s -f` (on nodes)
 - Cluster events: `kubectl get events -A`
+
+## Documentation
+
+- [Main README](../README.md) - Complete deployment guide
+- [Ansible README](README.md) - Detailed Ansible usage
+- [SECRETS.md](../SECRETS.md) - Secrets management
+- [Kubernetes README](../kubernetes/README.md) - Services and applications

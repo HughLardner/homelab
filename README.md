@@ -8,7 +8,7 @@ Production-ready Kubernetes (K3s) platform on Proxmox VE with complete GitOps wo
 
 - **Single-node deployment** optimized for low-power hardware (12GB RAM)
 - **Automated VM provisioning** on Proxmox VE
-- **Dynamic inventory generation** for Ansible
+- **Configuration from single source** - reads from `config/homelab.yaml`
 - **Cloud-init configuration** for consistent node setup
 
 ### Platform Services (Ansible)
@@ -32,28 +32,96 @@ Production-ready Kubernetes (K3s) platform on Proxmox VE with complete GitOps wo
   - Node exporters on all cluster nodes
   - Kube-state-metrics for cluster state monitoring
 
+## Configuration Architecture
+
+All configuration is centralized in `config/homelab.yaml` - the **single source of truth**.
+
+```
+config/
+├── homelab.yaml    # All non-secret configuration
+└── secrets.yml     # Secrets (gitignored)
+```
+
+### How It Works
+
+```
+config/homelab.yaml (Single Source of Truth)
+       │
+       ├─► Terraform (yamldecode)
+       ├─► Ansible (vars_files)
+       ├─► Helm Charts (values)
+       └─► ArgoCD (valueFiles)
+```
+
+### Editing Configuration
+
+1. Edit `config/homelab.yaml` for any configuration changes
+2. Changes automatically propagate to all tools:
+   - Terraform reads via `yamldecode()`
+   - Ansible playbooks load via `vars_files`
+   - ArgoCD applications use Helm with `valueFiles`
+
+### Example Configuration
+
+```yaml
+# config/homelab.yaml
+global:
+  domain: silverseekers.org
+  cert_issuer: letsencrypt-prod
+  email: your@email.com
+
+services:
+  traefik:
+    domain: traefik.example.org
+    replicas: 2
+  argocd:
+    domain: argocd.example.org
+  grafana:
+    domain: grafana.example.org
+  # ... more services
+```
+
 ## Quick Start
 
 ### One-Command Deployment
 
 ```bash
-# Deploy everything from scratch (recommended)
+# 1. Configure your homelab
+cp config/homelab.yaml.example config/homelab.yaml
+vim config/homelab.yaml  # Edit your configuration
+
+# 2. Set up secrets
+cp secrets.example.yml config/secrets.yml
+vim config/secrets.yml  # Add your secrets
+
+# 3. Deploy everything
 cd terraform
 terraform init
-terraform workspace select k3s  # or alpha, beta, gamma
+terraform workspace select k3s
 cd ..
 make deploy-all
-
-# Or deploy in stages
-make deploy-infra      # 1. Terraform VMs only
-make deploy-platform   # 2. Add K3s cluster
-make deploy-services   # 3. Add all core services
-make deploy-apps       # 4. Add monitoring applications
 
 # Access your cluster
 export KUBECONFIG=~/.kube/config-homelab
 kubectl get nodes
 kubectl get pods -A
+```
+
+### Deployment Options
+
+```bash
+# Full stack deployment (recommended)
+make deploy-all        # Deploy everything (infra + platform + services + apps)
+
+# Stage-by-stage deployment
+make deploy-infra      # 1. Terraform VMs only
+make deploy-platform   # 2. Add K3s cluster
+make deploy-services   # 3. Add all core services
+make deploy-apps       # 4. Add monitoring applications
+
+# Individual service deployment
+helm upgrade --install authelia-ingress ./kubernetes/services/authelia \
+  -f ./config/homelab.yaml -n authelia --create-namespace
 ```
 
 ### Manual Step-by-Step
@@ -110,7 +178,7 @@ make argocd-ui             # Open ArgoCD UI
 make argocd-password       # Get ArgoCD admin password
 make sealed-secrets-install # Install Sealed Secrets
 make sealed-secrets-status  # Check Sealed Secrets status
-make seal-secrets          # Encrypt secrets from secrets.yml
+make seal-secrets          # Encrypt secrets from config/secrets.yml
 
 # Applications (ArgoCD/GitOps)
 make monitoring-secrets    # Create monitoring secrets (required first)
@@ -166,46 +234,85 @@ make help              # Show all commands
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────┐
-│ Proxmox VE Infrastructure (Terraform)       │
-│  • 1 VM (192.168.10.20) - 12GB RAM, 100GB   │
-│  • Cloud-init configuration                 │
-└─────────────────────────────────────────────┘
-                     ↓
-┌─────────────────────────────────────────────┐
-│ K3s Cluster (Ansible)                       │
-│  • Single-node cluster (scalable to HA)     │
-│  • MetalLB: 192.168.10.150-165              │
-└─────────────────────────────────────────────┘
-                     ↓
-┌─────────────────────────────────────────────┐
-│ Core Platform Services (Ansible)            │
-│  • Longhorn (Storage)                       │
-│  • Cert-Manager (TLS)                       │
-│  • Traefik (Ingress @ 192.168.10.150)       │
-│  • ArgoCD (GitOps)                          │
-│  • Sealed Secrets (Secret Encryption)       │
-│  • Authelia (SSO/2FA)                       │
-└─────────────────────────────────────────────┘
-                     ↓
-┌─────────────────────────────────────────────┐
-│ Applications (ArgoCD/GitOps)                │
-│  • Monitoring Stack (Victoria Metrics)      │
-│    - Grafana: https://grafana.silverseekers.org
-│    - VMSingle + VMAlert + VMAlertmanager    │
-│  • Your Applications                        │
-│    - Deployed via GitOps workflow           │
-│    - Secrets encrypted with Sealed Secrets  │
-└─────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────┐
+│ Configuration (Single Source of Truth)                  │
+│  • config/homelab.yaml - All service configuration      │
+│  • config/secrets.yml  - Secrets (gitignored)           │
+└─────────────────────────────────────────────────────────┘
+           ↓                    ↓                    ↓
+    ┌──────────────┐    ┌──────────────┐    ┌──────────────┐
+    │  Terraform   │    │   Ansible    │    │   ArgoCD     │
+    │ (yamldecode) │    │ (vars_files) │    │ (valueFiles) │
+    └──────────────┘    └──────────────┘    └──────────────┘
+           ↓                    ↓                    ↓
+┌─────────────────────────────────────────────────────────┐
+│ Proxmox VE Infrastructure                               │
+│  • 1 VM (192.168.10.20) - 12GB RAM, 100GB               │
+│  • Cloud-init configuration                             │
+└─────────────────────────────────────────────────────────┘
+                           ↓
+┌─────────────────────────────────────────────────────────┐
+│ K3s Cluster                                             │
+│  • Single-node cluster (scalable to HA)                 │
+│  • MetalLB: 192.168.10.150-165                          │
+└─────────────────────────────────────────────────────────┘
+                           ↓
+┌─────────────────────────────────────────────────────────┐
+│ Core Platform Services                                  │
+│  • Longhorn (Storage)                                   │
+│  • Cert-Manager (TLS)                                   │
+│  • Traefik (Ingress @ 192.168.10.150)                   │
+│  • ArgoCD (GitOps)                                      │
+│  • Sealed Secrets (Secret Encryption)                   │
+│  • Authelia (SSO/2FA)                                   │
+└─────────────────────────────────────────────────────────┘
+                           ↓
+┌─────────────────────────────────────────────────────────┐
+│ Applications (ArgoCD/GitOps via Helm Charts)            │
+│  • Each service is a Helm chart in kubernetes/services/ │
+│  • ArgoCD deploys with config/homelab.yaml as values    │
+│  • Monitoring Stack (Victoria Metrics + Grafana)        │
+└─────────────────────────────────────────────────────────┘
+```
+
+## Service Helm Charts
+
+Each service is packaged as a Helm chart that can be deployed via ArgoCD, Ansible, or kubectl:
+
+```
+kubernetes/services/
+├── authelia/           # SSO Authentication
+│   ├── Chart.yaml
+│   ├── values.yaml     # Default values
+│   ├── authelia-values.yaml  # Main app Helm values
+│   └── templates/
+├── argocd/             # GitOps Platform
+├── traefik/            # Ingress Controller
+├── longhorn/           # Distributed Storage
+└── ...
+```
+
+### Deploying a Service
+
+```bash
+# Via Helm directly
+helm upgrade --install authelia-ingress ./kubernetes/services/authelia \
+  -f ./config/homelab.yaml -n authelia --create-namespace
+
+# Via ArgoCD (automatic)
+# Services are deployed automatically when root-app syncs
+
+# Via Ansible
+ansible-playbook ansible/playbooks/authelia.yml
 ```
 
 ## Access Points
 
 | Service               | URL                                | Credentials              |
 | --------------------- | ---------------------------------- | ------------------------ |
-| **Traefik Dashboard** | https://traefik.silverseekers.org  | admin / (from Terraform) |
+| **Traefik Dashboard** | https://traefik.silverseekers.org  | admin / (from config)    |
 | **ArgoCD**            | https://argocd.silverseekers.org   | admin / (via secrets)    |
-| **Grafana**           | https://grafana.silverseekers.org  | admin / (from Terraform) |
+| **Grafana**           | https://grafana.silverseekers.org  | admin / (from config)    |
 | **Authelia**          | https://auth.silverseekers.org     | (configured users)       |
 | **Longhorn UI**       | https://longhorn.silverseekers.org | N/A                      |
 
@@ -219,27 +326,28 @@ make help              # Show all commands
 
 ### DNS Configuration (UniFi Gateway)
 
-All services are accessed through Traefik at `192.168.10.145`. Configure your UniFi Gateway with a wildcard DNS entry:
+All services are accessed through Traefik at `192.168.10.150`. Configure your UniFi Gateway with a wildcard DNS entry:
 
 **UniFi Network → Settings → DNS:**
 
 ```
 Type: A Record
 Name: *.silverseekers.org
-IP: 192.168.10.145
+IP: 192.168.10.150
 ```
 
 If your UniFi version doesn't support wildcard DNS, add individual entries:
 
-- `argocd.silverseekers.org` → `192.168.10.145`
-- `traefik.silverseekers.org` → `192.168.10.145`
-- `grafana.silverseekers.org` → `192.168.10.145`
-- `longhorn.silverseekers.org` → `192.168.10.145`
+- `argocd.silverseekers.org` → `192.168.10.150`
+- `traefik.silverseekers.org` → `192.168.10.150`
+- `grafana.silverseekers.org` → `192.168.10.150`
+- `longhorn.silverseekers.org` → `192.168.10.150`
+- `auth.silverseekers.org` → `192.168.10.150`
 
 **Architecture:**
 
 ```
-Browser → UniFi DNS → Traefik (192.168.10.145) → Backend Service
+Browser → UniFi DNS → Traefik (192.168.10.150) → Backend Service
                          ↓
                     Host() routing
                     /     |     \

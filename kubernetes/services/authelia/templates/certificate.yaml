@@ -5,16 +5,11 @@ apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: authelia-tls
-  namespace: { { .Release.Namespace } }
+  namespace: {{ .Release.Namespace }}
 spec:
   secretName: authelia-tls
   issuerRef:
-    name:
-      {
-        {
-          .Values.services.authelia.cert_issuer | default .Values.global.cert_issuer,
-        },
-      }
+    name: {{ .Values.services.authelia.cert_issuer | default .Values.global.cert_issuer }}
     kind: ClusterIssuer
   dnsNames:
-    - { { .Values.services.authelia.domain } }
+    - {{ .Values.services.authelia.domain }}
