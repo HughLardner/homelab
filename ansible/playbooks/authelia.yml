@@ -177,7 +177,9 @@
         wait: true
         wait_timeout: 300s
       environment:
-        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+        KUBECONFIG: "{{ lookup('env', 'HOME') }}/.kube/config-homelab"
+      delegate_to: localhost
+      become: false
       register: authelia_ingress_result
 
     # =========================================================================
