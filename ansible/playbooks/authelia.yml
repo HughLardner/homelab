@@ -98,8 +98,37 @@
         dest: "{{ temp_dir.path }}/values.yaml"
         mode: '0600'
 
-    # Note: Users database is now deployed as a Secret via the Helm chart
-    # See kubernetes/services/authelia/templates/users-secret.yaml
+    # =========================================================================
+    # Create Users Database Secret (required before main Helm install)
+    # =========================================================================
+    - name: Create authelia-users secret
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: authelia-users
+            namespace: "{{ authelia_namespace }}"
+            labels:
+              app.kubernetes.io/name: authelia
+              app.kubernetes.io/component: users
+          type: Opaque
+          stringData:
+            users_database.yml: |
+              # Authelia Users Database
+              users:
+                admin:
+                  displayname: "Admin"
+                  # Hash generated with: authelia crypto hash generate argon2 --password 'your-password'
+                  password: "$argon2id$v=19$m=65536,t=3,p=4$gbKOe5YHEdW8xzJPzsaYsg$a5AzBLjOBeB8kzRFvqOQTHrne1qyFpZ1ymEMs9ClXBk"
+                  email: "admin@{{ global.domain }}"
+                  groups:
+                    - admins
+                    - grafana_admins
+                    - argocd_admins
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
 
     # =========================================================================
     # Add Helm Repository
