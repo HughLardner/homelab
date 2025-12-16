@@ -87,6 +87,8 @@ configs:
   params:
     # Run in insecure mode - TLS termination at Traefik ingress
     server.insecure: true
+    # Skip TLS verification for OIDC (for Let's Encrypt staging certs)
+    oidc.tls.insecure.skip.verify: true
 
   # Secret configuration
   secret:
