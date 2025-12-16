@@ -12,10 +12,6 @@ server:
   # Replicas for high availability
   replicas: {{ argocd_replicas | default(1) }}
 
-  # Extra args for the server
-  extraArgs:
-    - --insecure # TLS termination at Traefik ingress
-
   # Service configuration
   service:
     type: ClusterIP
@@ -87,6 +83,11 @@ notifications:
 
 # Configs
 configs:
+  # Params configuration (argocd-cmd-params-cm)
+  params:
+    # Run in insecure mode - TLS termination at Traefik ingress
+    server.insecure: true
+
   # Secret configuration
   secret:
     # Create the argocd-secret (password will be set by Ansible)
