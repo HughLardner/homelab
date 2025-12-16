@@ -84,7 +84,8 @@ grafana.ini:
     # Email and name extraction from userinfo response
     email_attribute_path: email
     name_attribute_path: name
-    login_attribute_path: preferred_username
+    # Use email as login to avoid conflicts with built-in 'admin' user
+    login_attribute_path: email
     # Map Authelia groups to Grafana roles
     # Includes 'admins' group for convenience (maps to GrafanaAdmin)
     role_attribute_path: contains(groups[*], 'admins') && 'GrafanaAdmin' || contains(groups[*], 'grafana_admins') && 'Admin' || contains(groups[*], 'grafana_editors') && 'Editor' || 'Viewer'
