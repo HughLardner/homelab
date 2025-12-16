@@ -74,9 +74,10 @@ grafana.ini:
     auth_url: https://auth.silverseekers.org/api/oidc/authorization
     token_url: https://auth.silverseekers.org/api/oidc/token
     api_url: https://auth.silverseekers.org/api/oidc/userinfo
-    # Skip TLS verification for Let's Encrypt staging certificates
-    # TODO: Remove this when switching to production certificates
-    tls_skip_verify_insecure: true
+    # TLS verification is controlled via environment variable from grafana-tls-config ConfigMap
+    # This is dynamically set based on global.cert_issuer in homelab.yaml
+    # - letsencrypt-staging: tls_skip_verify_insecure = true
+    # - letsencrypt-prod: tls_skip_verify_insecure = false
     # Token endpoint auth method - must match Authelia's client config (client_secret_post)
     # Options: AutoDetect, inParams (client_secret_post), inHeader (client_secret_basic)
     auth_style: inParams
@@ -98,6 +99,10 @@ grafana.ini:
 
 # Environment from secret
 envFromSecret: grafana-admin-secret
+
+# Environment from ConfigMaps (TLS config based on cert_issuer)
+envFromConfigMaps:
+  - grafana-tls-config
 
 # Environment variables from secrets (OIDC client secret)
 envValueFrom:

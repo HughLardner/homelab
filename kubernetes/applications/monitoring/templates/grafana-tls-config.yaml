@@ -1,0 +1,20 @@
+---
+# Grafana TLS Configuration
+# Dynamically sets TLS skip based on cert_issuer from homelab.yaml
+# This ConfigMap provides environment variables for Grafana's OIDC configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-tls-config
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"  # Apply before Grafana
+data:
+  {{- if eq .Values.global.cert_issuer "letsencrypt-staging" }}
+  # Staging certificates - skip TLS verification
+  GF_AUTH_GENERIC_OAUTH_TLS_SKIP_VERIFY_INSECURE: "true"
+  {{- else }}
+  # Production certificates - enable TLS verification
+  GF_AUTH_GENERIC_OAUTH_TLS_SKIP_VERIFY_INSECURE: "false"
+  {{- end }}
+
