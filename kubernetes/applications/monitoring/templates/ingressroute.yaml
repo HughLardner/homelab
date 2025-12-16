@@ -19,7 +19,7 @@ spec:
         - name: authelia-forward-auth
           namespace: authelia
       services:
-        - name: kube-prometheus-stack-grafana
+        - name: grafana
           port: 80
   tls:
     secretName: grafana-tls

@@ -38,3 +38,6 @@ ansible/secrets.yaml
 
 # Claude Code files (may contain MCP secrets)
 .claude/
+
+# Rendered templates (contain secrets)
+rendered/

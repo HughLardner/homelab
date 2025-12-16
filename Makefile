@@ -710,6 +710,27 @@ ssh-node:
 # Utility Commands
 # ============================================================================
 
+# Render Jinja2 templates to static files for kubectl/Helm deployments
+# This allows deployment without Ansible by pre-processing templates
+render-templates:
+	@echo "📝 Rendering Jinja2 templates for direct kubectl/Helm usage..."
+	@mkdir -p rendered/argocd
+	@cd ansible && ansible localhost -m template \
+		-a "src=../kubernetes/services/argocd/argocd-values.yaml dest=../rendered/argocd/values.yaml" \
+		-e "@../config/homelab.yaml" \
+		-e "@../config/secrets.yml" \
+		-e "argocd_github_repo_url={{ services.argocd.github_repo_url }}" \
+		-e "argocd_github_token={{ github_token }}"
+	@echo ""
+	@echo "✅ Templates rendered to rendered/ directory"
+	@echo ""
+	@echo "You can now deploy ArgoCD directly with Helm:"
+	@echo "  helm upgrade --install argocd argo/argo-cd \\"
+	@echo "    --namespace argocd --create-namespace \\"
+	@echo "    --values rendered/argocd/values.yaml"
+	@echo ""
+	@echo "⚠️  Note: rendered/ is gitignored to prevent secrets from being committed"
+
 clean:
 	find . -type d -name ".terraform" -exec rm -rf {} + 2>/dev/null || true
 	find . -type f -name "*.tfstate.backup" -delete
