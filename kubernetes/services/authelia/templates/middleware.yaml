@@ -18,7 +18,7 @@ metadata:
 spec:
   forwardAuth:
     # Authelia's forward auth endpoint
-    address: http://authelia.{{ .Release.Namespace }}.svc.cluster.local:9091/api/authz/forward-auth
+    address: http://authelia.{{ .Release.Namespace }}.svc.cluster.local/api/authz/forward-auth
     trustForwardHeader: true
     # Headers to pass to the backend service
     authResponseHeaders:
@@ -40,7 +40,7 @@ metadata:
     app.kubernetes.io/component: middleware
 spec:
   forwardAuth:
-    address: http://authelia.{{ .Release.Namespace }}.svc.cluster.local:9091/api/authz/forward-auth/basic
+    address: http://authelia.{{ .Release.Namespace }}.svc.cluster.local/api/authz/forward-auth/basic
     trustForwardHeader: true
     authResponseHeaders:
       - Remote-User
