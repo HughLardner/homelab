@@ -37,6 +37,9 @@
     argocd_cert_issuer: "{{ services.argocd.cert_issuer | default(global.cert_issuer) }}"
     argocd_replicas: "{{ services.argocd.replicas | default(1) }}"
     # argocd_password is loaded directly from config/secrets.yml via vars_files
+    # GitHub repository configuration for GitOps
+    argocd_github_repo_url: "{{ services.argocd.github_repo_url | default('') }}"
+    argocd_github_token: "{{ github_token | default('') }}"
 
   tasks:
     # =========================================================================
@@ -137,8 +140,8 @@
 
     - name: Template ArgoCD Helm values
       ansible.builtin.template:
-        src: "{{ argocd_manifests_path }}/values.yaml"
-        dest: "{{ temp_dir.path }}/values.yaml"
+        src: "{{ argocd_manifests_path }}/argocd-values.yaml"
+        dest: "{{ temp_dir.path }}/argocd-values.yaml"
         mode: "0644"
 
     # =========================================================================
@@ -154,7 +157,7 @@
         wait: true
         wait_timeout: 600s
         values_files:
-          - "{{ temp_dir.path }}/values.yaml"
+          - "{{ temp_dir.path }}/argocd-values.yaml"
       environment:
         KUBECONFIG: /etc/rancher/k3s/k3s.yaml
 
@@ -163,13 +166,14 @@
     # =========================================================================
     # ArgoCD needs to trust the Let's Encrypt staging CA when connecting to
     # OIDC providers (like Authelia) using staging certificates
+    # Uses global.cert_issuer from config/homelab.yaml as the single source of truth
     - name: Check if using staging certificates
       ansible.builtin.set_fact:
-        use_staging_certs: "{{ (argocd_cert_issuer | default('letsencrypt-staging')) == 'letsencrypt-staging' or (authelia_cert_issuer | default('letsencrypt-staging')) == 'letsencrypt-staging' }}"
+        use_staging_certs: "{{ global.cert_issuer == 'letsencrypt-staging' }}"
 
     - name: Get Authelia domain for TLS trust
       ansible.builtin.set_fact:
-        authelia_oidc_domain: "{{ authelia_domain | default('auth.silverseekers.org') }}"
+        authelia_oidc_domain: "{{ services.authelia.domain | default('auth.' + global.domain) }}"
 
     # Let's Encrypt Staging Root CA - "(STAGING) Pretend Pear X1"
     # https://letsencrypt.org/docs/staging-environment/
@@ -380,30 +384,17 @@
       changed_when: "'has been upgraded' in argocd_ingress_result.stdout or 'has been installed' in argocd_ingress_result.stdout"
 
     # =========================================================================
-    # Configure Repository Connection
+    # Repository Connection Status
     # =========================================================================
+    # Repository is now managed via Helm values (configs.repositories)
+    # Credential template for GitHub is also managed via Helm (configs.credentialTemplates)
     - name: Check if GitHub repository URL is configured
       ansible.builtin.set_fact:
         github_repo_configured: "{{ argocd_github_repo_url is defined and argocd_github_repo_url | length > 0 and argocd_github_token is defined and argocd_github_token | length > 0 }}"
 
-    - name: Template repository configuration
-      ansible.builtin.template:
-        src: "{{ argocd_manifests_path }}/repository.yaml"
-        dest: "{{ temp_dir.path }}/repository.yaml"
-        mode: "0600"
-      when: github_repo_configured | bool
-      no_log: true
-
-    - name: Apply repository connection
-      ansible.builtin.command:
-        cmd: /usr/local/bin/k3s kubectl apply -f {{ temp_dir.path }}/repository.yaml
-      register: repository_result
-      changed_when: "'created' in repository_result.stdout or 'configured' in repository_result.stdout"
-      when: github_repo_configured | bool
-
     - name: Display repository connection status
       ansible.builtin.debug:
-        msg: "{{ 'Repository connection configured for: ' + argocd_github_repo_url if github_repo_configured else 'Skipping repository configuration (no GitHub URL/token provided)' }}"
+        msg: "{{ 'Repository connection configured via Helm for: ' + argocd_github_repo_url if github_repo_configured else 'Skipping repository configuration (no GitHub URL/token provided)' }}"
 
     # =========================================================================
     # Cleanup and Verification

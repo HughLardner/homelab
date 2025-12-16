@@ -10,7 +10,7 @@ global:
 # Server configuration
 server:
   # Replicas for high availability
-  replicas: { { argocd_replicas | default(1) } }
+  replicas: {{ argocd_replicas | default(1) }}
 
   # Service configuration
   service:
@@ -29,7 +29,7 @@ server:
 
 # Controller configuration
 controller:
-  replicas: { { argocd_controller_replicas | default(1) } }
+  replicas: {{ argocd_controller_replicas | default(1) }}
 
   resources:
     requests:
@@ -41,7 +41,7 @@ controller:
 
 # Repo server configuration
 repoServer:
-  replicas: { { argocd_repo_replicas | default(1) } }
+  replicas: {{ argocd_repo_replicas | default(1) }}
 
   resources:
     requests:
@@ -53,7 +53,7 @@ repoServer:
 
 # ApplicationSet controller
 applicationSet:
-  replicas: { { argocd_appset_replicas | default(1) } }
+  replicas: {{ argocd_appset_replicas | default(1) }}
 
   resources:
     requests:
@@ -79,7 +79,7 @@ dex:
 
 # Notifications controller (optional)
 notifications:
-  enabled: { { argocd_notifications_enabled | default('false') } }
+  enabled: {{ argocd_notifications_enabled | default('false') }}
 
 # Configs
 configs:
@@ -116,9 +116,10 @@ configs:
     # Authelia SSO Integration (OIDC)
     # =========================================================================
     # Client secret is stored in argocd-oidc-secret.
+    # rootCA is conditionally included for Let's Encrypt staging certificates
     oidc.config: |
       name: Authelia
-      issuer: https://auth.silverseekers.org
+      issuer: https://{{ services.authelia.domain | default('auth.' + global.domain) }}
       clientID: argocd
       clientSecret: $oidc.authelia.clientSecret
       requestedScopes:
@@ -126,6 +127,40 @@ configs:
         - profile
         - email
         - groups
+{% if global.cert_issuer == 'letsencrypt-staging' %}
+      rootCA: |
+        -----BEGIN CERTIFICATE-----
+        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
+        1ihc7aoA6ccL6q+Rag==
+        -----END CERTIFICATE-----
+{% endif %}
 
   # RBAC configuration
   rbac:
@@ -138,10 +173,20 @@ configs:
       g, admins, role:admin
 
   # Repository credentials (add your repos here)
-  repositories: {}
+  repositories:
+    homelab-repo:
+      name: homelab
+      url: "{{ argocd_github_repo_url }}"
+      type: git
+      password: "{{ argocd_github_token }}"
+      username: git
 
-  # Credential templates
-  credentialTemplates: {}
+  # Credential templates for GitHub (matches any github.com repo)
+  credentialTemplates:
+    github-https:
+      url: https://github.com
+      password: "{{ argocd_github_token }}"
+      username: git
 
 # Metrics for Prometheus
 metrics:
