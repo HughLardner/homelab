@@ -10,7 +10,7 @@ global:
 # Server configuration
 server:
   # Replicas for high availability
-  replicas: {{ argocd_replicas | default(1) }}
+  replicas: { { argocd_replicas | default(1) } }
 
   # Service configuration
   service:
@@ -29,7 +29,7 @@ server:
 
 # Controller configuration
 controller:
-  replicas: {{ argocd_controller_replicas | default(1) }}
+  replicas: { { argocd_controller_replicas | default(1) } }
 
   resources:
     requests:
@@ -41,7 +41,7 @@ controller:
 
 # Repo server configuration
 repoServer:
-  replicas: {{ argocd_repo_replicas | default(1) }}
+  replicas: { { argocd_repo_replicas | default(1) } }
 
   resources:
     requests:
@@ -53,7 +53,7 @@ repoServer:
 
 # ApplicationSet controller
 applicationSet:
-  replicas: {{ argocd_appset_replicas | default(1) }}
+  replicas: { { argocd_appset_replicas | default(1) } }
 
   resources:
     requests:
@@ -79,7 +79,7 @@ dex:
 
 # Notifications controller (optional)
 notifications:
-  enabled: {{ argocd_notifications_enabled | default('false') }}
+  enabled: { { argocd_notifications_enabled | default('false') } }
 
 # Configs
 configs:

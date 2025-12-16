@@ -1,6 +1,7 @@
 ---
 # Longhorn Frontend IngressRoute
 # Access at: https://{{ .Values.services.longhorn.domain }}
+# Protected by Authelia SSO
 apiVersion: traefik.io/v1alpha1
 kind: IngressRoute
 metadata:
@@ -15,9 +16,11 @@ spec:
     - match: Host(`{{ .Values.services.longhorn.domain }}`)
       kind: Rule
       priority: 10
+      middlewares:
+        - name: authelia-forward-auth
+          namespace: authelia
       services:
         - name: longhorn-frontend
           port: 80
   tls:
     secretName: longhorn-frontend-tls
-
