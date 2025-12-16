@@ -25,6 +25,7 @@
 
   vars_files:
     - "{{ playbook_dir }}/../../config/homelab.yaml"
+    - "{{ playbook_dir }}/../../config/secrets.yml"
 
   vars:
     monitoring_namespace: monitoring

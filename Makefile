@@ -1,4 +1,4 @@
-.PHONY: help init plan apply destroy ssh-node k3s-* metallb-* longhorn-* cert-manager-* certs-* traefik-* argocd-* authelia-* monitoring-* sealed-secrets-* seal-secrets kured-* root-app-deploy apps-list apps-status monitoring-secrets inventory clean clean-backups deploy-infra deploy-platform deploy-services deploy-all deploy deploy-apps
+.PHONY: help init plan apply destroy ssh-node k3s-* metallb-* longhorn-* cert-manager-* certs-* traefik-* argocd-* authelia-* monitoring-* sealed-secrets-* seal-secrets kured-* root-app-deploy apps-list apps-status monitoring-secrets inventory clean clean-backups deploy-infra deploy-platform deploy-services deploy-all deploy deploy-apps rebuild
 
 # Default target
 help:
@@ -106,6 +106,7 @@ help:
 	@echo "  make deploy-all        - Deploy everything (infra + platform + services + apps)"
 	@echo "  make deploy            - Alias for deploy-services (most common)"
 	@echo "  make deploy-apps       - Deploy only applications (assumes services exist)"
+	@echo "  make rebuild           - 🔥 NUKE & REBUILD: destroy everything and redeploy from scratch"
 	@echo ""
 	@echo "═══════════════════════════════════════════════════════════════════"
 	@echo "  Utility Commands"
@@ -940,3 +941,58 @@ deploy-apps:
 	@echo "💡 Monitor ArgoCD sync:"
 	@echo "  make apps-status"
 	@echo "  make monitoring-sync"
+
+# ============================================================================
+# Full Cluster Rebuild (Nuclear Option)
+# ============================================================================
+
+# Complete cluster rebuild - destroys everything and starts fresh
+# This is the "nuclear option" for when you need a completely clean slate
+rebuild:
+	@echo "════════════════════════════════════════════════════════════════════"
+	@echo "🔥 FULL CLUSTER REBUILD - NUCLEAR OPTION"
+	@echo "════════════════════════════════════════════════════════════════════"
+	@echo ""
+	@echo "This will:"
+	@echo "  1. Destroy all infrastructure (VMs, storage, network)"
+	@echo "  2. Clean all temporary files"
+	@echo "  3. Remove all secret backups (fresh certs & sealed-secrets keys)"
+	@echo "  4. Re-initialize Terraform"
+	@echo "  5. Redeploy entire stack from scratch"
+	@echo ""
+	@echo "⚠️  WARNING: All data will be lost. Backups will be deleted."
+	@echo ""
+	@read -p "Are you ABSOLUTELY sure? Type 'REBUILD' to confirm: " confirm; \
+	if [ "$$confirm" != "REBUILD" ]; then \
+		echo "❌ Rebuild cancelled."; \
+		exit 1; \
+	fi
+	@echo ""
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@echo "Step 1/5: Destroying infrastructure..."
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	$(MAKE) destroy
+	@echo ""
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@echo "Step 2/5: Cleaning temporary files..."
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	$(MAKE) clean
+	@echo ""
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@echo "Step 3/5: Removing secret backups..."
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	$(MAKE) clean-backups
+	@echo ""
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@echo "Step 4/5: Re-initializing Terraform..."
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	$(MAKE) init
+	@echo ""
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@echo "Step 5/5: Deploying full stack..."
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	$(MAKE) deploy-all
+	@echo ""
+	@echo "════════════════════════════════════════════════════════════════════"
+	@echo "🎉 REBUILD COMPLETE!"
+	@echo "════════════════════════════════════════════════════════════════════"
