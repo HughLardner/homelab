@@ -3,11 +3,11 @@
 # Kubernetes backup and restore
 
 # kubectl image for CRD upgrade job
-# Using portainer/kubectl-shell which has kubectl and sh
+# Using dtzar/helm-kubectl which has both kubectl and bash/sh
 kubectl:
   image:
-    repository: portainer/kubectl-shell
-    tag: "latest"
+    repository: dtzar/helm-kubectl
+    tag: "3.13"
 
 # Use existing secret for cloud credentials
 credentials:
