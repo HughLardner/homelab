@@ -101,7 +101,8 @@ configMap:
     cookies:
       - subdomain: auth
         domain: silverseekers.org
-        default_redirection_url: https://grafana.silverseekers.org
+        authelia_url: https://auth.silverseekers.org
+        default_redirection_url: https://home.silverseekers.org
   
   # Storage backend (SQLite)
   storage:
@@ -126,6 +127,9 @@ configMap:
         resources:
           - "^/api/.*$"
           - "^/.well-known/.*$"
+      # All other subdomains require one-factor auth
+      - domain: "*.silverseekers.org"
+        policy: one_factor
   
   # Identity Providers (OIDC)
   identity_providers:
