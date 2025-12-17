@@ -99,8 +99,9 @@ configMap:
   # Session configuration (in-memory for single replica - no Redis needed)
   session:
     cookies:
-      - domain: silverseekers.org
-        authelia_url: https://auth.silverseekers.org
+      - subdomain: auth
+        domain: silverseekers.org
+        default_redirection_url: https://grafana.silverseekers.org
   
   # Storage backend (SQLite)
   storage:
