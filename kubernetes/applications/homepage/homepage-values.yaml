@@ -1,0 +1,205 @@
+---
+# Homepage Helm Chart Values
+# https://github.com/jameswynn/helm-charts/tree/main/charts/homepage
+#
+# This configures the official Homepage chart with:
+# - Kubernetes service discovery via RBAC
+# - External ConfigMaps for services, settings, widgets
+# - Environment variables for API secrets
+
+# Container image
+image:
+  repository: ghcr.io/gethomepage/homepage
+  tag: latest
+  pullPolicy: IfNotPresent
+
+# Enable ServiceAccount with RBAC for Kubernetes discovery
+enableRbac: true
+
+serviceAccount:
+  create: true
+  name: homepage
+  annotations: {}
+
+# Resource limits
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+# Service configuration
+service:
+  main:
+    ports:
+      http:
+        port: 3000
+
+# Environment variables from secrets
+env:
+  # Proxmox API token (from sealed secret)
+  HOMEPAGE_VAR_PROXMOX_TOKEN_ID:
+    valueFrom:
+      secretKeyRef:
+        name: homepage-secrets
+        key: proxmox-token-id
+  HOMEPAGE_VAR_PROXMOX_TOKEN_SECRET:
+    valueFrom:
+      secretKeyRef:
+        name: homepage-secrets
+        key: proxmox-token-secret
+  # OpenWeatherMap API key (optional)
+  HOMEPAGE_VAR_OPENWEATHER_API_KEY:
+    valueFrom:
+      secretKeyRef:
+        name: homepage-secrets
+        key: openweather-api-key
+        optional: true
+
+# Configuration files - use Kubernetes ConfigMap approach
+# Homepage looks for config files in /app/config
+config:
+  # Settings configuration
+  settings:
+    title: Homelab Dashboard
+    favicon: https://gethomepage.dev/favicon.ico
+    headerStyle: boxed
+    hideVersion: true
+    color: slate
+    target: _blank
+    quicklaunch:
+      searchDescriptions: true
+      hideInternetSearch: false
+      hideVisitURL: false
+
+  # Info widgets (top bar)
+  widgets:
+    - datetime:
+        text_size: xl
+        format:
+          dateStyle: long
+          timeStyle: short
+    - search:
+        provider: google
+        target: _blank
+    - kubernetes:
+        cluster:
+          show: true
+          cpu: true
+          memory: true
+          showLabel: true
+          label: "homelab"
+        nodes:
+          show: true
+          cpu: true
+          memory: true
+          showLabel: true
+    - longhorn:
+        expanded: true
+        total: true
+        labels: true
+        nodes: true
+
+  # Service bookmarks
+  bookmarks:
+    - Developer:
+        - GitHub:
+            - abbr: GH
+              href: https://github.com/HughLardner/homelab
+              icon: github
+        - Cloudflare:
+            - abbr: CF
+              href: https://dash.cloudflare.com
+              icon: cloudflare
+    - Documentation:
+        - Kubernetes:
+            - abbr: K8s
+              href: https://kubernetes.io/docs/
+              icon: kubernetes
+        - Homepage:
+            - abbr: HP
+              href: https://gethomepage.dev
+              icon: homepage
+
+  # Services configuration
+  services:
+    - Infrastructure:
+        - Traefik:
+            href: https://traefik.silverseekers.org
+            description: Ingress Controller & Reverse Proxy
+            icon: traefik
+            siteMonitor: https://traefik.silverseekers.org
+        - ArgoCD:
+            href: https://argocd.silverseekers.org
+            description: GitOps Continuous Delivery
+            icon: argocd
+            siteMonitor: https://argocd.silverseekers.org
+        - Authelia:
+            href: https://auth.silverseekers.org
+            description: Single Sign-On Authentication
+            icon: authelia
+            siteMonitor: https://auth.silverseekers.org
+    - Storage:
+        - Longhorn:
+            href: https://longhorn.silverseekers.org
+            description: Distributed Block Storage
+            icon: longhorn
+            siteMonitor: https://longhorn.silverseekers.org
+            widget:
+              type: longhorn
+              url: http://longhorn-frontend.longhorn-system.svc:80
+        - MinIO:
+            href: https://minio-console.silverseekers.org
+            description: S3-Compatible Object Storage
+            icon: minio
+            siteMonitor: https://minio-console.silverseekers.org
+    - Monitoring:
+        - Grafana:
+            href: https://grafana.silverseekers.org
+            description: Dashboards & Visualization
+            icon: grafana
+            siteMonitor: https://grafana.silverseekers.org
+
+  # Kubernetes discovery configuration
+  kubernetes:
+    mode: cluster
+
+  # Docker configuration (empty - not using Docker)
+  docker: {}
+
+# Pod security context
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+
+# Container security context
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: false
+
+# Liveness and readiness probes
+livenessProbe:
+  httpGet:
+    path: /api/healthcheck
+    port: 3000
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /api/healthcheck
+    port: 3000
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+

@@ -1,0 +1,26 @@
+---
+# Homepage Kubernetes Discovery ConfigMap
+# Enables auto-discovery of services via Kubernetes annotations
+#
+# To enable discovery for a service, add these annotations to the Service:
+#   gethomepage.dev/enabled: "true"
+#   gethomepage.dev/name: "Service Name"
+#   gethomepage.dev/description: "Service Description"
+#   gethomepage.dev/group: "Category"
+#   gethomepage.dev/icon: "icon-name"
+#   gethomepage.dev/href: "https://service.domain.com"
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: homepage-kubernetes
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: homepage
+    app.kubernetes.io/component: config
+data:
+  kubernetes.yaml: |
+    mode: cluster
+  
+  docker.yaml: |
+    # Docker discovery disabled - not using Docker
+

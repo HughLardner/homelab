@@ -136,3 +136,14 @@ services:
     tunnel_name: homelab-tunnel
     replicas: 1
     default_origin: http://traefik.traefik.svc:80
+
+  # ---------------------------------------------------------------------------
+  # Homepage Dashboard
+  # ---------------------------------------------------------------------------
+  homepage:
+    domain: home.silverseekers.org
+    auth_enabled: true # Toggle Authelia SSO protection
+    title: "Homelab Dashboard"
+    # Proxmox integration
+    proxmox_url: "https://192.168.10.100:8006"
+    proxmox_node: "pve"

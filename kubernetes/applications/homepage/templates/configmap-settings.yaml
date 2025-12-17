@@ -1,0 +1,51 @@
+---
+# Homepage Settings ConfigMap
+# Contains general settings and bookmarks
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: homepage-settings
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: homepage
+    app.kubernetes.io/component: config
+data:
+  settings.yaml: |
+    title: {{ .Values.services.homepage.title | default "Homelab Dashboard" }}
+    favicon: https://gethomepage.dev/favicon.ico
+    headerStyle: boxed
+    hideVersion: true
+    color: slate
+    target: _blank
+    quicklaunch:
+      searchDescriptions: true
+      hideInternetSearch: false
+      hideVisitURL: false
+    providers:
+      longhorn:
+        url: http://longhorn-frontend.longhorn-system.svc:80
+  
+  bookmarks.yaml: |
+    - Developer:
+        - GitHub:
+            - abbr: GH
+              href: https://github.com/HughLardner/homelab
+              icon: github
+        - Cloudflare:
+            - abbr: CF
+              href: https://dash.cloudflare.com
+              icon: cloudflare
+    - Documentation:
+        - Kubernetes:
+            - abbr: K8s
+              href: https://kubernetes.io/docs/
+              icon: kubernetes
+        - Homepage:
+            - abbr: HP
+              href: https://gethomepage.dev
+              icon: homepage
+        - ArgoCD Docs:
+            - abbr: AD
+              href: https://argo-cd.readthedocs.io/
+              icon: argocd
+

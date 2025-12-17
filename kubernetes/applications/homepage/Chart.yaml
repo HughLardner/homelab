@@ -1,0 +1,11 @@
+apiVersion: v2
+name: homepage-ingress
+description: Homepage Dashboard IngressRoute and Certificate for Traefik
+type: application
+version: 1.0.0
+appVersion: "0.9"
+
+# This chart creates the ingress resources for Homepage dashboard
+# The main Homepage application is deployed using the official Helm chart
+# with homepage-values.yaml
+

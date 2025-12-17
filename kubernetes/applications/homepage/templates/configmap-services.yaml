@@ -1,0 +1,62 @@
+---
+# Homepage Services ConfigMap
+# Contains service groups for the dashboard
+# Services can also be auto-discovered via Kubernetes annotations
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: homepage-services
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: homepage
+    app.kubernetes.io/component: config
+data:
+  services.yaml: |
+    - Infrastructure:
+        - Traefik:
+            href: https://{{ .Values.services.traefik.domain }}
+            description: Ingress Controller & Reverse Proxy
+            icon: traefik
+            siteMonitor: https://{{ .Values.services.traefik.domain }}
+        - ArgoCD:
+            href: https://{{ .Values.services.argocd.domain }}
+            description: GitOps Continuous Delivery
+            icon: argocd
+            siteMonitor: https://{{ .Values.services.argocd.domain }}
+        - Authelia:
+            href: https://{{ .Values.services.authelia.domain }}
+            description: Single Sign-On Authentication
+            icon: authelia
+            siteMonitor: https://{{ .Values.services.authelia.domain }}
+    - Storage:
+        - Longhorn:
+            href: https://{{ .Values.services.longhorn.domain }}
+            description: Distributed Block Storage
+            icon: longhorn
+            siteMonitor: https://{{ .Values.services.longhorn.domain }}
+            widget:
+              type: longhorn
+              url: http://longhorn-frontend.longhorn-system.svc:80
+        - MinIO:
+            href: https://{{ .Values.services.minio.console_domain }}
+            description: S3-Compatible Object Storage
+            icon: minio
+            siteMonitor: https://{{ .Values.services.minio.console_domain }}
+    - Monitoring:
+        - Grafana:
+            href: https://{{ .Values.services.grafana.domain }}
+            description: Dashboards & Visualization
+            icon: grafana
+            siteMonitor: https://{{ .Values.services.grafana.domain }}
+    - Virtualization:
+        - Proxmox:
+            href: {{ .Values.services.homepage.proxmox_url }}
+            description: Hypervisor & VM Management
+            icon: proxmox
+            widget:
+              type: proxmox
+              url: {{ .Values.services.homepage.proxmox_url | quote }}
+              username: {{`{{HOMEPAGE_VAR_PROXMOX_TOKEN_ID}}`}}
+              password: {{`{{HOMEPAGE_VAR_PROXMOX_TOKEN_SECRET}}`}}
+              node: {{ .Values.services.homepage.proxmox_node | quote }}
+

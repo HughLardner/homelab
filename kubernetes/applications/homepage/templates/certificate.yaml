@@ -1,0 +1,22 @@
+---
+# Homepage TLS Certificate
+# Issued by cert-manager using the configured ClusterIssuer
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: homepage-tls
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: homepage
+    app.kubernetes.io/component: tls
+spec:
+  secretName: homepage-tls
+  issuerRef:
+    name: {{ .Values.global.cert_issuer | default "letsencrypt-staging" }}
+    kind: ClusterIssuer
+  dnsNames:
+    - {{ .Values.services.homepage.domain }}
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+
