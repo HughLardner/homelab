@@ -60,11 +60,46 @@ env:
         key: openweather-api-key
         optional: true
 
-# Configuration - use existing ConfigMap created by our local templates
-# This allows us to include all required files (proxmox.yaml, custom.css, etc.)
+# Configuration - mount ConfigMap at different path, use initContainer to copy
+# This allows Homepage to write to /app/config while using our config content
 config:
   # Use the ConfigMap we create in templates/configmap-complete.yaml
   useExistingConfigMap: homepage-config
+
+# Use emptyDir for /app/config so Homepage can write to it
+# The initContainer copies our ConfigMap content to this writable location
+persistence:
+  config:
+    enabled: true
+    type: emptyDir
+    mountPath: /app/config
+  config-source:
+    enabled: true
+    type: configMap
+    name: homepage-config
+    mountPath: /config-readonly
+  logs:
+    enabled: true
+    type: emptyDir
+    mountPath: /app/config/logs
+
+# Init container to copy config from readonly ConfigMap to writable emptyDir
+initContainers:
+  copy-config:
+    image: busybox:latest
+    command:
+      - sh
+      - -c
+      - |
+        echo "Copying config files from ConfigMap to writable directory..."
+        cp -v /config-readonly/* /app/config/ || true
+        ls -la /app/config/
+        echo "Config copy complete"
+    volumeMounts:
+      - name: config-source
+        mountPath: /config-readonly
+      - name: config
+        mountPath: /app/config
 
 # Pod security context
 podSecurityContext:
