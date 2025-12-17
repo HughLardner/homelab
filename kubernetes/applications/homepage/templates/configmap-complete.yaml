@@ -1,0 +1,120 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: homepage-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: homepage
+    app.kubernetes.io/component: config
+data:
+  # Settings - dashboard configuration
+  settings.yaml: |
+    title: {{ .Values.services.homepage.title | default "Homelab Dashboard" }}
+    favicon: https://gethomepage.dev/favicon.ico
+    headerStyle: boxed
+    hideVersion: true
+    color: slate
+    target: _blank
+    quicklaunch:
+      searchDescriptions: true
+      hideInternetSearch: false
+      hideVisitURL: false
+
+  # Widgets - info widgets in header
+  widgets.yaml: |
+    - datetime:
+        text_size: xl
+        format:
+          dateStyle: long
+          timeStyle: short
+    - search:
+        provider: google
+        target: _blank
+    - kubernetes:
+        cluster:
+          show: true
+          cpu: true
+          memory: true
+          showLabel: true
+          label: "{{ .Values.cluster.name | default "homelab" }}"
+        nodes:
+          show: true
+          cpu: true
+          memory: true
+          showLabel: true
+    {{- if .Values.services.homepage.openweather_location }}
+    - openweathermap:
+        label: {{ .Values.services.homepage.openweather_location | default "Weather" }}
+        latitude: {{ .Values.services.homepage.openweather_lat | default "40.7128" }}
+        longitude: {{ .Values.services.homepage.openweather_lon | default "-74.0060" }}
+        units: imperial
+        apiKey: {{`{{HOMEPAGE_VAR_OPENWEATHER_API_KEY}}`}}
+    {{- end }}
+
+  # Services - manually defined services
+  services.yaml: |
+    - Infrastructure:
+      - Traefik:
+          href: https://{{ .Values.services.traefik.domain }}
+          description: Ingress Controller & Reverse Proxy
+          icon: traefik
+      - ArgoCD:
+          href: https://{{ .Values.services.argocd.domain }}
+          description: GitOps Continuous Delivery
+          icon: argocd
+      - Authelia:
+          href: https://{{ .Values.services.authelia.domain }}
+          description: Single Sign-On Authentication
+          icon: authelia
+    - Storage:
+      - Longhorn:
+          href: https://{{ .Values.services.longhorn.domain }}
+          description: Distributed Block Storage
+          icon: longhorn
+      - MinIO:
+          href: https://{{ .Values.services.minio.console_domain }}
+          description: S3-Compatible Object Storage
+          icon: minio
+    - Monitoring:
+      - Grafana:
+          href: https://{{ .Values.services.grafana.domain }}
+          description: Dashboards & Visualization
+          icon: grafana
+
+  # Bookmarks - quick links
+  bookmarks.yaml: |
+    - Developer:
+      - GitHub:
+        - abbr: GH
+          href: https://github.com/HughLardner/homelab
+          icon: github
+      - Cloudflare:
+        - abbr: CF
+          href: https://dash.cloudflare.com
+          icon: cloudflare
+    - Documentation:
+      - Kubernetes:
+        - abbr: K8s
+          href: https://kubernetes.io/docs/
+          icon: kubernetes
+      - Homepage:
+        - abbr: HP
+          href: https://gethomepage.dev
+          icon: homepage
+
+  # Kubernetes - cluster integration
+  kubernetes.yaml: |
+    mode: cluster
+
+  # Docker - not used in k8s deployment
+  docker.yaml: ""
+
+  # Proxmox - empty config (required by Homepage even if not used)
+  proxmox.yaml: ""
+
+  # Custom CSS - empty but required
+  custom.css: ""
+
+  # Custom JS - empty but required  
+  custom.js: ""
+

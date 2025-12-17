@@ -60,115 +60,11 @@ env:
         key: openweather-api-key
         optional: true
 
-# Configuration files - use Kubernetes ConfigMap approach
-# Homepage looks for config files in /app/config
+# Configuration - use existing ConfigMap created by our local templates
+# This allows us to include all required files (proxmox.yaml, custom.css, etc.)
 config:
-  # Settings configuration
-  settings:
-    title: Homelab Dashboard
-    favicon: https://gethomepage.dev/favicon.ico
-    headerStyle: boxed
-    hideVersion: true
-    color: slate
-    target: _blank
-    quicklaunch:
-      searchDescriptions: true
-      hideInternetSearch: false
-      hideVisitURL: false
-
-  # Info widgets (top bar)
-  widgets:
-    - datetime:
-        text_size: xl
-        format:
-          dateStyle: long
-          timeStyle: short
-    - search:
-        provider: google
-        target: _blank
-    - kubernetes:
-        cluster:
-          show: true
-          cpu: true
-          memory: true
-          showLabel: true
-          label: "homelab"
-        nodes:
-          show: true
-          cpu: true
-          memory: true
-          showLabel: true
-    # Longhorn widget disabled - requires longhorn.yaml config file
-    # TODO: Add custom ConfigMap for longhorn.yaml
-
-  # Service bookmarks
-  bookmarks:
-    - Developer:
-        - GitHub:
-            - abbr: GH
-              href: https://github.com/HughLardner/homelab
-              icon: github
-        - Cloudflare:
-            - abbr: CF
-              href: https://dash.cloudflare.com
-              icon: cloudflare
-    - Documentation:
-        - Kubernetes:
-            - abbr: K8s
-              href: https://kubernetes.io/docs/
-              icon: kubernetes
-        - Homepage:
-            - abbr: HP
-              href: https://gethomepage.dev
-              icon: homepage
-
-  # Services configuration
-  # Note: siteMonitor disabled - SSL cert validation fails from inside cluster
-  services:
-    - Infrastructure:
-        - Traefik:
-            href: https://traefik.silverseekers.org
-            description: Ingress Controller & Reverse Proxy
-            icon: traefik
-        - ArgoCD:
-            href: https://argocd.silverseekers.org
-            description: GitOps Continuous Delivery
-            icon: argocd
-        - Authelia:
-            href: https://auth.silverseekers.org
-            description: Single Sign-On Authentication
-            icon: authelia
-    - Storage:
-        - Longhorn:
-            href: https://longhorn.silverseekers.org
-            description: Distributed Block Storage
-            icon: longhorn
-        - MinIO:
-            href: https://minio-console.silverseekers.org
-            description: S3-Compatible Object Storage
-            icon: minio
-    - Monitoring:
-        - Grafana:
-            href: https://grafana.silverseekers.org
-            description: Dashboards & Visualization
-            icon: grafana
-
-  # Kubernetes discovery configuration
-  kubernetes:
-    mode: cluster
-
-  # Docker configuration (empty - not using Docker)
-  docker: {}
-
-  # Custom CSS (required to prevent crash)
-  custom.css: ""
-
-  # Custom JS (required to prevent crash)  
-  custom.js: ""
-
-  # Note: Proxmox/Longhorn widgets disabled - require separate yaml config files
-  # The helm chart doesn't support creating proxmox.yaml or custom widget configs
-  # TODO: Add custom ConfigMaps to enable these widgets
+  # Use the ConfigMap we create in templates/configmap-complete.yaml
+  useExistingConfigMap: homepage-config
 
 # Pod security context
 podSecurityContext:
