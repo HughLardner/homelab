@@ -172,8 +172,8 @@ config:
   docker: {}
 
   # Proxmox configuration (required to prevent crash)
-  # Uses environment variables for credentials
-  proxmox: {}
+  # Empty list - no instances configured via file (using widget config instead)
+  proxmox: []
 
 # Pod security context
 podSecurityContext:
