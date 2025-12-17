@@ -171,6 +171,10 @@ config:
   # Docker configuration (empty - not using Docker)
   docker: {}
 
+  # Proxmox configuration (required to prevent crash)
+  # Uses environment variables for credentials
+  proxmox: {}
+
 # Pod security context
 podSecurityContext:
   runAsNonRoot: true
