@@ -1,0 +1,29 @@
+# Default values for homepage-ingress chart
+# These are overridden by config/homelab.yaml when deploying
+
+global:
+  domain: silverseekers.org
+  cert_issuer: letsencrypt-prod
+
+services:
+  homepage:
+    domain: home.silverseekers.org
+    auth_enabled: true
+    title: "Homelab Dashboard"
+    proxmox_url: "https://192.168.10.100:8006"
+    proxmox_node: "pve"
+  # Referenced services for dashboard links
+  traefik:
+    domain: traefik.silverseekers.org
+  argocd:
+    domain: argocd.silverseekers.org
+  authelia:
+    domain: auth.silverseekers.org
+  grafana:
+    domain: grafana.silverseekers.org
+  longhorn:
+    domain: longhorn.silverseekers.org
+  minio:
+    domain: minio.silverseekers.org
+    console_domain: minio-console.silverseekers.org
+

@@ -1,0 +1,60 @@
+---
+# ArgoCD Application for Homepage Dashboard
+# Deploys: Homepage, Certificate, IngressRoute, ConfigMaps
+#
+# Homepage provides a centralized dashboard for all homelab services
+# with Kubernetes auto-discovery and Proxmox integration
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: homepage
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+
+  # Multiple sources for complete Homepage stack
+  sources:
+    # 1. Official Homepage Helm chart
+    - repoURL: https://jameswynn.github.io/helm-charts
+      targetRevision: 2.0.1
+      chart: homepage
+      helm:
+        releaseName: homepage
+        valueFiles:
+          - $values/kubernetes/applications/homepage/homepage-values.yaml
+
+    # 2. Values source (this repo) - referenced by $values
+    - repoURL: https://github.com/HughLardner/homelab.git
+      targetRevision: HEAD
+      ref: values
+
+    # 3. Ingress resources (Certificate, IngressRoute, ConfigMaps) via Helm
+    - repoURL: https://github.com/HughLardner/homelab.git
+      targetRevision: HEAD
+      path: kubernetes/applications/homepage
+      helm:
+        releaseName: homepage-ingress
+        valueFiles:
+          - $values/config/homelab.yaml
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: homepage
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+
