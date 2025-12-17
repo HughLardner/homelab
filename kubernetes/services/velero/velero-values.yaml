@@ -2,6 +2,13 @@
 # Velero Helm Values
 # Kubernetes backup and restore
 
+# kubectl image for CRD upgrade job
+# Using bitnami/kubectl since bitnamilegacy may not have latest versions
+kubectl:
+  image:
+    repository: docker.io/bitnami/kubectl
+    tag: "1.31"  # Use stable version that exists
+
 # Use existing secret for cloud credentials
 credentials:
   useSecret: true
