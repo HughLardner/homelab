@@ -41,7 +41,7 @@ daemonSet:
     rollingUpdate:
       maxUnavailable: 1
 
-# ServiceMonitor for Prometheus
+# ServiceMonitor - disabled (using VictoriaMetrics, not prometheus-operator)
 serviceMonitor:
-  enabled: true
+  enabled: false
 
