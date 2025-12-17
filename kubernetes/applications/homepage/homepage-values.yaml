@@ -123,41 +123,35 @@ config:
               icon: homepage
 
   # Services configuration
+  # Note: siteMonitor disabled - SSL cert validation fails from inside cluster
   services:
     - Infrastructure:
         - Traefik:
             href: https://traefik.silverseekers.org
             description: Ingress Controller & Reverse Proxy
             icon: traefik
-            siteMonitor: https://traefik.silverseekers.org
         - ArgoCD:
             href: https://argocd.silverseekers.org
             description: GitOps Continuous Delivery
             icon: argocd
-            siteMonitor: https://argocd.silverseekers.org
         - Authelia:
             href: https://auth.silverseekers.org
             description: Single Sign-On Authentication
             icon: authelia
-            siteMonitor: https://auth.silverseekers.org
     - Storage:
         - Longhorn:
             href: https://longhorn.silverseekers.org
             description: Distributed Block Storage
             icon: longhorn
-            siteMonitor: https://longhorn.silverseekers.org
-            # Widget disabled - requires longhorn.yaml config
         - MinIO:
             href: https://minio-console.silverseekers.org
             description: S3-Compatible Object Storage
             icon: minio
-            siteMonitor: https://minio-console.silverseekers.org
     - Monitoring:
         - Grafana:
             href: https://grafana.silverseekers.org
             description: Dashboards & Visualization
             icon: grafana
-            siteMonitor: https://grafana.silverseekers.org
 
   # Kubernetes discovery configuration
   kubernetes:
