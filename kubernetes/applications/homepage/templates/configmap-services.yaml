@@ -11,46 +11,38 @@ metadata:
     app.kubernetes.io/name: homepage
     app.kubernetes.io/component: config
 data:
+  # Note: siteMonitor disabled - SSL cert validation fails from inside cluster
   services.yaml: |
     - Infrastructure:
         - Traefik:
             href: https://{{ .Values.services.traefik.domain }}
             description: Ingress Controller & Reverse Proxy
             icon: traefik
-            siteMonitor: https://{{ .Values.services.traefik.domain }}
         - ArgoCD:
             href: https://{{ .Values.services.argocd.domain }}
             description: GitOps Continuous Delivery
             icon: argocd
-            siteMonitor: https://{{ .Values.services.argocd.domain }}
         - Authelia:
             href: https://{{ .Values.services.authelia.domain }}
             description: Single Sign-On Authentication
             icon: authelia
-            siteMonitor: https://{{ .Values.services.authelia.domain }}
     - Storage:
         - Longhorn:
             href: https://{{ .Values.services.longhorn.domain }}
             description: Distributed Block Storage
             icon: longhorn
-            siteMonitor: https://{{ .Values.services.longhorn.domain }}
-            # Widget disabled - requires longhorn.yaml config
         - MinIO:
             href: https://{{ .Values.services.minio.console_domain }}
             description: S3-Compatible Object Storage
             icon: minio
-            siteMonitor: https://{{ .Values.services.minio.console_domain }}
     - Monitoring:
         - Grafana:
             href: https://{{ .Values.services.grafana.domain }}
             description: Dashboards & Visualization
             icon: grafana
-            siteMonitor: https://{{ .Values.services.grafana.domain }}
     - Virtualization:
         - Proxmox:
             href: {{ .Values.services.homepage.proxmox_url }}
             description: Hypervisor & VM Management
             icon: proxmox
-            # Widget disabled - requires proxmox.yaml which helm chart doesn't create
-            # TODO: Add back when we create a custom ConfigMap for proxmox.yaml
 
