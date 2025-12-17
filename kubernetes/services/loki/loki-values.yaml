@@ -68,6 +68,12 @@ write:
 backend:
   replicas: 0
 
+# Disable cache components (not needed for SingleBinary homelab)
+chunksCache:
+  enabled: false
+resultsCache:
+  enabled: false
+
 # Gateway disabled (access via service)
 gateway:
   enabled: false
