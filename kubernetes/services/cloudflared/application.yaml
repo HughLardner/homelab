@@ -15,10 +15,10 @@ spec:
   project: default
 
   sources:
-    # Custom templates (Deployment, ConfigMap, Secret)
+    # Cloudflared Helm chart (Deployment, ConfigMap, Secret)
     - repoURL: https://github.com/HughLardner/homelab.git
       targetRevision: HEAD
-      path: kubernetes/services/cloudflared/templates
+      path: kubernetes/services/cloudflared
       helm:
         releaseName: cloudflared
         valueFiles:

@@ -24,10 +24,10 @@ spec:
         valueFiles:
           - $values/kubernetes/services/minio/minio-values.yaml
 
-    # Custom templates (IngressRoute, Certificate)
+    # Custom templates (IngressRoute, Certificate) - local Helm chart
     - repoURL: https://github.com/HughLardner/homelab.git
       targetRevision: HEAD
-      path: kubernetes/services/minio/templates
+      path: kubernetes/services/minio
       helm:
         releaseName: minio-config
         valueFiles:

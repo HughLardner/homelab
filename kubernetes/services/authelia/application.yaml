@@ -24,10 +24,10 @@ spec:
         valueFiles:
           - $values/kubernetes/services/authelia/authelia-values.yaml
 
-    # Custom templates (IngressRoute, Certificate, Middleware)
+    # Custom templates (IngressRoute, Certificate, Middleware) - local Helm chart
     - repoURL: https://github.com/HughLardner/homelab.git
       targetRevision: HEAD
-      path: kubernetes/services/authelia/templates
+      path: kubernetes/services/authelia
       helm:
         releaseName: authelia-config
         valueFiles:
