@@ -3,11 +3,11 @@
 # Kubernetes backup and restore
 
 # kubectl image for CRD upgrade job
-# Using alpine/k8s which bundles kubectl with k8s tools
+# Using portainer/kubectl-shell which has kubectl and sh
 kubectl:
   image:
-    repository: alpine/k8s
-    tag: "1.31.0"
+    repository: portainer/kubectl-shell
+    tag: "latest"
 
 # Use existing secret for cloud credentials
 credentials:
