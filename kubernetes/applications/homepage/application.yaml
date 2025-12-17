@@ -1,6 +1,6 @@
 ---
 # ArgoCD Application for Homepage Dashboard
-# Deploys: Homepage, Certificate, IngressRoute, ConfigMaps
+# Deploys: Homepage, Certificate, IngressRoute, ConfigMaps, SealedSecrets
 #
 # Homepage provides a centralized dashboard for all homelab services
 # with Kubernetes auto-discovery and Proxmox integration
@@ -38,6 +38,14 @@ spec:
         releaseName: homepage-ingress
         valueFiles:
           - $values/config/homelab.yaml
+
+    # 4. Sealed Secrets (raw manifests)
+    - repoURL: https://github.com/HughLardner/homelab.git
+      targetRevision: HEAD
+      path: kubernetes/applications/homepage/secrets
+      directory:
+        recurse: false
+        include: '*.yaml'
 
   destination:
     server: https://kubernetes.default.svc
