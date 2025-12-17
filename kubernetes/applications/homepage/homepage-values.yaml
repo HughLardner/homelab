@@ -39,6 +39,8 @@ service:
 
 # Environment variables from secrets
 env:
+  # Allow requests from custom domain (required for reverse proxy)
+  HOMEPAGE_ALLOWED_HOSTS: "home.silverseekers.org"
   # Proxmox API token (from sealed secret)
   HOMEPAGE_VAR_PROXMOX_TOKEN_ID:
     valueFrom:
