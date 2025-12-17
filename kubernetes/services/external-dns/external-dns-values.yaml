@@ -27,8 +27,7 @@ env:
         key: cloudflare_api_token
 
 # Extra args for Cloudflare
-extraArgs:
-  - --cloudflare-proxied=false
+extraArgs: []
 
 # Log level
 logLevel: info
