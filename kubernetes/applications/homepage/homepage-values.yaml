@@ -98,11 +98,8 @@ config:
           cpu: true
           memory: true
           showLabel: true
-    - longhorn:
-        expanded: true
-        total: true
-        labels: true
-        nodes: true
+    # Longhorn widget disabled - requires longhorn.yaml config file
+    # TODO: Add custom ConfigMap for longhorn.yaml
 
   # Service bookmarks
   bookmarks:
@@ -149,9 +146,7 @@ config:
             description: Distributed Block Storage
             icon: longhorn
             siteMonitor: https://longhorn.silverseekers.org
-            widget:
-              type: longhorn
-              url: http://longhorn-frontend.longhorn-system.svc:80
+            # Widget disabled - requires longhorn.yaml config
         - MinIO:
             href: https://minio-console.silverseekers.org
             description: S3-Compatible Object Storage
@@ -171,9 +166,15 @@ config:
   # Docker configuration (empty - not using Docker)
   docker: {}
 
-  # Note: Proxmox widget disabled in templates - requires proxmox.yaml
-  # The helm chart doesn't support creating proxmox.yaml
-  # TODO: Add custom ConfigMap for proxmox.yaml to enable widget
+  # Custom CSS (required to prevent crash)
+  custom.css: ""
+
+  # Custom JS (required to prevent crash)  
+  custom.js: ""
+
+  # Note: Proxmox/Longhorn widgets disabled - require separate yaml config files
+  # The helm chart doesn't support creating proxmox.yaml or custom widget configs
+  # TODO: Add custom ConfigMaps to enable these widgets
 
 # Pod security context
 podSecurityContext:

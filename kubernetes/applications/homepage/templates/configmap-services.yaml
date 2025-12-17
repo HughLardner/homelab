@@ -34,9 +34,7 @@ data:
             description: Distributed Block Storage
             icon: longhorn
             siteMonitor: https://{{ .Values.services.longhorn.domain }}
-            widget:
-              type: longhorn
-              url: http://longhorn-frontend.longhorn-system.svc:80
+            # Widget disabled - requires longhorn.yaml config
         - MinIO:
             href: https://{{ .Values.services.minio.console_domain }}
             description: S3-Compatible Object Storage

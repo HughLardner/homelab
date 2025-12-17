@@ -32,13 +32,9 @@ data:
           cpu: true
           memory: true
           showLabel: true
-    - longhorn:
-        expanded: true
-        total: true
-        labels: true
-        nodes: true
+    # Longhorn widget disabled - requires longhorn.yaml which helm chart doesn't create
     # Proxmox widget disabled - requires proxmox.yaml which helm chart doesn't create
-    # TODO: Add back when we create a custom ConfigMap for proxmox.yaml
+    # TODO: Add custom ConfigMaps for these widgets
     {{- if .Values.services.homepage.openweather_location }}
     - openweathermap:
         label: {{ .Values.services.homepage.openweather_location | default "Weather" }}
