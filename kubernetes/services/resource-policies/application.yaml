@@ -15,15 +15,12 @@ spec:
   project: default
 
   sources:
-    # Resource policy templates
+    # Resource policy templates (plain manifests, no Helm templating)
     - repoURL: https://github.com/HughLardner/homelab.git
       targetRevision: HEAD
       path: kubernetes/services/resource-policies/templates
-
-    # Values reference
-    - repoURL: https://github.com/HughLardner/homelab.git
-      targetRevision: HEAD
-      ref: values
+      directory:
+        recurse: false
 
   destination:
     server: https://kubernetes.default.svc
