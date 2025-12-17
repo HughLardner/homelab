@@ -1,0 +1,53 @@
+---
+# ArgoCD Application for Cloudflared
+# Cloudflare Tunnel for external access
+# Sync Wave 4: After Traefik is deployed
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cloudflared
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+
+  sources:
+    # Custom templates (Deployment, ConfigMap, Secret)
+    - repoURL: https://github.com/HughLardner/homelab.git
+      targetRevision: HEAD
+      path: kubernetes/services/cloudflared/templates
+      helm:
+        releaseName: cloudflared
+        valueFiles:
+          - $values/config/homelab.yaml
+
+    # Sealed secrets
+    - repoURL: https://github.com/HughLardner/homelab.git
+      targetRevision: HEAD
+      path: kubernetes/services/cloudflared/secrets
+
+    # Values reference
+    - repoURL: https://github.com/HughLardner/homelab.git
+      targetRevision: HEAD
+      ref: values
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cloudflared
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+

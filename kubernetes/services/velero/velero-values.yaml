@@ -1,0 +1,87 @@
+---
+# Velero Helm Values
+# Kubernetes backup and restore
+
+# Use existing secret for cloud credentials
+credentials:
+  useSecret: true
+  existingSecret: velero-credentials
+
+# Configuration
+configuration:
+  # Default backup storage location
+  backupStorageLocation:
+    - name: default
+      provider: aws
+      bucket: velero
+      default: true
+      config:
+        s3Url: http://minio.minio.svc:9000
+        region: minio
+        s3ForcePathStyle: "true"
+        insecureSkipTLSVerify: "true"
+
+  # Volume snapshot location (using Longhorn CSI snapshots)
+  volumeSnapshotLocation:
+    - name: default
+      provider: aws
+      config:
+        region: minio
+
+  # Features
+  features: EnableCSI
+
+# Init containers for plugins
+initContainers:
+  - name: velero-plugin-for-aws
+    image: velero/velero-plugin-for-aws:v1.9.0
+    imagePullPolicy: IfNotPresent
+    volumeMounts:
+      - mountPath: /target
+        name: plugins
+
+# Backup schedules
+schedules:
+  daily-backup:
+    disabled: false
+    schedule: "0 2 * * *"
+    useOwnerReferencesInBackup: false
+    template:
+      ttl: 336h  # 14 days
+      includedNamespaces:
+        - "*"
+      excludedNamespaces:
+        - kube-system
+        - kube-public
+        - kube-node-lease
+        - velero
+      snapshotVolumes: true
+      storageLocation: default
+
+# Resources
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+# Deploy on all nodes
+deployNodeAgent: true
+
+nodeAgent:
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# Metrics
+metrics:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+

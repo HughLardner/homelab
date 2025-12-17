@@ -113,7 +113,7 @@ envValueFrom:
       name: grafana-oidc-secret
       key: client-secret
 
-# Datasources - Victoria Metrics (Prometheus compatible)
+# Datasources - Victoria Metrics (Prometheus compatible) + Loki
 datasources:
   datasources.yaml:
     apiVersion: 1
@@ -134,6 +134,14 @@ datasources:
         access: proxy
         jsonData:
           implementation: prometheus
+      # Loki datasource for log aggregation
+      - name: Loki
+        type: loki
+        url: http://loki.loki.svc:3100
+        access: proxy
+        editable: true
+        jsonData:
+          maxLines: 1000
 
 # Dashboard providers
 dashboardProviders:

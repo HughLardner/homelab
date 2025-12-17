@@ -102,9 +102,10 @@ help:
 	@echo "═══════════════════════════════════════════════════════════════════"
 	@echo "  make deploy-infra      - Deploy infrastructure only (Terraform VMs)"
 	@echo "  make deploy-platform   - Deploy infrastructure + K3s cluster"
-	@echo "  make deploy-services   - Deploy infrastructure + K3s + all core services"
-	@echo "  make deploy-all        - Deploy everything (infra + platform + services + apps)"
-	@echo "  make deploy            - Alias for deploy-services (most common)"
+	@echo "  make deploy-bootstrap  - Deploy minimal bootstrap (MetalLB, Longhorn, Sealed Secrets, ArgoCD)"
+	@echo "  make deploy-services   - Deploy all services via ArgoCD (after bootstrap)"
+	@echo "  make deploy-all        - Deploy everything (infra + platform + bootstrap + services)"
+	@echo "  make deploy            - Alias for deploy-all (most common)"
 	@echo "  make deploy-apps       - Deploy only applications (assumes services exist)"
 	@echo "  make rebuild           - 🔥 NUKE & REBUILD: destroy everything and redeploy from scratch"
 	@echo ""
@@ -804,30 +805,32 @@ deploy-platform: deploy-infra
 	@echo ""
 	@echo "Next: make deploy-services"
 
-# Deploy infrastructure + K3s + all core services
-# Deployment order follows layer dependencies:
-#   Layer 1: MetalLB, Longhorn (no deps)
-#   Layer 2: Sealed Secrets (no deps, but needed before secrets are applied)
-#   Layer 3: Cert-Manager, Traefik (need MetalLB)
-#   Layer 4: ArgoCD (needs Traefik, cert-manager, sealed-secrets for OIDC)
-#   Layer 4: Authelia (needs all of the above)
-deploy-services: deploy-platform
+# ============================================================================
+# Minimal Bootstrap (Ansible) - 4 Services
+# These must exist before ArgoCD can deploy everything else
+# ============================================================================
+
+deploy-bootstrap: deploy-platform
 	@echo ""
 	@echo "========================================"
-	@echo "🚀 Deploying Core Services"
+	@echo "🚀 Deploying Minimal Bootstrap (4 services)"
 	@echo "========================================"
 	@echo ""
+	@echo "Bootstrap services: MetalLB, Longhorn, Sealed Secrets, ArgoCD"
+	@echo "Everything else will be deployed via ArgoCD."
+	@echo ""
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-	@echo "Layer 1: Foundation"
+	@echo "Step 1/4: MetalLB (LoadBalancer IPs)"
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-	@echo "Installing MetalLB (LoadBalancer)..."
 	$(MAKE) metallb-install
 	@echo ""
-	@echo "Installing Longhorn (Distributed Storage)..."
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@echo "Step 2/4: Longhorn (Persistent Storage)"
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 	$(MAKE) longhorn-install
 	@echo ""
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-	@echo "Layer 2: Secrets Infrastructure"
+	@echo "Step 3/4: Sealed Secrets (Secret Encryption)"
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 	@# Restore Sealed Secrets keys BEFORE installing controller (preserves existing sealed secrets)
 	@if [ -f sealed-secrets-key-backup.yaml ]; then \
@@ -835,7 +838,6 @@ deploy-services: deploy-platform
 		$(MAKE) sealed-secrets-restore; \
 		echo ""; \
 	fi
-	@echo "Installing Sealed Secrets (Secret Encryption)..."
 	$(MAKE) sealed-secrets-install
 	@echo ""
 	@# Only re-seal if no backup was restored (new cluster)
@@ -847,10 +849,52 @@ deploy-services: deploy-platform
 	fi
 	@echo ""
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-	@echo "Layer 3: Platform Services"
+	@echo "Step 4/4: ArgoCD (GitOps Controller)"
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-	@echo "Installing Cert-Manager (TLS)..."
-	$(MAKE) cert-manager-install
+	$(MAKE) argocd-install
+	@echo ""
+	@echo "========================================"
+	@echo "✅ Bootstrap deployment complete!"
+	@echo "========================================"
+	@echo ""
+	@ARGOCD_IP=$$(kubectl get svc argocd-server -n argocd -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo "pending"); \
+	echo "ArgoCD is accessible via LoadBalancer IP: https://$$ARGOCD_IP"; \
+	echo ""
+	@echo "Next steps:"
+	@echo "  1. Access ArgoCD via IP (no ingress yet)"
+	@echo "  2. Deploy all services: make deploy-services"
+	@echo ""
+	@echo "ArgoCD will deploy (in order):"
+	@echo "  Wave 1: Cert-Manager (TLS)"
+	@echo "  Wave 2: Traefik (Ingress)"
+	@echo "  Wave 3: Authelia, NetworkPolicies, LimitRanges"
+	@echo "  Wave 4: Loki, Promtail, MinIO, Velero, Cloudflared, External-DNS"
+	@echo "  Wave 5: Monitoring, future apps"
+
+# ============================================================================
+# Deploy Services via ArgoCD
+# Everything after bootstrap is managed by ArgoCD
+# ============================================================================
+
+deploy-services:
+	@echo ""
+	@echo "========================================"
+	@echo "🚀 Deploying All Services via ArgoCD"
+	@echo "========================================"
+	@echo ""
+	@echo "Applying root-app - ArgoCD will deploy all services..."
+	kubectl apply -f kubernetes/applications/root-app.yaml
+	@echo ""
+	@echo "ArgoCD will automatically deploy in sync-wave order:"
+	@echo "  Wave 1: Cert-Manager"
+	@echo "  Wave 2: Traefik"
+	@echo "  Wave 3: Authelia, NetworkPolicies, LimitRanges"
+	@echo "  Wave 4: Loki, Promtail, MinIO, Velero, Cloudflared, External-DNS"
+	@echo "  Wave 5: Monitoring"
+	@echo ""
+	@echo "Monitor deployment progress:"
+	@echo "  kubectl get applications -n argocd"
+	@echo "  make apps-status"
 	@echo ""
 	@# Restore TLS certificates if backup exists (avoids Let's Encrypt rate limits)
 	@if [ -f letsencrypt-certs-backup.yaml ]; then \
@@ -858,33 +902,17 @@ deploy-services: deploy-platform
 		$(MAKE) certs-restore; \
 		echo ""; \
 	fi
-	@echo "Installing Traefik (Ingress)..."
-	$(MAKE) traefik-install
-	@echo ""
-	@echo "Configuring Longhorn IngressRoute (requires Traefik)..."
-	$(MAKE) longhorn-ingress
-	@echo ""
-	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-	@echo "Layer 4: GitOps & Identity"
-	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-	@echo "Installing ArgoCD (GitOps)..."
-	$(MAKE) argocd-install
-	@echo ""
-	@echo "Applying Authelia Secrets..."
-	$(MAKE) authelia-secrets
-	@echo ""
-	@echo "Installing Authelia SSO Platform..."
-	$(MAKE) authelia-install
 	@echo ""
 	@echo "========================================"
-	@echo "✅ Core services deployment complete!"
+	@echo "✅ Services deployment initiated!"
 	@echo "========================================"
 	@echo ""
-	@echo "Access Points:"
+	@echo "Access Points (once deployed):"
 	@echo "  Traefik:   https://traefik.silverseekers.org"
 	@echo "  ArgoCD:    https://argocd.silverseekers.org"
 	@echo "  Authelia:  https://auth.silverseekers.org"
 	@echo "  Longhorn:  https://longhorn.silverseekers.org"
+	@echo "  Grafana:   https://grafana.silverseekers.org"
 	@echo ""
 	@echo "Storage Classes:"
 	@echo "  local-path (default) - ephemeral data"
@@ -893,20 +921,11 @@ deploy-services: deploy-platform
 	@echo "DNS Configuration:"
 	@echo "  Configure UniFi Gateway with wildcard DNS:"
 	@echo "    *.silverseekers.org -> 192.168.10.150"
-	@echo ""
-	@echo "Next: make deploy-apps"
 
-# Deploy everything including applications
-deploy-all: deploy-services
+# Deploy everything: infra + platform + bootstrap + services
+deploy-all: deploy-bootstrap
 	@echo ""
-	@echo "========================================"
-	@echo "🚀 Deploying Applications"
-	@echo "========================================"
-	@echo "Creating monitoring secrets..."
-	$(MAKE) monitoring-secrets
-	@echo ""
-	@echo "Deploying monitoring stack via ArgoCD..."
-	$(MAKE) monitoring-deploy
+	$(MAKE) deploy-services
 	@echo ""
 	@echo "========================================"
 	@echo "✅ FULL STACK DEPLOYMENT COMPLETE!"
@@ -922,7 +941,7 @@ deploy-all: deploy-services
 	@echo "  Grafana:  https://grafana.silverseekers.org"
 	@echo "  ArgoCD:   https://argocd.silverseekers.org"
 	@echo "  Traefik:  https://traefik.silverseekers.org"
-	@echo "  Longhorn: http://192.168.10.144"
+	@echo "  Longhorn: https://longhorn.silverseekers.org"
 	@echo ""
 	@echo "DNS Configuration:"
 	@echo "  Configure UniFi Gateway with wildcard DNS:"
@@ -936,12 +955,9 @@ deploy-all: deploy-services
 	@echo ""
 	@echo "💡 Monitor ArgoCD sync:"
 	@echo "  make apps-status"
-	@echo "  make monitoring-sync"
 
-# Alias: deploy = deploy-services (most common use case)
-deploy: deploy-services
-	@echo ""
-	@echo "💡 TIP: To deploy applications too, run: make deploy-all"
+# Alias: deploy = deploy-all (most common use case)
+deploy: deploy-all
 
 # Deploy only applications (assumes services are already deployed)
 deploy-apps:

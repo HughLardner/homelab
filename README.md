@@ -11,24 +11,38 @@ Production-ready Kubernetes (K3s) platform on Proxmox VE with complete GitOps wo
 - **Configuration from single source** - reads from `config/homelab.yaml`
 - **Cloud-init configuration** for consistent node setup
 
-### Platform Services (Ansible)
+### Bootstrap Layer (Ansible - 4 Services)
 
-- **K3s cluster** single-node deployment (can scale to HA with 3 control plane nodes)
+Essential foundation that must exist before ArgoCD can work:
+
 - **MetalLB** LoadBalancer (192.168.10.150-165)
 - **Longhorn** distributed block storage (1 replica for single node)
-- **Cert-Manager** automated TLS certificates via Let's Encrypt + Cloudflare DNS
-- **Traefik** ingress controller with HTTPS
-- **ArgoCD** GitOps continuous delivery platform
 - **Sealed Secrets** encrypted secrets for GitOps workflow
-- **Authelia** SSO/2FA authentication portal
+- **ArgoCD** GitOps continuous delivery platform
 
-### Applications (ArgoCD/GitOps)
+### Platform Services (ArgoCD GitOps)
 
-- **Monitoring Stack** (Victoria Metrics + Grafana)
+Deployed automatically via ArgoCD sync waves:
+
+- **Cert-Manager** (Wave 1) - Automated TLS certificates via Let's Encrypt
+- **Traefik** (Wave 2) - Ingress controller with HTTPS
+- **Authelia** (Wave 3) - SSO/2FA authentication portal
+- **NetworkPolicies** (Wave 3) - Namespace network isolation
+- **ResourcePolicies** (Wave 3) - LimitRange and ResourceQuota
+- **Loki + Promtail** (Wave 4) - Centralized logging
+- **MinIO** (Wave 4) - S3-compatible object storage
+- **Velero** (Wave 4) - Kubernetes backup and restore
+- **Cloudflared** (Wave 4) - Cloudflare Tunnel for external access
+- **External-DNS** (Wave 4) - Automatic DNS record management
+
+### Applications (ArgoCD GitOps)
+
+- **Monitoring Stack** (Wave 5)
   - Grafana metrics visualization (https://grafana.silverseekers.org)
   - VMSingle time-series database (lightweight Prometheus alternative)
   - VMAgent metrics scraper
   - VMAlert + VMAlertmanager for alerting
+  - Loki datasource for log querying
   - Node exporters on all cluster nodes
   - Kube-state-metrics for cluster state monitoring
 
@@ -111,17 +125,13 @@ kubectl get pods -A
 
 ```bash
 # Full stack deployment (recommended)
-make deploy-all        # Deploy everything (infra + platform + services + apps)
+make deploy-all        # Deploy everything (infra + platform + bootstrap + services)
 
 # Stage-by-stage deployment
 make deploy-infra      # 1. Terraform VMs only
 make deploy-platform   # 2. Add K3s cluster
-make deploy-services   # 3. Add all core services
-make deploy-apps       # 4. Add monitoring applications
-
-# Individual service deployment
-helm upgrade --install authelia-ingress ./kubernetes/services/authelia \
-  -f ./config/homelab.yaml -n authelia --create-namespace
+make deploy-bootstrap  # 3. Deploy minimal bootstrap (MetalLB, Longhorn, Sealed Secrets, ArgoCD)
+make deploy-services   # 4. Deploy all services via ArgoCD
 ```
 
 ### Manual Step-by-Step
@@ -135,24 +145,36 @@ terraform apply && cd ..
 # 2. Platform
 make k3s-install
 
-# 3. Core Services
-make metallb-install longhorn-install cert-manager-install
-make traefik-install argocd-install sealed-secrets-install
+# 3. Bootstrap (Ansible - 4 services)
+make metallb-install
+make longhorn-install
+make sealed-secrets-install
+make argocd-install
 
-# 4. Applications
-make monitoring-secrets monitoring-install
+# 4. Access ArgoCD via LoadBalancer IP
+ARGOCD_IP=$(kubectl get svc argocd-server -n argocd -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+open https://$ARGOCD_IP
+
+# 5. Deploy all services via ArgoCD
+kubectl apply -f kubernetes/applications/root-app.yaml
+# ArgoCD deploys everything else in sync-wave order:
+#   Wave 1: Cert-Manager
+#   Wave 2: Traefik
+#   Wave 3: Authelia, NetworkPolicies, LimitRanges
+#   Wave 4: Loki, Promtail, MinIO, Velero, Cloudflared, External-DNS
+#   Wave 5: Monitoring
 ```
 
 ## Available Make Commands
 
 ```bash
 # Full Stack Deployment (Recommended)
-make deploy-all        # Deploy everything (infra + platform + services + apps)
-make deploy-services   # Deploy infra + platform + all core services
+make deploy-all        # Deploy everything (infra + platform + bootstrap + services)
+make deploy-bootstrap  # Deploy minimal bootstrap (MetalLB, Longhorn, Sealed Secrets, ArgoCD)
+make deploy-services   # Deploy all services via ArgoCD (after bootstrap)
 make deploy-platform   # Deploy infra + K3s cluster
 make deploy-infra      # Deploy Terraform VMs only
-make deploy-apps       # Deploy applications only
-make deploy            # Alias for deploy-services
+make deploy            # Alias for deploy-all
 
 # Infrastructure (Terraform)
 make init              # Initialize Terraform

@@ -1,0 +1,8 @@
+# Default values for Velero
+# These are overridden by config/homelab.yaml when deploying
+
+services:
+  velero:
+    backup_schedule: "0 2 * * *"
+    retention_days: 14
+

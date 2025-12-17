@@ -1,41 +1,38 @@
 ---
-# ArgoCD Application for Authelia Ingress Resources
-# Deploys: Certificate, IngressRoute, Middlewares, Users Secret
+# ArgoCD Application for NetworkPolicies
+# Network isolation for namespaces
+# Sync Wave 3: With security layer
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: authelia-ingress
+  name: network-policies
   namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
   project: default
 
   sources:
-    # Helm chart source
+    # NetworkPolicy templates
     - repoURL: https://github.com/HughLardner/homelab.git
       targetRevision: HEAD
-      path: kubernetes/services/authelia
-      helm:
-        releaseName: authelia-ingress
-        valueFiles:
-          - $values/config/homelab.yaml
-    
-    # Values source (this repo) - referenced by $values
+      path: kubernetes/services/network-policies/templates
+
+    # Values reference
     - repoURL: https://github.com/HughLardner/homelab.git
       targetRevision: HEAD
       ref: values
 
   destination:
     server: https://kubernetes.default.svc
-    namespace: authelia
+    namespace: default  # Policies are applied per-namespace in templates
 
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
-    syncOptions:
-      - CreateNamespace=true
     retry:
       limit: 5
       backoff:

@@ -1,0 +1,62 @@
+---
+# ArgoCD Application for MinIO
+# S3-compatible object storage for Velero backups
+# Sync Wave 4: After security layer
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: minio
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+
+  sources:
+    # MinIO Helm Chart
+    - repoURL: https://charts.min.io/
+      chart: minio
+      targetRevision: 5.0.15
+      helm:
+        releaseName: minio
+        valueFiles:
+          - $values/kubernetes/services/minio/minio-values.yaml
+
+    # Custom templates (IngressRoute, Certificate)
+    - repoURL: https://github.com/HughLardner/homelab.git
+      targetRevision: HEAD
+      path: kubernetes/services/minio/templates
+      helm:
+        releaseName: minio-config
+        valueFiles:
+          - $values/config/homelab.yaml
+
+    # Sealed secrets
+    - repoURL: https://github.com/HughLardner/homelab.git
+      targetRevision: HEAD
+      path: kubernetes/services/minio/secrets
+
+    # Values reference
+    - repoURL: https://github.com/HughLardner/homelab.git
+      targetRevision: HEAD
+      ref: values
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: minio
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+

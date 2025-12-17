@@ -1,0 +1,47 @@
+---
+# Promtail Helm Values
+# Log collector for Loki
+
+# Loki endpoint
+config:
+  clients:
+    - url: http://loki.loki.svc:3100/loki/api/v1/push
+
+  snippets:
+    # Add kubernetes labels to logs
+    pipelineStages:
+      - cri: {}
+      - json:
+          expressions:
+            level: level
+            msg: msg
+      - labels:
+          level:
+      - output:
+          source: msg
+
+# Resources
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 200m
+    memory: 128Mi
+
+# Tolerations for running on all nodes
+tolerations:
+  - effect: NoSchedule
+    operator: Exists
+
+# DaemonSet update strategy
+daemonSet:
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+
+# ServiceMonitor for Prometheus
+serviceMonitor:
+  enabled: true
+

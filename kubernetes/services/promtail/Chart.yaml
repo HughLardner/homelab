@@ -1,0 +1,8 @@
+---
+apiVersion: v2
+name: promtail
+description: Promtail log collector for Loki
+type: application
+version: 0.1.0
+appVersion: "3.0.0"
+

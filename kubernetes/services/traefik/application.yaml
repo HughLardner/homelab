@@ -1,0 +1,56 @@
+---
+# ArgoCD Application for Traefik Ingress Controller
+# Deploys: Traefik Helm chart + IngressRoutes, Middlewares, Certificates
+# Sync Wave 2: After Cert-Manager (needs TLS certificates)
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: traefik
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+
+  sources:
+    # Traefik Helm Chart
+    - repoURL: https://traefik.github.io/charts
+      chart: traefik
+      targetRevision: 28.0.0
+      helm:
+        releaseName: traefik
+        valueFiles:
+          - $values/kubernetes/services/traefik/traefik-values.yaml
+
+    # Custom templates (IngressRoute, Certificates, Middlewares)
+    - repoURL: https://github.com/HughLardner/homelab.git
+      targetRevision: HEAD
+      path: kubernetes/services/traefik/templates
+      helm:
+        releaseName: traefik-config
+        valueFiles:
+          - $values/config/homelab.yaml
+
+    # Values reference
+    - repoURL: https://github.com/HughLardner/homelab.git
+      targetRevision: HEAD
+      ref: values
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: traefik
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m

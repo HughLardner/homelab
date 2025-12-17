@@ -1,0 +1,51 @@
+---
+# External-DNS Helm Values
+# Cloudflare DNS provider
+
+# Cloudflare provider configuration
+provider: cloudflare
+
+# Domain filter - only manage records for this domain
+domainFilters:
+  - silverseekers.org
+
+# Sync policy: sync (creates and deletes records) or upsert-only
+policy: sync
+
+# Source types to watch
+sources:
+  - ingress
+  - service
+
+# Cloudflare specific settings
+cloudflare:
+  proxied: false  # Don't proxy through Cloudflare CDN for internal services
+  # API token from secret
+  secretName: external-dns-cloudflare-token
+
+# Log level
+logLevel: info
+
+# Resources
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 100m
+    memory: 128Mi
+
+# Service account
+serviceAccount:
+  create: true
+
+# RBAC
+rbac:
+  create: true
+
+# Metrics
+metrics:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+

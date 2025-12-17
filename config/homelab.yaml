@@ -103,3 +103,36 @@ services:
   # ---------------------------------------------------------------------------
   external_dns:
     domain: silverseekers.org
+    provider: cloudflare
+    policy: sync
+
+  # ---------------------------------------------------------------------------
+  # MinIO Object Storage (for Velero backups)
+  # ---------------------------------------------------------------------------
+  minio:
+    domain: minio.silverseekers.org
+    console_domain: minio-console.silverseekers.org
+    storage_size: 50Gi
+
+  # ---------------------------------------------------------------------------
+  # Velero Backup
+  # ---------------------------------------------------------------------------
+  velero:
+    backup_schedule: "0 2 * * *"
+    retention_days: 14
+
+  # ---------------------------------------------------------------------------
+  # Loki Logging
+  # ---------------------------------------------------------------------------
+  loki:
+    storage_class: longhorn
+    storage_size: 10Gi
+    retention_days: 14
+
+  # ---------------------------------------------------------------------------
+  # Cloudflare Tunnel
+  # ---------------------------------------------------------------------------
+  cloudflared:
+    tunnel_name: homelab-tunnel
+    replicas: 1
+    default_origin: http://traefik.traefik.svc:80

@@ -1,0 +1,61 @@
+---
+# ArgoCD Application for Authelia SSO
+# Deploys: Authelia Helm chart + IngressRoute, Certificate, Middleware
+# Sync Wave 3: After Traefik (needs ingress controller)
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: authelia
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+
+  sources:
+    # Authelia Helm Chart
+    - repoURL: https://charts.authelia.com
+      chart: authelia
+      targetRevision: 0.9.x
+      helm:
+        releaseName: authelia
+        valueFiles:
+          - $values/kubernetes/services/authelia/authelia-values.yaml
+
+    # Custom templates (IngressRoute, Certificate, Middleware)
+    - repoURL: https://github.com/HughLardner/homelab.git
+      targetRevision: HEAD
+      path: kubernetes/services/authelia/templates
+      helm:
+        releaseName: authelia-config
+        valueFiles:
+          - $values/config/homelab.yaml
+
+    # Sealed secrets
+    - repoURL: https://github.com/HughLardner/homelab.git
+      targetRevision: HEAD
+      path: kubernetes/services/authelia/secrets
+
+    # Values reference
+    - repoURL: https://github.com/HughLardner/homelab.git
+      targetRevision: HEAD
+      ref: values
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: authelia
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m

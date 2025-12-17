@@ -1,0 +1,12 @@
+# Default values for Cloudflared
+# These are overridden by config/homelab.yaml when deploying
+
+global:
+  domain: silverseekers.org
+
+services:
+  cloudflared:
+    tunnel_name: homelab-tunnel
+    replicas: 1
+    default_origin: http://traefik.traefik.svc:80
+
