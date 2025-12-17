@@ -37,11 +37,8 @@ data:
         total: true
         labels: true
         nodes: true
-    - proxmox:
-        url: {{ .Values.services.homepage.proxmox_url | quote }}
-        username: {{`{{HOMEPAGE_VAR_PROXMOX_TOKEN_ID}}`}}
-        password: {{`{{HOMEPAGE_VAR_PROXMOX_TOKEN_SECRET}}`}}
-        node: {{ .Values.services.homepage.proxmox_node | quote }}
+    # Proxmox widget disabled - requires proxmox.yaml which helm chart doesn't create
+    # TODO: Add back when we create a custom ConfigMap for proxmox.yaml
     {{- if .Values.services.homepage.openweather_location }}
     - openweathermap:
         label: {{ .Values.services.homepage.openweather_location | default "Weather" }}

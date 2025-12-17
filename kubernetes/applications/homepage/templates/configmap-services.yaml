@@ -53,10 +53,6 @@ data:
             href: {{ .Values.services.homepage.proxmox_url }}
             description: Hypervisor & VM Management
             icon: proxmox
-            widget:
-              type: proxmox
-              url: {{ .Values.services.homepage.proxmox_url | quote }}
-              username: {{`{{HOMEPAGE_VAR_PROXMOX_TOKEN_ID}}`}}
-              password: {{`{{HOMEPAGE_VAR_PROXMOX_TOKEN_SECRET}}`}}
-              node: {{ .Values.services.homepage.proxmox_node | quote }}
+            # Widget disabled - requires proxmox.yaml which helm chart doesn't create
+            # TODO: Add back when we create a custom ConfigMap for proxmox.yaml
 
