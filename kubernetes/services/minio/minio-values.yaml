@@ -45,9 +45,9 @@ buckets:
     policy: none
     purge: false
 
-# Metrics for Prometheus/VictoriaMetrics
+# Metrics - disable prometheus-operator CRDs (using VictoriaMetrics instead)
+# VictoriaMetrics can scrape metrics via annotations
 metrics:
   serviceMonitor:
-    enabled: true
-    namespace: minio
+    enabled: false
 
