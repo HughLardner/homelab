@@ -40,9 +40,5 @@ data:
             href: https://{{ .Values.services.grafana.domain }}
             description: Dashboards & Visualization
             icon: grafana
-    - Virtualization:
-        - Proxmox:
-            href: {{ .Values.services.homepage.proxmox_url }}
-            description: Hypervisor & VM Management
-            icon: proxmox
+    # Proxmox service removed - triggers proxmox.yaml requirement which crashes pod
 
