@@ -3,7 +3,8 @@
 # Cloudflare DNS provider
 
 # Cloudflare provider configuration
-provider: cloudflare
+provider:
+  name: cloudflare
 
 # Domain filter - only manage records for this domain
 domainFilters:
@@ -17,11 +18,17 @@ sources:
   - ingress
   - service
 
-# Cloudflare specific settings
-cloudflare:
-  proxied: false  # Don't proxy through Cloudflare CDN for internal services
-  # API token from secret
-  secretName: external-dns-cloudflare-token
+# Cloudflare specific settings - use API Token (not API Key + Email)
+env:
+  - name: CF_API_TOKEN
+    valueFrom:
+      secretKeyRef:
+        name: external-dns-cloudflare-token
+        key: cloudflare_api_token
+
+# Extra args for Cloudflare
+extraArgs:
+  - --cloudflare-proxied=false
 
 # Log level
 logLevel: info
