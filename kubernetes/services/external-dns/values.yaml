@@ -1,0 +1,9 @@
+# Default values for External-DNS
+# These are overridden by config/homelab.yaml when deploying
+
+services:
+  external_dns:
+    domain: silverseekers.org
+    provider: cloudflare
+    policy: sync
+

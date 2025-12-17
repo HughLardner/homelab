@@ -1,0 +1,53 @@
+---
+# MinIO Helm Values
+# S3-compatible object storage for Velero backups
+
+# Mode: standalone for homelab (no HA needed)
+mode: standalone
+
+# Use existing secret for root credentials
+existingSecret: minio-credentials
+
+# Persistence
+persistence:
+  enabled: true
+  storageClass: longhorn
+  size: 50Gi
+
+# Resources
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+# Disable built-in ingress (using Traefik IngressRoute)
+ingress:
+  enabled: false
+
+consoleIngress:
+  enabled: false
+
+# Service
+service:
+  type: ClusterIP
+  port: 9000
+
+consoleService:
+  type: ClusterIP
+  port: 9001
+
+# Create default bucket for Velero
+buckets:
+  - name: velero
+    policy: none
+    purge: false
+
+# Metrics for Prometheus/VictoriaMetrics
+metrics:
+  serviceMonitor:
+    enabled: true
+    namespace: minio
+

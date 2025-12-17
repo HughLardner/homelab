@@ -1,0 +1,13 @@
+# Default values for MinIO
+# These are overridden by config/homelab.yaml when deploying
+
+global:
+  domain: silverseekers.org
+  cert_issuer: letsencrypt-prod
+
+services:
+  minio:
+    domain: minio.silverseekers.org
+    console_domain: minio-console.silverseekers.org
+    storage_size: 50Gi
+

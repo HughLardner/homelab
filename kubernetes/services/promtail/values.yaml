@@ -1,0 +1,3 @@
+# Default values for Promtail
+# These are overridden by config/homelab.yaml when deploying
+

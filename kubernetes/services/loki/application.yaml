@@ -1,34 +1,37 @@
 ---
-# ArgoCD Application for Traefik Dashboard Ingress Resources
-# Deploys: Certificate, IngressRoute, Middlewares
+# ArgoCD Application for Loki
+# Centralized log aggregation
+# Sync Wave 4: Infrastructure services
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: traefik-ingress
+  name: loki
   namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
   project: default
 
   sources:
-    # Helm chart source
-    - repoURL: https://github.com/HughLardner/homelab.git
-      targetRevision: HEAD
-      path: kubernetes/services/traefik
+    # Loki Helm Chart
+    - repoURL: https://grafana.github.io/helm-charts
+      chart: loki
+      targetRevision: 6.6.2
       helm:
-        releaseName: traefik-ingress
+        releaseName: loki
         valueFiles:
-          - $values/config/homelab.yaml
-    
-    # Values source (this repo) - referenced by $values
+          - $values/kubernetes/services/loki/loki-values.yaml
+
+    # Values reference
     - repoURL: https://github.com/HughLardner/homelab.git
       targetRevision: HEAD
       ref: values
 
   destination:
     server: https://kubernetes.default.svc
-    namespace: traefik
+    namespace: loki
 
   syncPolicy:
     automated:

@@ -1,0 +1,9 @@
+# Default values for Loki
+# These are overridden by config/homelab.yaml when deploying
+
+services:
+  loki:
+    storage_class: longhorn
+    storage_size: 10Gi
+    retention_days: 14
+

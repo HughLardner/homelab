@@ -1,0 +1,8 @@
+---
+apiVersion: v2
+name: cloudflared
+description: Cloudflare Tunnel for external access without static IP
+type: application
+version: 0.1.0
+appVersion: "2024.1.0"
+

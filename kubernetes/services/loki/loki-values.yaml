@@ -1,0 +1,87 @@
+---
+# Loki Helm Values
+# Lightweight log aggregation for homelab
+
+# Deploy mode: SingleBinary for homelab (simple, low resource)
+deploymentMode: SingleBinary
+
+# Single replica for homelab
+singleBinary:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# Persistence
+loki:
+  auth_enabled: false
+
+  commonConfig:
+    replication_factor: 1
+    path_prefix: /var/loki
+
+  storage:
+    type: filesystem
+
+  schemaConfig:
+    configs:
+      - from: "2024-01-01"
+        store: tsdb
+        object_store: filesystem
+        schema: v13
+        index:
+          prefix: loki_index_
+          period: 24h
+
+  limits_config:
+    retention_period: 336h  # 14 days
+    ingestion_rate_mb: 10
+    ingestion_burst_size_mb: 20
+    max_streams_per_user: 10000
+    max_global_streams_per_user: 10000
+
+  compactor:
+    working_directory: /var/loki/compactor
+    retention_enabled: true
+    retention_delete_delay: 2h
+    delete_request_store: filesystem
+
+  storage_config:
+    filesystem:
+      directory: /var/loki/chunks
+
+# Persistence for data
+persistence:
+  enabled: true
+  storageClass: longhorn
+  size: 10Gi
+
+# Disable components not needed in SingleBinary mode
+read:
+  replicas: 0
+write:
+  replicas: 0
+backend:
+  replicas: 0
+
+# Gateway disabled (access via service)
+gateway:
+  enabled: false
+
+# Monitoring
+monitoring:
+  serviceMonitor:
+    enabled: true
+  selfMonitoring:
+    enabled: false
+    grafanaAgent:
+      installOperator: false
+
+# Test disabled
+test:
+  enabled: false
+

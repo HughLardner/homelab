@@ -1,6 +1,6 @@
 ---
 # Traefik Helm Values Configuration
-# Install with: helm upgrade --install traefik traefik/traefik --namespace traefik --values values.yaml
+# Deployed via ArgoCD (sync-wave 2)
 
 # Global settings
 globalArguments:
@@ -13,7 +13,7 @@ additionalArguments:
   - "--accesslog=true"
   - "--accesslog.bufferingsize=100"
   - "--api.dashboard=true"
-  - "--api.insecure=false"  # Dashboard requires authentication
+  - "--api.insecure=false" # Dashboard requires authentication
   - "--ping=true"
   - "--providers.kubernetesingress.ingressclass=traefik"
   - "--providers.kubernetescrd.allowCrossNamespace=true"
@@ -24,18 +24,15 @@ additionalArguments:
 deployment:
   enabled: true
   kind: Deployment
-  replicas: 1  # Reduced from 2 - HA not needed for homelab infrastructure
+  replicas: 1 # Reduced from 2 - HA not needed for homelab infrastructure
 
 # Service configuration
 service:
   enabled: true
-  type: {{ traefik_service_type | default('LoadBalancer') }}
+  type: LoadBalancer
   annotations:
     metallb.universe.tf/allow-shared-ip: "traefik-lb"
-    metallb.universe.tf/loadBalancerIPs: "192.168.10.145"  # Lock static IP
-  spec:
-    # MetalLB will assign an IP from the pool
-    loadBalancerIP: {{ traefik_loadbalancer_ip | default('') }}
+    metallb.universe.tf/loadBalancerIPs: "192.168.10.145" # Lock static IP
 
 # Ports configuration
 ports:
@@ -60,7 +57,7 @@ ports:
   traefik:
     port: 9000
     expose:
-      default: false  # Dashboard accessed via IngressRoute
+      default: false # Dashboard accessed via IngressRoute
     exposedPort: 9000
     protocol: TCP
   metrics:
@@ -79,7 +76,7 @@ ingressClass:
 # IngressRoute configuration
 ingressRoute:
   dashboard:
-    enabled: false  # We'll create custom IngressRoute with TLS
+    enabled: false # We'll create custom IngressRoute with TLS
 
 # Providers
 providers:

@@ -1,0 +1,42 @@
+---
+# ArgoCD Application for Resource Policies
+# LimitRange and ResourceQuota for resource governance
+# Sync Wave 3: With security layer
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: resource-policies
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+
+  sources:
+    # Resource policy templates
+    - repoURL: https://github.com/HughLardner/homelab.git
+      targetRevision: HEAD
+      path: kubernetes/services/resource-policies/templates
+
+    # Values reference
+    - repoURL: https://github.com/HughLardner/homelab.git
+      targetRevision: HEAD
+      ref: values
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default  # Policies are applied per-namespace in templates
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+
