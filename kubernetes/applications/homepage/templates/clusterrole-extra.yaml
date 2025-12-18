@@ -1,0 +1,36 @@
+---
+# Additional RBAC for Homepage service discovery
+# The default Helm chart ClusterRole doesn't include services
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: homepage-service-discovery
+  labels:
+    app.kubernetes.io/name: homepage
+    app.kubernetes.io/component: rbac
+rules:
+  # Services - required for auto-discovery via annotations
+  - apiGroups: [""]
+    resources:
+      - services
+      - endpoints
+    verbs:
+      - get
+      - list
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: homepage-service-discovery
+  labels:
+    app.kubernetes.io/name: homepage
+    app.kubernetes.io/component: rbac
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: homepage-service-discovery
+subjects:
+  - kind: ServiceAccount
+    name: homepage
+    namespace: {{ .Release.Namespace }}
+
