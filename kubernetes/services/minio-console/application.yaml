@@ -1,11 +1,11 @@
 ---
-# ArgoCD Application for MinIO Console
+# ArgoCD Application for Filestash
 # S3 Browser UI for Garage object storage
 # Sync Wave 5: After Garage storage layer
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: minio-console
+  name: filestash
   namespace: argocd
   annotations:
     argocd.argoproj.io/sync-wave: "5"
@@ -15,19 +15,14 @@ spec:
   project: default
 
   sources:
-    # Custom Helm chart for MinIO Console
+    # Custom Helm chart for Filestash
     - repoURL: https://github.com/HughLardner/homelab.git
       targetRevision: HEAD
       path: kubernetes/services/minio-console
       helm:
-        releaseName: minio-console
+        releaseName: filestash
         valueFiles:
           - $values/config/homelab.yaml
-
-    # Sealed secrets
-    - repoURL: https://github.com/HughLardner/homelab.git
-      targetRevision: HEAD
-      path: kubernetes/services/minio-console/secrets
 
     # Values reference
     - repoURL: https://github.com/HughLardner/homelab.git
@@ -36,7 +31,7 @@ spec:
 
   destination:
     server: https://kubernetes.default.svc
-    namespace: minio-console
+    namespace: filestash
 
   syncPolicy:
     automated:
@@ -50,4 +45,3 @@ spec:
         duration: 5s
         factor: 2
         maxDuration: 3m
-

@@ -1,10 +1,10 @@
 ---
-# MinIO Console Helm Chart
+# Filestash Helm Chart
 # S3 Browser UI for Garage object storage
+# Note: Directory named minio-console for historical reasons
 apiVersion: v2
-name: minio-console
-description: MinIO Console - S3 Browser UI for Garage
+name: filestash
+description: Filestash - S3 Browser UI for Garage
 type: application
 version: 1.0.0
-appVersion: "2.0.4"
-
+appVersion: "latest"
