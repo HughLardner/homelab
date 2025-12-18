@@ -51,35 +51,10 @@ data:
         apiKey: {{`{{HOMEPAGE_VAR_OPENWEATHER_API_KEY}}`}}
     {{- end }}
 
-  # Services - manually defined services
+  # Services - auto-discovered via Kubernetes annotations (gethomepage.dev/*)
+  # Add annotations to services to have them appear here automatically
   services.yaml: |
-    - Infrastructure:
-      - Traefik:
-          href: https://{{ .Values.services.traefik.domain }}
-          description: Ingress Controller & Reverse Proxy
-          icon: traefik
-      - ArgoCD:
-          href: https://{{ .Values.services.argocd.domain }}
-          description: GitOps Continuous Delivery
-          icon: argocd
-      - Authelia:
-          href: https://{{ .Values.services.authelia.domain }}
-          description: Single Sign-On Authentication
-          icon: authelia
-    - Storage:
-      - Longhorn:
-          href: https://{{ .Values.services.longhorn.domain }}
-          description: Distributed Block Storage
-          icon: longhorn
-      - Garage:
-          href: https://{{ .Values.services.grafana.domain }}/d/garage/garage-object-storage
-          description: S3-Compatible Object Storage
-          icon: mdi-garage
-    - Monitoring:
-      - Grafana:
-          href: https://{{ .Values.services.grafana.domain }}
-          description: Dashboards & Visualization
-          icon: grafana
+    []
 
   # Bookmarks - quick links
   bookmarks.yaml: |
@@ -115,6 +90,5 @@ data:
   # Custom CSS - empty but required
   custom.css: ""
 
-  # Custom JS - empty but required  
+  # Custom JS - empty but required
   custom.js: ""
-

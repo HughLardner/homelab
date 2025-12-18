@@ -31,6 +31,17 @@ pod:
       subPath: users_database.yml
       readOnly: true
 
+# Service configuration
+service:
+  annotations:
+    # Homepage auto-discovery
+    gethomepage.dev/enabled: "true"
+    gethomepage.dev/group: "Infrastructure"
+    gethomepage.dev/name: "Authelia"
+    gethomepage.dev/icon: "authelia"
+    gethomepage.dev/description: "Single Sign-On Authentication"
+    gethomepage.dev/href: "https://auth.silverseekers.org"
+
 # Ingress disabled (using Traefik IngressRoute)
 ingress:
   enabled: false

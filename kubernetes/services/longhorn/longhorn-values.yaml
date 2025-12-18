@@ -59,6 +59,13 @@ service:
     # nodePort: 30000
     annotations:
       metallb.universe.tf/loadBalancerIPs: "192.168.10.144"  # Lock static IP
+      # Homepage auto-discovery
+      gethomepage.dev/enabled: "true"
+      gethomepage.dev/group: "Storage"
+      gethomepage.dev/name: "Longhorn"
+      gethomepage.dev/icon: "longhorn"
+      gethomepage.dev/description: "Distributed Block Storage"
+      gethomepage.dev/href: "https://longhorn.silverseekers.org"
 
 # Ingress configuration (disabled by default - enable via ArgoCD later)
 ingress:
