@@ -1,13 +1,13 @@
 ---
-# IngressRoute for MinIO Console with Authelia authentication
+# IngressRoute for Filestash with Authelia authentication
 apiVersion: traefik.io/v1alpha1
 kind: IngressRoute
 metadata:
-  name: minio-console
-  namespace: {{ .Release.Namespace }}
+  name: filestash
+  namespace: { { .Release.Namespace } }
   labels:
-    app.kubernetes.io/name: minio-console
-    app.kubernetes.io/component: console
+    app.kubernetes.io/name: filestash
+    app.kubernetes.io/component: web
 spec:
   entryPoints:
     - websecure
@@ -18,8 +18,7 @@ spec:
         - name: authelia-forward-auth
           namespace: authelia
       services:
-        - name: minio-console
-          port: 9090
+        - name: filestash
+          port: 8334
   tls:
     secretName: minio-console-tls
-

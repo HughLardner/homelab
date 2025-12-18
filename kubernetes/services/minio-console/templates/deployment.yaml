@@ -1,81 +1,61 @@
 ---
-# MinIO Console Deployment
+# Filestash Deployment - S3 Browser UI for Garage
+# https://www.filestash.app/ - AGPL-3.0 licensed
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: minio-console
+  name: filestash
   namespace: {{ .Release.Namespace }}
   labels:
-    app.kubernetes.io/name: minio-console
+    app.kubernetes.io/name: filestash
     app.kubernetes.io/instance: {{ .Release.Name }}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app.kubernetes.io/name: minio-console
+      app.kubernetes.io/name: filestash
       app.kubernetes.io/instance: {{ .Release.Name }}
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: minio-console
+        app.kubernetes.io/name: filestash
         app.kubernetes.io/instance: {{ .Release.Name }}
     spec:
       containers:
-        - name: console
-          image: minio/console:v1.8.1
+        - name: filestash
+          image: machines/filestash:latest
           imagePullPolicy: IfNotPresent
-          args:
-            - server
           ports:
             - name: http
-              containerPort: 9090
-              protocol: TCP
-            - name: https
-              containerPort: 9443
+              containerPort: 8334
               protocol: TCP
           env:
-            # MinIO/Garage S3 endpoint (internal cluster DNS)
-            - name: CONSOLE_MINIO_SERVER
-              value: "http://garage.garage.svc:3900"
-            # JWT encryption passphrase
-            - name: CONSOLE_PBKDF_PASSPHRASE
-              valueFrom:
-                secretKeyRef:
-                  name: minio-console-credentials
-                  key: pbkdf-passphrase
-            # JWT encryption salt
-            - name: CONSOLE_PBKDF_SALT
-              valueFrom:
-                secretKeyRef:
-                  name: minio-console-credentials
-                  key: pbkdf-salt
-            # Disable secure cookies for internal traffic (TLS terminates at Traefik)
-            - name: CONSOLE_SECURE_TLS_REDIRECT
-              value: "off"
+            # Application secret for session encryption
+            - name: APPLICATION_URL
+              value: "https://{{ .Values.services.minio_console.domain | default "s3-ui.silverseekers.org" }}"
+          volumeMounts:
+            - name: data
+              mountPath: /app/data/state
           resources:
             requests:
               cpu: 50m
               memory: 128Mi
             limits:
-              cpu: 200m
-              memory: 256Mi
+              cpu: 500m
+              memory: 512Mi
           livenessProbe:
             httpGet:
               path: /
               port: http
-            initialDelaySeconds: 10
+            initialDelaySeconds: 30
             periodSeconds: 10
           readinessProbe:
             httpGet:
               path: /
               port: http
-            initialDelaySeconds: 5
+            initialDelaySeconds: 10
             periodSeconds: 5
-          securityContext:
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: false
-            runAsNonRoot: true
-            runAsUser: 1000
-      securityContext:
-        fsGroup: 1000
+      volumes:
+        - name: data
+          emptyDir: {}
 
