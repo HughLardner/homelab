@@ -1,11 +1,11 @@
 ---
-# ArgoCD Application for MinIO
+# ArgoCD Application for Garage
 # S3-compatible object storage for Velero backups
 # Sync Wave 4: After security layer
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: minio
+  name: garage
   namespace: argocd
   annotations:
     argocd.argoproj.io/sync-wave: "4"
@@ -15,28 +15,19 @@ spec:
   project: default
 
   sources:
-    # MinIO Helm Chart
-    - repoURL: https://charts.min.io/
-      chart: minio
-      targetRevision: 5.0.15
-      helm:
-        releaseName: minio
-        valueFiles:
-          - $values/kubernetes/services/minio/minio-values.yaml
-
-    # Custom templates (IngressRoute, Certificate) - local Helm chart
+    # Custom Helm chart for Garage (no official chart, using local)
     - repoURL: https://github.com/HughLardner/homelab.git
       targetRevision: HEAD
-      path: kubernetes/services/minio
+      path: kubernetes/services/garage
       helm:
-        releaseName: minio-config
+        releaseName: garage
         valueFiles:
           - $values/config/homelab.yaml
 
     # Sealed secrets
     - repoURL: https://github.com/HughLardner/homelab.git
       targetRevision: HEAD
-      path: kubernetes/services/minio/secrets
+      path: kubernetes/services/garage/secrets
 
     # Values reference
     - repoURL: https://github.com/HughLardner/homelab.git
@@ -45,7 +36,7 @@ spec:
 
   destination:
     server: https://kubernetes.default.svc
-    namespace: minio
+    namespace: garage
 
   syncPolicy:
     automated:

@@ -1,0 +1,18 @@
+---
+# TLS Certificate for Garage endpoints
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: garage-tls
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: garage
+spec:
+  secretName: garage-tls
+  issuerRef:
+    name: {{ .Values.global.cert_issuer | default "letsencrypt-prod" }}
+    kind: ClusterIssuer
+  dnsNames:
+    - {{ .Values.services.garage.domain | default "s3.silverseekers.org" }}
+    - {{ .Values.services.garage.web_domain | default "garage.silverseekers.org" }}
+

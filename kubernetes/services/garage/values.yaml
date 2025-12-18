@@ -1,4 +1,4 @@
-# Default values for MinIO
+# Default values for Garage
 # These are overridden by config/homelab.yaml when deploying
 
 global:
@@ -6,8 +6,9 @@ global:
   cert_issuer: letsencrypt-prod
 
 services:
-  minio:
-    domain: minio.silverseekers.org
-    console_domain: minio-console.silverseekers.org
+  garage:
+    domain: s3.silverseekers.org
+    web_domain: garage.silverseekers.org
     storage_size: 50Gi
+    bucket: velero
 
