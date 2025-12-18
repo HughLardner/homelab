@@ -1,0 +1,29 @@
+---
+# MinIO Console Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: minio-console
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: minio-console
+    app.kubernetes.io/component: console
+  annotations:
+    # Homepage auto-discovery
+    gethomepage.dev/enabled: "true"
+    gethomepage.dev/name: "S3 Browser"
+    gethomepage.dev/description: "Object Storage Browser"
+    gethomepage.dev/group: "Storage"
+    gethomepage.dev/icon: "minio"
+    gethomepage.dev/href: "https://{{ .Values.services.minio_console.domain | default "s3-ui.silverseekers.org" }}"
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 9090
+      targetPort: http
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: minio-console
+    app.kubernetes.io/instance: {{ .Release.Name }}
+

@@ -1,0 +1,53 @@
+---
+# ArgoCD Application for MinIO Console
+# S3 Browser UI for Garage object storage
+# Sync Wave 5: After Garage storage layer
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: minio-console
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+
+  sources:
+    # Custom Helm chart for MinIO Console
+    - repoURL: https://github.com/HughLardner/homelab.git
+      targetRevision: HEAD
+      path: kubernetes/services/minio-console
+      helm:
+        releaseName: minio-console
+        valueFiles:
+          - $values/config/homelab.yaml
+
+    # Sealed secrets
+    - repoURL: https://github.com/HughLardner/homelab.git
+      targetRevision: HEAD
+      path: kubernetes/services/minio-console/secrets
+
+    # Values reference
+    - repoURL: https://github.com/HughLardner/homelab.git
+      targetRevision: HEAD
+      ref: values
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: minio-console
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+

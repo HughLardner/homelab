@@ -1,0 +1,10 @@
+---
+# MinIO Console Helm Chart
+# S3 Browser UI for Garage object storage
+apiVersion: v2
+name: minio-console
+description: MinIO Console - S3 Browser UI for Garage
+type: application
+version: 1.0.0
+appVersion: "2.0.4"
+

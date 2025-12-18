@@ -1,0 +1,17 @@
+---
+# TLS Certificate for MinIO Console
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: minio-console-tls
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: minio-console
+spec:
+  secretName: minio-console-tls
+  issuerRef:
+    name: {{ .Values.global.cert_issuer | default "letsencrypt-prod" }}
+    kind: ClusterIssuer
+  dnsNames:
+    - {{ .Values.services.minio_console.domain | default "s3-ui.silverseekers.org" }}
+
