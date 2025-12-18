@@ -1,7 +1,8 @@
 # Homelab Cluster State Snapshot
 
 **Generated:** 2025-12-17 23:49 UTC  
-**Cluster Age:** 47 hours  
+**Last Updated:** 2025-12-18 07:50 UTC  
+**Cluster Age:** 2d 8h  
 **Purpose:** Pre-rebuild documentation
 
 ---
@@ -20,6 +21,15 @@
 - [Resource Usage](#resource-usage)
 - [Known Issues](#known-issues)
 - [Secrets Reference](#secrets-reference)
+
+---
+
+## Change Log
+
+| Date | Change |
+|------|--------|
+| 2025-12-18 | Migrated from MinIO to Garage for S3-compatible object storage |
+| 2025-12-18 | Velero backup solution now deployed and healthy |
 
 ---
 
@@ -67,23 +77,24 @@
 
 | Namespace | Age | Purpose |
 |-----------|-----|---------|
-| argocd | 47h | GitOps deployment |
-| authelia | 46h | Authentication portal |
-| cert-manager | 47h | TLS certificate management |
-| cloudflared | 22h | Cloudflare tunnel |
-| default | 47h | Default namespace |
-| external-dns | 21h | DNS automation |
-| homepage | 9h | Dashboard |
-| kube-node-lease | 47h | Node heartbeat |
-| kube-public | 47h | Public resources |
-| kube-system | 47h | System components |
-| loki | 22h | Log aggregation |
-| longhorn-system | 47h | Distributed storage |
-| metallb-system | 47h | LoadBalancer |
-| minio | 15h | Object storage |
-| monitoring | 35h | Victoria Metrics + Grafana |
-| traefik | 47h | Ingress controller |
-| velero | 22h | Backup (not deployed) |
+| argocd | 2d7h | GitOps deployment |
+| authelia | 2d7h | Authentication portal |
+| cert-manager | 2d7h | TLS certificate management |
+| cloudflared | 30h | Cloudflare tunnel |
+| default | 2d8h | Default namespace |
+| external-dns | 29h | DNS automation |
+| garage | 6h53m | S3-compatible object storage (replaced MinIO) |
+| homepage | 17h | Dashboard |
+| kube-node-lease | 2d8h | Node heartbeat |
+| kube-public | 2d8h | Public resources |
+| kube-system | 2d8h | System components |
+| loki | 30h | Log aggregation |
+| longhorn-system | 2d8h | Distributed storage |
+| metallb-system | 2d8h | LoadBalancer |
+| ~~minio~~ | ~~23h~~ | ~~Object storage~~ **(Deprecated - replaced by Garage)** |
+| monitoring | 44h | Victoria Metrics + Grafana |
+| traefik | 2d7h | Ingress controller |
+| velero | 30h | Backup solution ✅ |
 
 ---
 
@@ -101,6 +112,8 @@
 | traefik | traefik | traefik | 28.0.0 | v3.0.0 | deployed |
 | traefik-ingress | traefik | traefik-ingress | 1.0.0 | 3.0 | deployed |
 
+**Note:** Garage is deployed via ArgoCD (not Helm).
+
 ---
 
 ## ArgoCD Applications
@@ -112,17 +125,17 @@
 | cert-manager | Unknown | Healthy | ⚠️ Sync status unknown |
 | cloudflared | Synced | Healthy | ✅ |
 | external-dns | Synced | Healthy | ✅ |
+| garage | OutOfSync | Healthy | ⚠️ S3 object storage (replaced MinIO) |
 | homepage | Synced | Healthy | ✅ |
 | loki | Synced | Healthy | ✅ |
 | longhorn-ingress | Synced | Healthy | ✅ |
-| minio | Synced | Healthy | ✅ |
 | monitoring | Synced | Healthy | ✅ |
 | network-policies | Synced | Healthy | ✅ |
 | promtail | Synced | Healthy | ✅ |
 | resource-policies | Synced | Healthy | ✅ |
 | root-app | Synced | Healthy | ✅ App-of-Apps pattern |
 | traefik | Synced | Healthy | ✅ |
-| velero | OutOfSync | Missing | ❌ Not deploying |
+| velero | Synced | Healthy | ✅ Backup solution working |
 
 ---
 
@@ -135,95 +148,101 @@
 #### argocd (5 pods)
 | Pod | Status | Restarts | Age |
 |-----|--------|----------|-----|
-| argocd-application-controller-0 | Running | 0 | 31h |
-| argocd-applicationset-controller-fd979c6d4-rtdcj | Running | 0 | 32h |
-| argocd-redis-64bcbd4d76-pjsp8 | Running | 0 | 32h |
-| argocd-repo-server-568b666f45-vhxhs | Running | 0 | 31h |
-| argocd-server-5f467677f8-rwfqt | Running | 0 | 31h |
+| argocd-application-controller-0 | Running | 0 | 39h |
+| argocd-applicationset-controller-fd979c6d4-rtdcj | Running | 0 | 40h |
+| argocd-redis-64bcbd4d76-pjsp8 | Running | 0 | 40h |
+| argocd-repo-server-568b666f45-vhxhs | Running | 0 | 39h |
+| argocd-server-5f467677f8-rwfqt | Running | 0 | 39h |
 
 #### authelia (1 pod)
 | Pod | Status | Restarts | Age |
 |-----|--------|----------|-----|
-| authelia-677b48fddb-jxvxv | Running | 0 | 9h |
+| authelia-677b48fddb-jxvxv | Running | 0 | 17h |
 
 #### cert-manager (3 pods)
 | Pod | Status | Restarts | Age |
 |-----|--------|----------|-----|
-| cert-manager-6b6fb948c9-ffzff | Running | 0 | 47h |
-| cert-manager-cainjector-7b49c96b7b-v9thl | Running | 0 | 47h |
-| cert-manager-webhook-6ff9d5cf4b-zbnhw | Running | 0 | 47h |
+| cert-manager-6b6fb948c9-ffzff | Running | 0 | 2d7h |
+| cert-manager-cainjector-7b49c96b7b-v9thl | Running | 0 | 2d7h |
+| cert-manager-webhook-6ff9d5cf4b-zbnhw | Running | 0 | 2d7h |
 
 #### cloudflared (1 pod)
 | Pod | Status | Restarts | Age |
 |-----|--------|----------|-----|
-| cloudflared-7cd6648896-l2s7l | Running | 2 (21h ago) | 21h |
+| cloudflared-7cd6648896-l2s7l | Running | 2 (29h ago) | 29h |
 
 #### external-dns (1 pod)
 | Pod | Status | Restarts | Age |
 |-----|--------|----------|-----|
-| external-dns-fcd8b45f-lqlmg | Running | 0 | 15h |
+| external-dns-fcd8b45f-lqlmg | Running | 0 | 24h |
+
+#### garage (1 pod) - **NEW**
+| Pod | Status | Restarts | Age |
+|-----|--------|----------|-----|
+| garage-0 | Running | 0 | 8m |
 
 #### homepage (1 pod)
 | Pod | Status | Restarts | Age |
 |-----|--------|----------|-----|
-| homepage-79c8cdf798-7ghfq | Running | 0 | 18m |
+| homepage-79c8cdf798-7ghfq | Running | 0 | 8h |
 
 #### kube-system (4 pods)
 | Pod | Status | Restarts | Age |
 |-----|--------|----------|-----|
-| coredns-659f584bfd-dvpfc | Running | 0 | 47h |
-| local-path-provisioner-774c6665dc-xq5p9 | Running | 0 | 47h |
-| metrics-server-7bfffcd44-8r4wp | Running | 0 | 47h |
-| sealed-secrets-controller-bd6746fd7-4z992 | Running | 0 | 47h |
+| coredns-659f584bfd-dvpfc | Running | 0 | 2d7h |
+| local-path-provisioner-774c6665dc-xq5p9 | Running | 0 | 2d8h |
+| metrics-server-7bfffcd44-8r4wp | Running | 0 | 2d8h |
+| sealed-secrets-controller-bd6746fd7-4z992 | Running | 0 | 2d7h |
 
 #### loki (3 pods)
 | Pod | Status | Restarts | Age |
 |-----|--------|----------|-----|
-| loki-0 | Running | 0 | 21h |
-| loki-canary-lc9ql | Running | 0 | 22h |
-| promtail-s9ld7 | Running | 0 | 15h |
+| loki-0 | Running | 0 | 30h |
+| loki-canary-lc9ql | Running | 0 | 30h |
+| promtail-s9ld7 | Running | 0 | 23h |
 
 #### longhorn-system (15 pods)
 | Pod | Status | Restarts | Age |
 |-----|--------|----------|-----|
-| csi-attacher-58b6c6fdf6-* (3) | Running | various | 47h |
-| csi-provisioner-74f57b955d-* (3) | Running | various | 47h |
-| csi-resizer-6cfcbf5f5-* (3) | Running | 0 | 47h |
-| csi-snapshotter-5fcb76449-* (3) | Running | 0 | 47h |
-| engine-image-ei-acb7590c-kxc64 | Running | 0 | 47h |
-| instance-manager-d5f89eeb3f965a8a18536620faebd2d2 | Running | 0 | 47h |
-| longhorn-csi-plugin-l4955 | Running | 0 | 47h |
-| longhorn-driver-deployer-7586c8d85b-z8kgz | Running | 0 | 47h |
-| longhorn-manager-mlwhz | Running | 1 (47h ago) | 47h |
-| longhorn-ui-77d4995f67-* (2) | Running | 0 | 47h |
+| csi-attacher-58b6c6fdf6-* (3) | Running | various | 2d8h |
+| csi-provisioner-74f57b955d-* (3) | Running | various | 2d8h |
+| csi-resizer-6cfcbf5f5-* (3) | Running | 0 | 2d8h |
+| csi-snapshotter-5fcb76449-* (3) | Running | 0 | 2d8h |
+| engine-image-ei-acb7590c-kxc64 | Running | 0 | 2d8h |
+| instance-manager-d5f89eeb3f965a8a18536620faebd2d2 | Running | 0 | 2d8h |
+| longhorn-csi-plugin-l4955 | Running | 0 | 2d8h |
+| longhorn-driver-deployer-7586c8d85b-z8kgz | Running | 0 | 2d8h |
+| longhorn-manager-mlwhz | Running | 1 (2d8h ago) | 2d8h |
+| longhorn-ui-77d4995f67-* (2) | Running | 0 | 2d8h |
 
 #### metallb-system (2 pods)
 | Pod | Status | Restarts | Age |
 |-----|--------|----------|-----|
-| controller-bb5f47665-rf627 | Running | 0 | 47h |
-| speaker-xmgcb | Running | 0 | 47h |
-
-#### minio (1 pod)
-| Pod | Status | Restarts | Age |
-|-----|--------|----------|-----|
-| minio-59b6b9d597-4s2mc | Running | 0 | 14h |
+| controller-bb5f47665-rf627 | Running | 0 | 2d8h |
+| speaker-xmgcb | Running | 0 | 2d8h |
 
 #### monitoring (7 pods)
 | Pod | Status | Restarts | Age |
 |-----|--------|----------|-----|
-| grafana-5c58bf9c5b-wglt8 | Running | 0 | 22h |
-| kube-state-metrics-57db796588-jzcqv | Running | 0 | 29h |
-| node-exporter-prometheus-node-exporter-5jv9x | Running | 0 | 29h |
-| vm-operator-victoria-metrics-operator-785b7bcd7-h52xp | Running | 0 | 29h |
-| vmagent-vmagent-c4768f65d-l6mzx | Running | 26 (3m ago) | 32h |
-| vmalert-vmalert-858db5945b-4d46v | Running | 0 | 32h |
-| vmalertmanager-vmalertmanager-0 | Running | 0 | 32h |
-| vmsingle-vmsingle-69965db646-9bsjp | Running | 0 | 32h |
+| grafana-5c58bf9c5b-wglt8 | Running | 0 | 30h |
+| kube-state-metrics-57db796588-jzcqv | Running | 0 | 37h |
+| node-exporter-prometheus-node-exporter-5jv9x | Running | 0 | 37h |
+| vm-operator-victoria-metrics-operator-785b7bcd7-h52xp | Running | 0 | 37h |
+| vmagent-vmagent-c4768f65d-l6mzx | Running | 44 (74m ago) | 40h |
+| vmalert-vmalert-858db5945b-4d46v | Running | 0 | 40h |
+| vmalertmanager-vmalertmanager-0 | Running | 0 | 40h |
+| vmsingle-vmsingle-69965db646-9bsjp | Running | 0 | 40h |
 
 #### traefik (1 pod)
 | Pod | Status | Restarts | Age |
 |-----|--------|----------|-----|
-| traefik-6ccfbc5bbf-cqpgd | Running | 0 | 47h |
+| traefik-66f58dfb9c-tv9z2 | Running | 0 | 8h |
+
+#### velero (2 pods) - **NOW WORKING**
+| Pod | Status | Restarts | Age |
+|-----|--------|----------|-----|
+| velero-6cfcd8b98f-9jg4n | Running | 0 | 3m |
+| node-agent-82k6r | Running | 0 | 3m |
 
 ---
 
@@ -238,20 +257,22 @@
 
 ### ClusterIP Services
 
-| Service | Namespace | Cluster IP | Ports |
-|---------|-----------|------------|-------|
-| argocd-server | argocd | 10.43.171.7 | 80, 443 |
-| authelia | authelia | 10.43.192.175 | 80 |
-| cert-manager | cert-manager | 10.43.168.185 | 9402 |
-| external-dns | external-dns | 10.43.248.79 | 7979 |
-| homepage | homepage | 10.43.66.31 | 3000 |
-| kube-dns | kube-system | 10.43.0.10 | 53, 9153 |
-| loki | loki | 10.43.91.78 | 3100, 9095 |
-| grafana | monitoring | 10.43.163.176 | 80 |
-| minio | minio | 10.43.51.51 | 9000 |
-| minio-console | minio | 10.43.222.17 | 9001 |
-| vmsingle-vmsingle | monitoring | 10.43.251.38 | 8429 |
-| kube-state-metrics | monitoring | 10.43.135.182 | 8080 |
+| Service | Namespace | Cluster IP | Ports | Purpose |
+|---------|-----------|------------|-------|---------|
+| argocd-server | argocd | 10.43.171.7 | 80, 443 | ArgoCD UI |
+| authelia | authelia | 10.43.192.175 | 80 | Auth portal |
+| cert-manager | cert-manager | 10.43.168.185 | 9402 | Cert management |
+| external-dns | external-dns | 10.43.248.79 | 7979 | DNS automation |
+| garage | garage | 10.43.134.46 | 3900 | S3 API |
+| garage-admin | garage | 10.43.201.76 | 3903 | Garage admin API |
+| garage-web | garage | 10.43.247.231 | 3902 | Garage web interface |
+| garage-headless | garage | None | 3901 | StatefulSet headless |
+| homepage | homepage | 10.43.66.31 | 3000 | Dashboard |
+| kube-dns | kube-system | 10.43.0.10 | 53, 9153 | DNS |
+| loki | loki | 10.43.91.78 | 3100, 9095 | Log aggregation |
+| grafana | monitoring | 10.43.163.176 | 80 | Monitoring UI |
+| vmsingle-vmsingle | monitoring | 10.43.251.38 | 8429 | Victoria Metrics |
+| kube-state-metrics | monitoring | 10.43.135.182 | 8080 | K8s metrics |
 
 ---
 
@@ -269,8 +290,9 @@
 | PVC | Namespace | Storage Class | Capacity | Status |
 |-----|-----------|---------------|----------|--------|
 | authelia | authelia | longhorn | 1Gi | Bound |
+| data-garage-0 | garage | longhorn | 50Gi | Bound |
+| meta-garage-0 | garage | longhorn | 1Gi | Bound |
 | storage-loki-0 | loki | longhorn | 10Gi | Bound |
-| minio | minio | longhorn | 50Gi | Bound |
 | grafana | monitoring | local-path | 5Gi | Bound |
 | vmalertmanager-vmalertmanager-db-vmalertmanager-vmalertmanager-0 | monitoring | local-path | 1Gi | Bound |
 | vmsingle-vmsingle | monitoring | local-path | 2Gi | Bound |
@@ -279,8 +301,9 @@
 | PV | Capacity | Status | Claim | Storage Class |
 |----|----------|--------|-------|---------------|
 | pvc-513b8b36-d02f-49b1-8f4c-087a41f3a313 | 1Gi | Bound | authelia/authelia | longhorn |
+| pvc-961bc648-4c79-42eb-ac60-6bb0b6f37a34 | 50Gi | Bound | garage/data-garage-0 | longhorn |
+| pvc-3647e591-de64-45ef-91d6-62924c5c677b | 1Gi | Bound | garage/meta-garage-0 | longhorn |
 | pvc-9f16ca19-af8c-47d6-a2d1-3e55b65479e6 | 10Gi | Bound | loki/storage-loki-0 | longhorn |
-| pvc-7828399a-9257-4a11-acf2-62ef6e12de77 | 50Gi | Bound | minio/minio | longhorn |
 | pvc-f7470eb9-f0fb-4565-b613-a52cca41e7fa | 5Gi | Bound | monitoring/grafana | local-path |
 | pvc-420a1217-2f8d-44fd-843d-6f03211d2e1b | 1Gi | Bound | monitoring/vmalertmanager | local-path |
 | pvc-7a7c9591-cf70-4b1c-b890-000709d97496 | 2Gi | Bound | monitoring/vmsingle | local-path |
@@ -303,9 +326,9 @@
 |-------------|-----------|--------|-------|--------|
 | argocd-server-tls | argocd | letsencrypt-staging | True | argocd-server-tls |
 | authelia-tls | authelia | letsencrypt-staging | True | authelia-tls |
+| garage-tls | garage | letsencrypt-staging | True | garage-tls |
 | homepage-tls | homepage | letsencrypt-staging | True | homepage-tls |
 | longhorn-frontend-tls | longhorn-system | letsencrypt-staging | True | longhorn-frontend-tls |
-| minio-console-tls | minio | letsencrypt-staging | True | minio-console-tls |
 | grafana-tls | monitoring | letsencrypt-staging | True | grafana-tls |
 | traefik-dashboard-tls | traefik | letsencrypt-staging | True | traefik-dashboard-tls |
 
@@ -329,10 +352,10 @@
 |-------|-----------|---------|
 | argocd-server | argocd | ArgoCD Server |
 | authelia | authelia | Authelia |
+| garage-s3 | garage | Garage S3 API |
+| garage-web | garage | Garage Web Interface |
 | homepage | homepage | Homepage Dashboard |
 | longhorn-frontend | longhorn-system | Longhorn UI |
-| minio-api | minio | MinIO API |
-| minio-console | minio | MinIO Console |
 | grafana | monitoring | Grafana |
 | traefik-dashboard | traefik | Traefik Dashboard |
 
@@ -353,27 +376,21 @@
 | vmsingle-vmsingle | 9m | 419Mi |
 | argocd-application-controller | 6m | 304Mi |
 | instance-manager (Longhorn) | 33m | 176Mi |
-| minio | 5m | 116Mi |
 | longhorn-manager | 11m | 113Mi |
 | loki | 16m | 109Mi |
 | homepage | 1m | 99Mi |
 | grafana | 9m | 82Mi |
+| garage | TBD | TBD |
 
-**Total Pod Resources:** 152m CPU, 2374Mi Memory
+**Total Pod Resources:** ~152m CPU, ~2400Mi Memory
 
 ---
 
 ## Known Issues
 
-### ❌ Velero Deployment Failing
-- **Status:** OutOfSync, Health: Missing
-- **Error:** `velero-upgrade-crds` job failing with BackoffLimitExceeded
-- **Details:** CRD upgrade job container crashing repeatedly
-- **Action Required:** Fix velero deployment or remove from ArgoCD apps
-
 ### ⚠️ VMAgent Restarting
 - **Pod:** vmagent-vmagent-c4768f65d-l6mzx
-- **Restarts:** 26 (most recent 3m ago)
+- **Restarts:** 44 (most recent 74m ago)
 - **Action Required:** Check vmagent logs for configuration issues
 
 ### ⚠️ Cert-Manager Sync Status Unknown
@@ -381,15 +398,25 @@
 - **Status:** Unknown (but Health: Healthy)
 - **Action Required:** May need manual sync or investigation
 
+### ⚠️ Garage OutOfSync
+- **Application:** garage
+- **Status:** OutOfSync (but Health: Healthy)
+- **Note:** Recently deployed, may need sync
+
 ### ⚠️ Cloudflared Restarts
 - **Pod:** cloudflared-7cd6648896-l2s7l
-- **Restarts:** 2 (21h ago)
+- **Restarts:** 2 (29h ago)
 - **Status:** Currently stable
 
 ### ⚠️ Staging Certificates
 - All certificates using `letsencrypt-staging`
 - Not trusted by browsers
 - **Action Required:** Switch to `letsencrypt-prod` after rebuild
+
+### ✅ RESOLVED: Velero Deployment
+- **Previous Status:** OutOfSync, Health: Missing
+- **Current Status:** Synced, Healthy
+- **Pods Running:** velero, node-agent
 
 ---
 
@@ -411,12 +438,13 @@
 | cloudflare-api-token | cert-manager | Opaque | api-token |
 | cloudflared-tunnel-token | cloudflared | Opaque | token |
 | external-dns-cloudflare-token | external-dns | Opaque | api-token |
+| garage-credentials | garage | Opaque | access-key, secret-key |
 | grafana-admin-secret | monitoring | Opaque | admin-user, admin-password |
 | grafana-oidc-secret | monitoring | Opaque | clientSecret |
-| minio-credentials | minio | Opaque | rootUser, rootPassword |
 | sealed-secrets-keyb5jmm | kube-system | kubernetes.io/tls | tls.crt, tls.key |
 | letsencrypt-prod-account-key | cert-manager | Opaque | tls.key |
 | letsencrypt-staging-account-key | cert-manager | Opaque | tls.key |
+| velero-repo-credentials | velero | Opaque | repository password |
 
 ---
 
@@ -429,7 +457,6 @@
 | authelia | authelia | configuration.yaml |
 | loki | loki | loki config |
 | grafana | monitoring | grafana.ini sections |
-| minio | minio | minio config |
 | coredns | kube-system | Corefile |
 
 ### Grafana Dashboards
@@ -448,6 +475,7 @@
 | StatefulSet | Namespace | Replicas | Storage |
 |-------------|-----------|----------|---------|
 | argocd-application-controller | argocd | 1/1 | None |
+| garage | garage | 1/1 | 50Gi data + 1Gi meta (Longhorn) |
 | loki | loki | 1/1 | 10Gi (Longhorn) |
 | vmalertmanager-vmalertmanager | monitoring | 1/1 | 1Gi (local-path) |
 
@@ -465,6 +493,7 @@
 | longhorn-manager | longhorn-system | 1/1 | Storage management |
 | speaker | metallb-system | 1/1 | L2 announcer |
 | node-exporter-prometheus-node-exporter | monitoring | 1/1 | Node metrics |
+| node-agent | velero | 1/1 | Velero backup agent |
 
 ---
 
@@ -492,19 +521,43 @@ When rebuilding, ensure these components are deployed in order:
    - [ ] External-DNS
    - [ ] Cloudflared
    - [ ] Homepage
-   - [ ] MinIO
-   - [ ] Fix Velero deployment
+   - [ ] Garage (S3 object storage)
+   - [ ] Velero (backup)
 
 5. **Post-Deployment**
    - [ ] Switch to letsencrypt-prod certificates
    - [ ] Verify all ingress routes accessible
    - [ ] Check monitoring/logging pipelines
    - [ ] Test backup/restore with Velero
+   - [ ] Configure Garage buckets for Loki/Velero
+
+---
+
+## Migration Notes: MinIO → Garage
+
+### Why Garage?
+- Lighter weight S3-compatible storage
+- Better suited for single-node/small clusters
+- Built-in distributed capabilities for future expansion
+
+### Garage Configuration
+- **S3 API Port:** 3900
+- **Web Interface Port:** 3902
+- **Admin API Port:** 3903
+- **RPC Port:** 3901 (headless service)
+- **Storage:** 50Gi data + 1Gi metadata on Longhorn
+
+### Secrets Required
+- `garage-credentials`: Contains S3 access key and secret key
+- `garage-tls`: TLS certificate for HTTPS access
+
+### IngressRoutes
+- `garage-s3`: S3 API endpoint
+- `garage-web`: Web interface
 
 ---
 
 ## End of Snapshot
 
-This document captures the state of the homelab cluster as of 2025-12-17.
+This document captures the state of the homelab cluster as of 2025-12-18.
 All configuration files are stored in Git and secrets in `config/secrets.yml`.
-

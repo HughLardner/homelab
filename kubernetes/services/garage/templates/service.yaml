@@ -8,6 +8,14 @@ metadata:
   labels:
     app.kubernetes.io/name: garage
     app.kubernetes.io/component: s3-api
+  annotations:
+    # Homepage auto-discovery
+    gethomepage.dev/enabled: "true"
+    gethomepage.dev/name: "Garage"
+    gethomepage.dev/description: "S3-Compatible Object Storage"
+    gethomepage.dev/group: "Storage"
+    gethomepage.dev/icon: "mdi-garage"
+    gethomepage.dev/href: "https://{{ .Values.services.garage.web_domain | default "garage.silverseekers.org" }}"
 spec:
   type: ClusterIP
   ports:

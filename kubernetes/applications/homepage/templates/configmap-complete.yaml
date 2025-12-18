@@ -71,10 +71,7 @@ data:
           href: https://{{ .Values.services.longhorn.domain }}
           description: Distributed Block Storage
           icon: longhorn
-      - Garage:
-          href: https://{{ .Values.services.garage.web_domain }}
-          description: S3-Compatible Object Storage
-          icon: mdi-garage
+      # Garage is auto-discovered via Kubernetes annotations
     - Monitoring:
       - Grafana:
           href: https://{{ .Values.services.grafana.domain }}
