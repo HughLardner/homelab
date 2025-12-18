@@ -19,8 +19,8 @@ data:
 
     replication_factor = 1
 
-    [rpc]
-    bind_addr = "[::]:3901"
+    # RPC configuration (top-level in v1.0+)
+    rpc_bind_addr = "[::]:3901"
     # rpc_secret is set via environment variable GARAGE_RPC_SECRET
 
     [s3_api]
