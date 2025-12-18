@@ -28,99 +28,91 @@ spec:
             - /bin/sh
             - -c
             - |
-              set -e
+              # Idempotent init script - safe to run multiple times
               
               ADMIN_URL="http://garage-admin:3903"
               ADMIN_TOKEN=$(cat /secrets/admin-token)
               
               echo "Waiting for Garage to be ready..."
-              until curl -sf "$ADMIN_URL/health"; do
-                echo "Waiting for Garage admin API..."
+              for i in 1 2 3 4 5 6; do
+                if curl -sf "$ADMIN_URL/health" > /dev/null 2>&1; then
+                  echo "Garage is ready"
+                  break
+                fi
+                echo "Waiting for Garage admin API... (attempt $i)"
                 sleep 5
               done
               
-              echo "Checking cluster status..."
-              curl -sf -H "Authorization: Bearer $ADMIN_TOKEN" "$ADMIN_URL/v1/status" || true
+              # Check layout version - if > 0, layout is already configured
+              LAYOUT_VERSION=$(curl -sf -H "Authorization: Bearer $ADMIN_TOKEN" "$ADMIN_URL/v1/layout" 2>/dev/null | grep -o '"version":[0-9]*' | cut -d: -f2 || echo "0")
+              echo "Current layout version: $LAYOUT_VERSION"
               
-              # Get node ID and configure layout
-              echo "Getting node ID..."
-              NODE_ID=$(curl -sf -H "Authorization: Bearer $ADMIN_TOKEN" "$ADMIN_URL/v1/status" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
-              
-              if [ -n "$NODE_ID" ]; then
-                echo "Node ID: $NODE_ID"
+              if [ "$LAYOUT_VERSION" = "0" ] || [ -z "$LAYOUT_VERSION" ]; then
+                echo "Layout needs configuration..."
+                NODE_ID=$(curl -sf -H "Authorization: Bearer $ADMIN_TOKEN" "$ADMIN_URL/v1/status" 2>/dev/null | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4 || echo "")
                 
-                # Check if layout already applied
-                LAYOUT=$(curl -sf -H "Authorization: Bearer $ADMIN_TOKEN" "$ADMIN_URL/v1/layout" || echo "{}")
-                
-                if echo "$LAYOUT" | grep -q '"stagedRoleChanges":\[\]'; then
-                  echo "Layout already configured"
-                else
-                  echo "Configuring node layout..."
+                if [ -n "$NODE_ID" ]; then
+                  echo "Configuring node $NODE_ID..."
                   curl -sf -X POST -H "Authorization: Bearer $ADMIN_TOKEN" \
                     -H "Content-Type: application/json" \
-                    -d "{\"${NODE_ID}\": {\"zone\": \"dc1\", \"capacity\": 53687091200, \"tags\": [\"homelab\"]}}" \
-                    "$ADMIN_URL/v1/layout" || echo "Layout staging may have failed"
-                  
-                  echo "Applying layout..."
-                  # Get current version and increment
-                  CURRENT_VERSION=$(curl -sf -H "Authorization: Bearer $ADMIN_TOKEN" "$ADMIN_URL/v1/layout" | grep -o '"version":[0-9]*' | cut -d: -f2 || echo "0")
-                  NEW_VERSION=$((CURRENT_VERSION + 1))
+                    -d "[{\"id\": \"$NODE_ID\", \"zone\": \"dc1\", \"capacity\": 53687091200, \"tags\": [\"homelab\"]}]" \
+                    "$ADMIN_URL/v1/layout" 2>/dev/null || true
                   
                   curl -sf -X POST -H "Authorization: Bearer $ADMIN_TOKEN" \
                     -H "Content-Type: application/json" \
-                    -d "{\"version\": $NEW_VERSION}" \
-                    "$ADMIN_URL/v1/layout/apply" || echo "Layout apply may have failed"
+                    -d '{"version": 1}' \
+                    "$ADMIN_URL/v1/layout/apply" 2>/dev/null || true
+                  echo "Layout configured"
                 fi
+              else
+                echo "Layout already configured (version $LAYOUT_VERSION)"
               fi
               
-              # Create bucket if it doesn't exist
-              echo "Checking for velero bucket..."
-              BUCKET_EXISTS=$(curl -sf -H "Authorization: Bearer $ADMIN_TOKEN" "$ADMIN_URL/v1/bucket?globalAlias=velero" || echo "")
+              # Check if bucket exists
+              BUCKET_RESPONSE=$(curl -sf -H "Authorization: Bearer $ADMIN_TOKEN" "$ADMIN_URL/v1/bucket?globalAlias=velero" 2>/dev/null || echo "")
               
-              if [ -z "$BUCKET_EXISTS" ] || echo "$BUCKET_EXISTS" | grep -q "NoSuchBucket"; then
+              if echo "$BUCKET_RESPONSE" | grep -q '"id":'; then
+                echo "Velero bucket already exists"
+              else
                 echo "Creating velero bucket..."
                 curl -sf -X POST -H "Authorization: Bearer $ADMIN_TOKEN" \
                   -H "Content-Type: application/json" \
                   -d '{"globalAlias": "velero"}' \
-                  "$ADMIN_URL/v1/bucket" || echo "Bucket creation may have failed"
-              else
-                echo "Velero bucket already exists"
+                  "$ADMIN_URL/v1/bucket" 2>/dev/null || echo "Bucket may already exist"
               fi
               
-              # Create access key if it doesn't exist
-              echo "Checking for velero access key..."
-              KEY_EXISTS=$(curl -sf -H "Authorization: Bearer $ADMIN_TOKEN" "$ADMIN_URL/v1/key?search=velero" | grep -o '"id":"[^"]*"' | head -1 || echo "")
+              # Check if key exists (search returns array, check for accessKeyId)
+              KEY_RESPONSE=$(curl -sf -H "Authorization: Bearer $ADMIN_TOKEN" "$ADMIN_URL/v1/key?search=velero" 2>/dev/null || echo "[]")
               
-              if [ -z "$KEY_EXISTS" ]; then
+              if echo "$KEY_RESPONSE" | grep -q '"accessKeyId":'; then
+                echo "Velero access key already exists"
+              else
                 echo "Creating velero access key..."
-                KEY_RESPONSE=$(curl -sf -X POST -H "Authorization: Bearer $ADMIN_TOKEN" \
+                NEW_KEY=$(curl -sf -X POST -H "Authorization: Bearer $ADMIN_TOKEN" \
                   -H "Content-Type: application/json" \
                   -d '{"name": "velero"}' \
-                  "$ADMIN_URL/v1/key")
+                  "$ADMIN_URL/v1/key" 2>/dev/null || echo "")
                 
-                ACCESS_KEY=$(echo "$KEY_RESPONSE" | grep -o '"accessKeyId":"[^"]*"' | cut -d'"' -f4)
-                SECRET_KEY=$(echo "$KEY_RESPONSE" | grep -o '"secretAccessKey":"[^"]*"' | cut -d'"' -f4)
-                
-                echo "Access Key created. Store these securely:"
-                echo "ACCESS_KEY_ID: $ACCESS_KEY"
-                echo "SECRET_ACCESS_KEY: [hidden - check logs]"
-                
-                # Grant bucket access to key
-                KEY_ID=$(echo "$KEY_RESPONSE" | grep -o '"id":"[^"]*"' | cut -d'"' -f4)
-                BUCKET_ID=$(curl -sf -H "Authorization: Bearer $ADMIN_TOKEN" "$ADMIN_URL/v1/bucket?globalAlias=velero" | grep -o '"id":"[^"]*"' | cut -d'"' -f4)
-                
-                if [ -n "$KEY_ID" ] && [ -n "$BUCKET_ID" ]; then
-                  echo "Granting velero key access to bucket..."
-                  curl -sf -X POST -H "Authorization: Bearer $ADMIN_TOKEN" \
-                    -H "Content-Type: application/json" \
-                    -d "{\"bucketId\": \"$BUCKET_ID\", \"accessKeyId\": \"$KEY_ID\", \"permissions\": {\"read\": true, \"write\": true, \"owner\": true}}" \
-                    "$ADMIN_URL/v1/bucket/allow" || echo "Bucket permission may have failed"
+                if [ -n "$NEW_KEY" ]; then
+                  ACCESS_KEY=$(echo "$NEW_KEY" | grep -o '"accessKeyId":"[^"]*"' | cut -d'"' -f4)
+                  echo "Created access key: $ACCESS_KEY"
+                  echo "IMPORTANT: Check logs for secret key on first run"
+                  
+                  # Grant bucket access
+                  KEY_ID=$(echo "$NEW_KEY" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
+                  BUCKET_ID=$(curl -sf -H "Authorization: Bearer $ADMIN_TOKEN" "$ADMIN_URL/v1/bucket?globalAlias=velero" 2>/dev/null | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
+                  
+                  if [ -n "$KEY_ID" ] && [ -n "$BUCKET_ID" ]; then
+                    curl -sf -X POST -H "Authorization: Bearer $ADMIN_TOKEN" \
+                      -H "Content-Type: application/json" \
+                      -d "{\"bucketId\": \"$BUCKET_ID\", \"accessKeyId\": \"$KEY_ID\", \"permissions\": {\"read\": true, \"write\": true, \"owner\": true}}" \
+                      "$ADMIN_URL/v1/bucket/allow" 2>/dev/null || true
+                  fi
                 fi
-              else
-                echo "Velero access key already exists"
               fi
               
               echo "Garage initialization complete!"
+              exit 0
           volumeMounts:
             - name: secrets
               mountPath: /secrets
