@@ -33,6 +33,13 @@ spec:
         valueFiles:
           - $values/config/homelab.yaml
 
+    # Sealed Secrets
+    - repoURL: https://github.com/HughLardner/homelab.git
+      targetRevision: HEAD
+      path: kubernetes/services/cert-manager/secrets
+      directory:
+        recurse: false
+
     # Values reference
     - repoURL: https://github.com/HughLardner/homelab.git
       targetRevision: HEAD
