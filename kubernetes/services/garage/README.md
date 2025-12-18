@@ -14,8 +14,7 @@ backup storage for Velero and potentially other S3-compatible applications.
 
 Single-node standalone deployment:
 - **S3 API**: Port 3900 - for Velero and other S3 clients
-- **Web UI**: Port 3902 - simple file browser (exposed via Traefik + Authelia)
-- **Admin API**: Port 3903 - for bucket/key management (internal only)
+- **Admin API**: Port 3903 - metrics and bucket/key management (internal only)
 - **RPC**: Port 3901 - for clustering (unused in single-node)
 
 ## Access
@@ -23,16 +22,28 @@ Single-node standalone deployment:
 | Endpoint | URL | Auth |
 |----------|-----|------|
 | S3 API | `s3.silverseekers.org` | S3 access keys |
-| Web UI | `garage.silverseekers.org` | Authelia SSO |
 | Internal S3 | `garage.garage.svc:3900` | S3 access keys |
+| Grafana Dashboard | `grafana.silverseekers.org/d/garage` | Authelia SSO |
+
+## Monitoring
+
+Garage exposes Prometheus metrics on the admin port (3903). These are scraped by
+VictoriaMetrics via ServiceMonitor and displayed in the official Grafana dashboard.
+
+Dashboard panels include:
+- Disk I/O (read/write bytes)
+- S3 API requests by endpoint
+- S3 bandwidth (bytes sent/received)
+- Total bucket size and object count
+- Resync queue length and errors
+
+See: https://garagehq.deuxfleurs.fr/documentation/cookbook/monitoring/
 
 ## Secrets Required
 
 Create `garage-credentials` secret with:
 - `rpc-secret`: Random 32-byte hex string for RPC encryption
 - `admin-token`: Random token for Admin API authentication
-- `velero-access-key`: S3 access key ID for Velero
-- `velero-secret-key`: S3 secret access key for Velero
 
 Generate secrets:
 ```bash
@@ -69,17 +80,17 @@ backupStorageLocation:
 ## Manual Bucket Management
 
 ```bash
-# Port-forward admin API
-kubectl port-forward -n garage svc/garage-admin 3903:3903
-
 # List buckets
-curl -H "Authorization: Bearer $ADMIN_TOKEN" http://localhost:3903/v1/bucket
+kubectl exec -n garage garage-0 -- garage bucket list
 
-# Create bucket
-curl -X POST -H "Authorization: Bearer $ADMIN_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"globalAlias": "mybucket"}' \
-  http://localhost:3903/v1/bucket
+# List keys
+kubectl exec -n garage garage-0 -- garage key list
+
+# Create a new key
+kubectl exec -n garage garage-0 -- garage key create mykey
+
+# Grant bucket access
+kubectl exec -n garage garage-0 -- garage bucket allow mybucket --read --write --key mykey
 ```
 
 ## Resources
@@ -87,4 +98,4 @@ curl -X POST -H "Authorization: Bearer $ADMIN_TOKEN" \
 - [Garage Documentation](https://garagehq.deuxfleurs.fr/documentation/)
 - [Garage GitHub](https://git.deuxfleurs.fr/Deuxfleurs/garage)
 - [S3 Compatibility](https://garagehq.deuxfleurs.fr/documentation/connect/apps/)
-
+- [Monitoring Guide](https://garagehq.deuxfleurs.fr/documentation/cookbook/monitoring/)

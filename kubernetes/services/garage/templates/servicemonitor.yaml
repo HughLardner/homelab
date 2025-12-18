@@ -1,0 +1,28 @@
+---
+# ServiceMonitor for Garage metrics
+# Scrapes Prometheus metrics from Garage admin API (port 3903)
+# See: https://garagehq.deuxfleurs.fr/documentation/reference-manual/monitoring/
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: garage
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: garage
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    # Label for VictoriaMetrics operator to discover
+    release: monitoring
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: garage
+      app.kubernetes.io/component: admin
+  namespaceSelector:
+    matchNames:
+      - {{ .Release.Namespace }}
+  endpoints:
+    - port: admin
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s
+

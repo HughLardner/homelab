@@ -15,7 +15,7 @@ metadata:
     gethomepage.dev/description: "S3-Compatible Object Storage"
     gethomepage.dev/group: "Storage"
     gethomepage.dev/icon: "mdi-garage"
-    gethomepage.dev/href: "https://{{ .Values.services.garage.web_domain | default "garage.silverseekers.org" }}"
+    gethomepage.dev/href: "https://{{ .Values.services.grafana.domain }}/d/garage/garage-object-storage"
 spec:
   type: ClusterIP
   ports:
