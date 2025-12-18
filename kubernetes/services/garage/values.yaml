@@ -8,7 +8,8 @@ global:
 services:
   garage:
     domain: s3.silverseekers.org
-    web_domain: garage.silverseekers.org
     storage_size: 50Gi
     bucket: velero
+  grafana:
+    domain: grafana.silverseekers.org
 

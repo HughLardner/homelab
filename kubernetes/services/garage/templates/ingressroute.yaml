@@ -1,31 +1,4 @@
 ---
-# IngressRoute for Garage Web UI - Redirects to MinIO Console
-# The Garage s3_web endpoint is for static site hosting, not browsing
-# Use MinIO Console at s3-ui.silverseekers.org for bucket browsing
-apiVersion: traefik.io/v1alpha1
-kind: IngressRoute
-metadata:
-  name: garage-web
-  namespace: {{ .Release.Namespace }}
-  labels:
-    app.kubernetes.io/name: garage
-    app.kubernetes.io/component: web
-spec:
-  entryPoints:
-    - websecure
-  routes:
-    - match: Host(`{{ .Values.services.garage.web_domain | default "garage.silverseekers.org" }}`)
-      kind: Rule
-      middlewares:
-        - name: garage-redirect-to-console
-          namespace: {{ .Release.Namespace }}
-      services:
-        # Dummy service - redirect handles the request
-        - name: garage-web
-          port: 3902
-  tls:
-    secretName: garage-tls
----
 # IngressRoute for Garage S3 API (no auth - apps authenticate with access keys)
 apiVersion: traefik.io/v1alpha1
 kind: IngressRoute
@@ -46,4 +19,3 @@ spec:
           port: 3900
   tls:
     secretName: garage-tls
-

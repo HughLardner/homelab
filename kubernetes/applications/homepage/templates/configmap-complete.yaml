@@ -72,7 +72,7 @@ data:
           description: Distributed Block Storage
           icon: longhorn
       - Garage:
-          href: https://{{ .Values.services.garage.web_domain | default "garage.silverseekers.org" }}
+          href: https://{{ .Values.services.grafana.domain }}/d/garage/garage-object-storage
           description: S3-Compatible Object Storage
           icon: mdi-garage
     - Monitoring:
