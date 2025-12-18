@@ -843,7 +843,8 @@ deploy-bootstrap: deploy-platform
 	@# Only re-seal if no backup was restored (new cluster)
 	@if [ ! -f sealed-secrets-key-backup.yaml ]; then \
 		echo "Sealing secrets with new cluster key..."; \
-		$(MAKE) seal-secrets; \
+		ansible-playbook ansible/playbooks/seal-secrets.yml -e git_auto_push=true; \
+		echo ""; \
 	else \
 		echo "ℹ️  Skipping seal-secrets (using restored keys - existing sealed secrets will work)"; \
 	fi
