@@ -45,6 +45,11 @@ spec:
                 secretKeyRef:
                   name: garage-credentials
                   key: rpc-secret
+            - name: GARAGE_ADMIN_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: garage-credentials
+                  key: admin-token
           volumeMounts:
             - name: config
               mountPath: /etc/garage.toml
