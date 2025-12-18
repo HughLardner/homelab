@@ -1,6 +1,7 @@
 ---
 # Velero Helm Values
 # Kubernetes backup and restore
+# Note: Velero has no UI - monitor via Grafana dashboard (velero-homelab)
 
 # Disable CRD upgrade job - CRDs already installed
 # The job has issues with Alpine-based kubectl images
