@@ -1,5 +1,7 @@
 ---
-# IngressRoute for Garage Web UI with Authelia authentication
+# IngressRoute for Garage Web UI - Redirects to MinIO Console
+# The Garage s3_web endpoint is for static site hosting, not browsing
+# Use MinIO Console at s3-ui.silverseekers.org for bucket browsing
 apiVersion: traefik.io/v1alpha1
 kind: IngressRoute
 metadata:
@@ -15,9 +17,10 @@ spec:
     - match: Host(`{{ .Values.services.garage.web_domain | default "garage.silverseekers.org" }}`)
       kind: Rule
       middlewares:
-        - name: authelia-forward-auth
-          namespace: authelia
+        - name: garage-redirect-to-console
+          namespace: {{ .Release.Namespace }}
       services:
+        # Dummy service - redirect handles the request
         - name: garage-web
           port: 3902
   tls:
