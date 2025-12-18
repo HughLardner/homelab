@@ -1,0 +1,82 @@
+---
+# Garage S3 API Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: garage
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: garage
+    app.kubernetes.io/component: s3-api
+spec:
+  type: ClusterIP
+  ports:
+    - name: s3-api
+      port: 3900
+      targetPort: s3-api
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: garage
+    app.kubernetes.io/instance: {{ .Release.Name }}
+---
+# Garage Web UI Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: garage-web
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: garage
+    app.kubernetes.io/component: web
+spec:
+  type: ClusterIP
+  ports:
+    - name: web
+      port: 3902
+      targetPort: web
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: garage
+    app.kubernetes.io/instance: {{ .Release.Name }}
+---
+# Garage Admin API Service (internal use for bucket creation)
+apiVersion: v1
+kind: Service
+metadata:
+  name: garage-admin
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: garage
+    app.kubernetes.io/component: admin
+spec:
+  type: ClusterIP
+  ports:
+    - name: admin
+      port: 3903
+      targetPort: admin
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: garage
+    app.kubernetes.io/instance: {{ .Release.Name }}
+---
+# Headless service for StatefulSet
+apiVersion: v1
+kind: Service
+metadata:
+  name: garage-headless
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: garage
+    app.kubernetes.io/component: headless
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+    - name: rpc
+      port: 3901
+      targetPort: rpc
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: garage
+    app.kubernetes.io/instance: {{ .Release.Name }}
+

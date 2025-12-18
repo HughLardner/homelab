@@ -23,8 +23,9 @@ configuration:
       bucket: velero
       default: true
       config:
-        s3Url: http://minio.minio.svc:9000
-        region: minio
+        # Using Garage S3-compatible storage (replaced MinIO)
+        s3Url: http://garage.garage.svc:3900
+        region: garage
         s3ForcePathStyle: "true"
         insecureSkipTLSVerify: "true"
 
@@ -33,7 +34,7 @@ configuration:
     - name: default
       provider: aws
       config:
-        region: minio
+        region: garage
 
   # Features
   features: EnableCSI

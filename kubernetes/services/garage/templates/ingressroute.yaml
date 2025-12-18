@@ -1,0 +1,46 @@
+---
+# IngressRoute for Garage Web UI with Authelia authentication
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: garage-web
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: garage
+    app.kubernetes.io/component: web
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`{{ .Values.services.garage.web_domain | default "garage.silverseekers.org" }}`)
+      kind: Rule
+      middlewares:
+        - name: authelia-forward-auth
+          namespace: authelia
+      services:
+        - name: garage-web
+          port: 3902
+  tls:
+    secretName: garage-tls
+---
+# IngressRoute for Garage S3 API (no auth - apps authenticate with access keys)
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: garage-s3
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: garage
+    app.kubernetes.io/component: s3-api
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`{{ .Values.services.garage.domain | default "s3.silverseekers.org" }}`)
+      kind: Rule
+      services:
+        - name: garage
+          port: 3900
+  tls:
+    secretName: garage-tls
+
