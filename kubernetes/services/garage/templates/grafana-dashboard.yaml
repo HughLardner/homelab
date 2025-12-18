@@ -45,7 +45,7 @@ data:
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${datasource}"
           },
           "fieldConfig": {
             "defaults": {
@@ -123,7 +123,7 @@ data:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "prometheus"
+                "uid": "${datasource}"
               },
               "exemplar": true,
               "expr": "sum(rate(block_bytes_read{job=\"garage\"}[$__rate_interval]))",
@@ -135,7 +135,7 @@ data:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "prometheus"
+                "uid": "${datasource}"
               },
               "exemplar": true,
               "expr": "-sum(rate(block_bytes_written{job=\"garage\"}[$__rate_interval]))",
@@ -151,7 +151,7 @@ data:
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${datasource}"
           },
           "fieldConfig": {
             "defaults": {
@@ -229,7 +229,7 @@ data:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "prometheus"
+                "uid": "${datasource}"
               },
               "editorMode": "code",
               "exemplar": true,
@@ -247,7 +247,7 @@ data:
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${datasource}"
           },
           "fieldConfig": {
             "defaults": {
@@ -325,7 +325,7 @@ data:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "prometheus"
+                "uid": "${datasource}"
               },
               "exemplar": true,
               "expr": "sum(rate(api_s3_request_body_bytes{job=\"garage\"}[$__rate_interval]))",
@@ -337,7 +337,7 @@ data:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "prometheus"
+                "uid": "${datasource}"
               },
               "exemplar": true,
               "expr": "-sum(rate(api_s3_response_body_bytes{job=\"garage\"}[$__rate_interval]))",
@@ -353,7 +353,7 @@ data:
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${datasource}"
           },
           "fieldConfig": {
             "defaults": {
@@ -431,7 +431,7 @@ data:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "prometheus"
+                "uid": "${datasource}"
               },
               "exemplar": true,
               "expr": "sum(bucket_bytes{job=\"garage\"})",
@@ -447,7 +447,7 @@ data:
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${datasource}"
           },
           "fieldConfig": {
             "defaults": {
@@ -524,7 +524,7 @@ data:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "prometheus"
+                "uid": "${datasource}"
               },
               "exemplar": true,
               "expr": "sum(bucket_objects{job=\"garage\"})",
@@ -540,7 +540,7 @@ data:
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${datasource}"
           },
           "fieldConfig": {
             "defaults": {
@@ -617,7 +617,7 @@ data:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "prometheus"
+                "uid": "${datasource}"
               },
               "exemplar": true,
               "expr": "block_resync_queue_length{job=\"garage\"}",
@@ -632,7 +632,7 @@ data:
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${datasource}"
           },
           "fieldConfig": {
             "defaults": {
@@ -709,7 +709,7 @@ data:
             {
               "datasource": {
                 "type": "prometheus",
-                "uid": "prometheus"
+                "uid": "${datasource}"
               },
               "exemplar": true,
               "expr": "block_resync_errored_blocks{job=\"garage\"}",
@@ -727,7 +727,22 @@ data:
       "style": "dark",
       "tags": ["garage", "s3", "storage"],
       "templating": {
-        "list": []
+        "list": [
+          {
+            "current": {"selected": false, "text": "VictoriaMetrics", "value": "VictoriaMetrics"},
+            "hide": 0,
+            "includeAll": false,
+            "label": "Datasource",
+            "multi": false,
+            "name": "datasource",
+            "options": [],
+            "query": "prometheus",
+            "refresh": 1,
+            "regex": "",
+            "skipUrlSync": false,
+            "type": "datasource"
+          }
+        ]
       },
       "time": {
         "from": "now-6h",
