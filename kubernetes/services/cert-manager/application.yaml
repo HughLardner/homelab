@@ -24,12 +24,14 @@ spec:
         valueFiles:
           - $values/kubernetes/services/cert-manager/values.yaml
 
-    # ClusterIssuers (raw manifests, applied after CRDs are ready)
+    # ClusterIssuers (local Helm chart)
     - repoURL: https://github.com/HughLardner/homelab.git
       targetRevision: HEAD
       path: kubernetes/services/cert-manager
-      directory:
-        include: 'cluster-issuer-*.yaml'
+      helm:
+        releaseName: cert-manager-config
+        valueFiles:
+          - $values/config/homelab.yaml
 
     # Values reference
     - repoURL: https://github.com/HughLardner/homelab.git

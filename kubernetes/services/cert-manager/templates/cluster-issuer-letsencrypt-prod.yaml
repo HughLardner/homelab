@@ -13,7 +13,7 @@ spec:
     server: https://acme-v02.api.letsencrypt.org/directory
 
     # Email for expiration notifications
-    email: hughlardner@gmail.com
+    email: {{ .Values.global.email }}
 
     # Secret to store account key
     privateKeySecretRef:
@@ -23,10 +23,10 @@ spec:
     solvers:
     - dns01:
         cloudflare:
-          email: hughlardner@gmail.com
+          email: {{ .Values.global.cloudflare_email }}
           apiTokenSecretRef:
             name: cloudflare-api-token
             key: api-token
       selector:
         dnsZones:
-          - silverseekers.org
+          - {{ .Values.global.domain }}
