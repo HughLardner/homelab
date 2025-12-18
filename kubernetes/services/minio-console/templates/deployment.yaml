@@ -1,0 +1,81 @@
+---
+# MinIO Console Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: minio-console
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: minio-console
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: minio-console
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: minio-console
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: console
+          image: minio/console:v1.8.1
+          imagePullPolicy: IfNotPresent
+          args:
+            - server
+          ports:
+            - name: http
+              containerPort: 9090
+              protocol: TCP
+            - name: https
+              containerPort: 9443
+              protocol: TCP
+          env:
+            # MinIO/Garage S3 endpoint (internal cluster DNS)
+            - name: CONSOLE_MINIO_SERVER
+              value: "http://garage.garage.svc:3900"
+            # JWT encryption passphrase
+            - name: CONSOLE_PBKDF_PASSPHRASE
+              valueFrom:
+                secretKeyRef:
+                  name: minio-console-credentials
+                  key: pbkdf-passphrase
+            # JWT encryption salt
+            - name: CONSOLE_PBKDF_SALT
+              valueFrom:
+                secretKeyRef:
+                  name: minio-console-credentials
+                  key: pbkdf-salt
+            # Disable secure cookies for internal traffic (TLS terminates at Traefik)
+            - name: CONSOLE_SECURE_TLS_REDIRECT
+              value: "off"
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            runAsNonRoot: true
+            runAsUser: 1000
+      securityContext:
+        fsGroup: 1000
+
