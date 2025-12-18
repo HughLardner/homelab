@@ -236,7 +236,7 @@ data:
               "expr": "sum by (api_endpoint) (rate(api_s3_request_counter{job=\"garage\"}[$__rate_interval]))",
               "hide": false,
               "interval": "",
-              "legendFormat": "{{api_endpoint}}",
+              "legendFormat": "{{ "{{" }}api_endpoint{{ "}}" }}",
               "range": true,
               "refId": "A"
             }
@@ -622,7 +622,7 @@ data:
               "exemplar": true,
               "expr": "block_resync_queue_length{job=\"garage\"}",
               "interval": "",
-              "legendFormat": "{{instance}}",
+              "legendFormat": "{{ "{{" }}instance{{ "}}" }}",
               "refId": "A"
             }
           ],
@@ -714,7 +714,7 @@ data:
               "exemplar": true,
               "expr": "block_resync_errored_blocks{job=\"garage\"}",
               "interval": "",
-              "legendFormat": "{{instance}}",
+              "legendFormat": "{{ "{{" }}instance{{ "}}" }}",
               "refId": "A"
             }
           ],
