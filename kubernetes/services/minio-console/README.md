@@ -14,6 +14,16 @@ This deployment connects to Garage as the backend storage.
 - **Feature-rich**: Browse, upload, download, share files with a modern UI
 - **Multi-backend**: Supports S3, FTP, SFTP, WebDAV, and more
 
+## Declarative Configuration
+
+This deployment is fully declarative:
+
+- **Admin password**: Pre-configured via sealed secret (skips setup wizard)
+- **Config**: Pre-loaded via ConfigMap
+- **SSO**: Protected by Authelia forward auth
+
+No manual UI setup required.
+
 ## Architecture
 
 - Connects to Garage's S3 API endpoint via user-configured credentials
@@ -26,17 +36,14 @@ This deployment connects to Garage as the backend storage.
 | ------------ | ------------------------- | ------------ |
 | Filestash UI | `s3-ui.silverseekers.org` | Authelia SSO |
 
-## First-Time Setup
+## First-Time Admin Access
 
-After deployment, you'll need to configure Filestash:
-
-1. Access `https://s3-ui.silverseekers.org`
-2. Complete the admin setup wizard
-3. Configure an S3 backend with Garage credentials
+Admin password is the same as other homelab services. Access the admin panel at:
+`https://s3-ui.silverseekers.org/admin`
 
 ### S3 Backend Configuration
 
-When configuring the S3 connection in Filestash:
+Configure an S3 connection in the Filestash admin panel:
 
 | Setting    | Value                           |
 | ---------- | ------------------------------- |
@@ -62,8 +69,18 @@ kubectl exec -n garage garage-0 -- garage key create filestash-user
 kubectl exec -n garage garage-0 -- garage bucket allow velero --read --write --key filestash-user
 ```
 
+## Secrets Required
+
+### filestash-credentials
+
+| Key                   | Description                     |
+| --------------------- | ------------------------------- |
+| `admin-password-hash` | bcrypt hash of admin password   |
+
+Generated via `config/secrets.yml` and sealed with Ansible playbook.
+
 ## Security Notes
 
 - Authelia provides SSO protection for the web UI
-- S3 access keys are entered by users in the Filestash UI
+- S3 access keys are entered by users in the Filestash admin UI
 - Consider creating read-only keys for browsing vs read-write for management
