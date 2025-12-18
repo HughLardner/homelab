@@ -24,6 +24,11 @@ spec:
         valueFiles:
           - $values/config/homelab.yaml
 
+    # Sealed secrets
+    - repoURL: https://github.com/HughLardner/homelab.git
+      targetRevision: HEAD
+      path: kubernetes/services/minio-console/secrets
+
     # Values reference
     - repoURL: https://github.com/HughLardner/homelab.git
       targetRevision: HEAD

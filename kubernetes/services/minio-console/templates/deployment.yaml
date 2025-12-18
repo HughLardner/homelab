@@ -30,12 +30,21 @@ spec:
               containerPort: 8334
               protocol: TCP
           env:
-            # Application secret for session encryption
+            # Application URL for generating links
             - name: APPLICATION_URL
               value: "https://{{ .Values.services.minio_console.domain | default "s3-ui.silverseekers.org" }}"
+            # Pre-set admin password to skip setup wizard
+            # bcrypt hash of the password from secret
+            - name: ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: filestash-credentials
+                  key: admin-password-hash
           volumeMounts:
             - name: data
               mountPath: /app/data/state
+            - name: config
+              mountPath: /app/data/state/config
           resources:
             requests:
               cpu: 50m
@@ -58,4 +67,7 @@ spec:
       volumes:
         - name: data
           emptyDir: {}
+        - name: config
+          configMap:
+            name: filestash-config
 
