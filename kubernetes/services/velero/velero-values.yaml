@@ -2,12 +2,9 @@
 # Velero Helm Values
 # Kubernetes backup and restore
 
-# kubectl image for CRD upgrade job
-# Using dtzar/helm-kubectl which has both kubectl and bash/sh
-kubectl:
-  image:
-    repository: dtzar/helm-kubectl
-    tag: "3.13"
+# Disable CRD upgrade job - CRDs already installed
+# The job has issues with Alpine-based kubectl images
+upgradeCRDs: false
 
 # Use existing secret for cloud credentials
 credentials:
