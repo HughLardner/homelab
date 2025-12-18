@@ -21,6 +21,14 @@ persistence:
 service:
   type: ClusterIP
   port: 80
+  annotations:
+    # Homepage auto-discovery
+    gethomepage.dev/enabled: "true"
+    gethomepage.dev/group: "Monitoring"
+    gethomepage.dev/name: "Grafana"
+    gethomepage.dev/icon: "grafana"
+    gethomepage.dev/description: "Dashboards & Visualization"
+    gethomepage.dev/href: "https://grafana.silverseekers.org"
 
 # Disable ingress (using Traefik IngressRoute)
 ingress:

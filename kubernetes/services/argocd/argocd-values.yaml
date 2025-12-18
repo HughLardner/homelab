@@ -17,6 +17,14 @@ server:
     type: ClusterIP
     servicePortHttp: 80
     servicePortHttps: 443
+    annotations:
+      # Homepage auto-discovery
+      gethomepage.dev/enabled: "true"
+      gethomepage.dev/group: "Infrastructure"
+      gethomepage.dev/name: "ArgoCD"
+      gethomepage.dev/icon: "argocd"
+      gethomepage.dev/description: "GitOps Continuous Delivery"
+      gethomepage.dev/href: "https://{{ argocd_domain }}"
 
   # Resource limits
   resources:
