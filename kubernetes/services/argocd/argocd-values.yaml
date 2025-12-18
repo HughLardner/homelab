@@ -14,7 +14,7 @@ server:
 
   # Service configuration
   service:
-    type: ClusterIP
+    type: LoadBalancer
     servicePortHttp: 80
     servicePortHttps: 443
     annotations:
