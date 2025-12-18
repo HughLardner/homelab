@@ -71,10 +71,10 @@ data:
           href: https://{{ .Values.services.longhorn.domain }}
           description: Distributed Block Storage
           icon: longhorn
-      - MinIO:
-          href: https://{{ .Values.services.minio.console_domain }}
+      - Garage:
+          href: https://{{ .Values.services.garage.web_domain }}
           description: S3-Compatible Object Storage
-          icon: minio
+          icon: mdi-garage
     - Monitoring:
       - Grafana:
           href: https://{{ .Values.services.grafana.domain }}
