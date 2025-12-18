@@ -71,7 +71,10 @@ data:
           href: https://{{ .Values.services.longhorn.domain }}
           description: Distributed Block Storage
           icon: longhorn
-      # Garage is auto-discovered via Kubernetes annotations
+      - Garage:
+          href: https://{{ .Values.services.garage.web_domain | default "garage.silverseekers.org" }}
+          description: S3-Compatible Object Storage
+          icon: mdi-garage
     - Monitoring:
       - Grafana:
           href: https://{{ .Values.services.grafana.domain }}
