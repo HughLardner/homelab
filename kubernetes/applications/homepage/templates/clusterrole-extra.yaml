@@ -1,6 +1,6 @@
 ---
 # Additional RBAC for Homepage service discovery
-# The default Helm chart ClusterRole doesn't include services
+# Homepage needs broad read access to discover services across all namespaces
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -9,11 +9,36 @@ metadata:
     app.kubernetes.io/name: homepage
     app.kubernetes.io/component: rbac
 rules:
-  # Services - required for auto-discovery via annotations
+  # Core resources for service discovery
   - apiGroups: [""]
     resources:
+      - namespaces
+      - pods
       - services
       - endpoints
+      - nodes
+    verbs:
+      - get
+      - list
+  # Ingress resources
+  - apiGroups: ["networking.k8s.io"]
+    resources:
+      - ingresses
+    verbs:
+      - get
+      - list
+  # Traefik IngressRoutes
+  - apiGroups: ["traefik.io", "traefik.containo.us"]
+    resources:
+      - ingressroutes
+    verbs:
+      - get
+      - list
+  # Metrics API for node/pod metrics widgets
+  - apiGroups: ["metrics.k8s.io"]
+    resources:
+      - nodes
+      - pods
     verbs:
       - get
       - list
