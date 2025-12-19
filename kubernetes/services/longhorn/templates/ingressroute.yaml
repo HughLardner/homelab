@@ -16,6 +16,7 @@ metadata:
     gethomepage.dev/icon: "longhorn"
     gethomepage.dev/description: "Distributed Block Storage"
     gethomepage.dev/href: "https://{{ .Values.services.longhorn.domain }}"
+    gethomepage.dev/pod-selector: "app=longhorn-ui"
 spec:
   entryPoints:
     - websecure
