@@ -32,7 +32,7 @@ service:
   type: LoadBalancer
   annotations:
     metallb.universe.tf/allow-shared-ip: "traefik-lb"
-    metallb.universe.tf/loadBalancerIPs: "192.168.10.145" # Lock static IP
+    metallb.universe.tf/loadBalancerIPs: "192.168.10.150" # Lock static IP
     # Homepage auto-discovery
     gethomepage.dev/enabled: "true"
     gethomepage.dev/group: "Infrastructure"
