@@ -52,9 +52,9 @@ data:
     {{- end }}
 
   # Services - auto-discovered via Kubernetes annotations (gethomepage.dev/*)
-  # Add annotations to services to have them appear here automatically
-  services.yaml: |
-    []
+  # Leave empty to enable Kubernetes service discovery
+  # Services with gethomepage.dev/* annotations will appear automatically
+  services.yaml: ""
 
   # Bookmarks - quick links
   bookmarks.yaml: |
