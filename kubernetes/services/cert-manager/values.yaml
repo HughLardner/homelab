@@ -78,10 +78,6 @@ securityContext:
   seccompProfile:
     type: RuntimeDefault
 
-# Pod security
-podSecurityPolicy:
-  enabled: false
-
 # Enable startupapicheck
 startupapicheck:
   enabled: true
