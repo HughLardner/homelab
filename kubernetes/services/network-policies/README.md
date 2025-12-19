@@ -4,12 +4,12 @@ NetworkPolicies provide network-level security by controlling traffic flow betwe
 
 ## Policies Applied
 
-| Namespace | Policy | Allows From |
-|-----------|--------|-------------|
-| monitoring | default-deny-ingress | traefik, monitoring |
-| authelia | default-deny-ingress | traefik |
-| minio | default-deny-ingress | traefik, velero |
-| loki | default-deny-ingress | monitoring (Grafana), loki (Promtail) |
+| Namespace  | Policy               | Allows From                           |
+| ---------- | -------------------- | ------------------------------------- |
+| monitoring | default-deny-ingress | traefik, monitoring                   |
+| authelia   | default-deny-ingress | traefik                               |
+| garage     | default-deny-ingress | traefik, velero                       |
+| loki       | default-deny-ingress | monitoring (Grafana), loki (Promtail) |
 
 ## How It Works
 
@@ -37,4 +37,3 @@ If a service stops working after applying policies:
 1. Check the policy allows the source namespace
 2. Verify namespace labels: `kubectl get ns --show-labels`
 3. Temporarily remove the policy to test: `kubectl delete networkpolicy <name> -n <namespace>`
-
