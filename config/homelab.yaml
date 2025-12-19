@@ -80,7 +80,9 @@ services:
   longhorn:
     domain: longhorn.silverseekers.org
     replica_count: 1
-    data_path: /var/lib/longhorn
+    # Persistent data disk - survives cluster rebuilds
+    # Mounted from Proxmox LV: /dev/pve/k8s-persistent-data (200GB)
+    data_path: /mnt/longhorn-data
     ui_service_type: LoadBalancer
 
   # ---------------------------------------------------------------------------

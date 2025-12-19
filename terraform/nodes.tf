@@ -43,6 +43,9 @@ resource "proxmox_virtual_environment_vm" "node" {
     ssd          = false
   }
 
+  # NOTE: Persistent data disk (virtio1) is attached separately via null_resource
+  # This ensures the standalone LV survives terraform destroy
+
   agent {
     enabled = true
     timeout = "15m"
@@ -104,6 +107,33 @@ resource "proxmox_virtual_environment_vm" "node" {
       disk,
     ]
   }
+}
+
+# Attach persistent data disk to VMs
+# This disk is a standalone LV (not in thin pool) and survives VM destruction
+# The LV must be created manually on Proxmox first: lvcreate -L 200G -n k8s-persistent-data pve
+resource "null_resource" "attach_persistent_disk" {
+  for_each = { for node in local.nodes : node.name => node }
+
+  depends_on = [proxmox_virtual_environment_vm.node]
+
+  triggers = {
+    vm_id = proxmox_virtual_environment_vm.node[each.key].vm_id
+  }
+
+  # Attach the persistent LV to the VM as virtio1
+  # Using SSH to Proxmox to run qm set command
+  provisioner "local-exec" {
+    command = <<-EOT
+      echo "Attaching persistent data disk to VM ${self.triggers.vm_id}..."
+      ssh -o StrictHostKeyChecking=no root@${local.proxmox_host} \
+        "qm set ${self.triggers.vm_id} --virtio1 /dev/pve/k8s-persistent-data,backup=1,iothread=1"
+      echo "Persistent data disk attached successfully"
+    EOT
+  }
+
+  # On destroy: do NOT detach the disk - it will be detached automatically when VM is destroyed
+  # The LV itself survives because it's a standalone LV, not a thin pool volume
 }
 
 # Manage SSH known_hosts for VMs
