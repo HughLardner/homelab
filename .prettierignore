@@ -1,16 +1,14 @@
-# Ignore files with Jinja2 templates - Prettier breaks {{ }} syntax
-# These files are processed by Ansible templating before use
+# Ignore Helm templates - they contain Go/Jinja2 template syntax
+# that Prettier will mangle (adding spaces inside {{ }})
+**/templates/**/*.yaml
+**/templates/**/*.yml
 
-# Kubernetes values files with Jinja2
-kubernetes/services/*/values.yaml
-kubernetes/services/*/ingressroute.yaml
-kubernetes/services/*/middleware.yaml
-kubernetes/applications/*/*.yaml
+# Ignore Ansible playbooks with Jinja2 templates
+ansible/playbooks/*.yml
 
-# Ansible files
-ansible/**/*.yml
-ansible/**/*.yaml
+# Ignore values files that may contain template variables
+kubernetes/**/values.yaml
+kubernetes/**/*-values.yaml
 
-# Secrets files
-secrets.yml
-secrets.example.yml
+# Ignore sealed secrets
+**/secrets/*.yaml

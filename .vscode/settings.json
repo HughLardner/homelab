@@ -1,0 +1,30 @@
+{
+  // Disable format on save for YAML files in template directories
+  // These contain Helm/Jinja2 template syntax that formatters break
+  "[yaml]": {
+    "editor.formatOnSave": false,
+    "editor.defaultFormatter": null
+  },
+
+  // File associations - treat Helm templates as YAML (for syntax highlighting only)
+  "files.associations": {
+    "**/templates/**/*.yaml": "yaml",
+    "**/templates/**/*.yml": "yaml"
+  },
+
+  // Exclude generated files from search
+  "search.exclude": {
+    "**/terraform.tfstate*": true,
+    "**/terraform.tfstate.d/**": true,
+    "**/.terraform/**": true,
+    "**/ansible/logs/**": true
+  },
+
+  // YAML language settings
+  "yaml.format.enable": false,
+  "yaml.validate": false,
+
+  // Prettier - use .prettierignore
+  "prettier.ignorePath": ".prettierignore"
+}
+
