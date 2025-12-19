@@ -95,14 +95,15 @@ resources:
     cpu: 100m
     memory: 128Mi
 
-# Enable CSI snapshotter
+# CSI sidecar configuration
 # Single node = 1 replica each, increase when adding more nodes
 csi:
   kubeletRootDir: /var/lib/kubelet
   attacherReplicaCount: 1
   provisionerReplicaCount: 1
   resizerReplicaCount: 1
-  snapshotterReplicaCount: 1
+  # Disable snapshotter - VolumeSnapshot CRDs not installed, causes constant error spam
+  snapshotterReplicaCount: 0
 
 # Image pull policy
 image:

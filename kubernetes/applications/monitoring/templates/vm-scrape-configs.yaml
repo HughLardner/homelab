@@ -96,12 +96,12 @@ spec:
         - sourceLabels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
           action: keep
           regex: "true"
-        # Use custom port if specified
-        - sourceLabels: [__meta_kubernetes_pod_annotation_prometheus_io_port]
+        # Construct address from pod IP and custom port annotation
+        - sourceLabels: [__meta_kubernetes_pod_ip, __meta_kubernetes_pod_annotation_prometheus_io_port]
           action: replace
           targetLabel: __address__
-          regex: (.+)
-          replacement: ${1}
+          regex: (.+);(.+)
+          replacement: ${1}:${2}
         # Use custom path if specified
         - sourceLabels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
           action: replace
