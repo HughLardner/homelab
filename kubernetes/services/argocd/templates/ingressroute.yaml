@@ -12,9 +12,10 @@ metadata:
     gethomepage.dev/enabled: "true"
     gethomepage.dev/name: "ArgoCD"
     gethomepage.dev/group: "Infrastructure"
-    gethomepage.dev/icon: "argocd"
+    gethomepage.dev/icon: "argo-cd"
     gethomepage.dev/description: "GitOps Continuous Delivery"
     gethomepage.dev/href: "https://{{ .Values.services.argocd.domain }}"
+    gethomepage.dev/pod-selector: "app.kubernetes.io/name=argocd-server"
 spec:
   entryPoints:
     - websecure

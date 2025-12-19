@@ -16,6 +16,7 @@ metadata:
     gethomepage.dev/icon: "traefik"
     gethomepage.dev/description: "Ingress Controller"
     gethomepage.dev/href: "https://{{ .Values.services.traefik.domain }}"
+    gethomepage.dev/pod-selector: "app.kubernetes.io/name=traefik"
 spec:
   entryPoints:
     - websecure
