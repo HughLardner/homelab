@@ -50,3 +50,7 @@ node_prep_update_hosts: true
 # Storage configuration
 node_prep_enable_iscsi: true # Enable iSCSI services (required for Longhorn)
 node_prep_configure_multipath: true # Configure multipath blacklist (prevents conflicts)
+
+# Persistent data disk configuration
+# This is where Longhorn will store volume data - survives cluster rebuilds
+node_prep_longhorn_data_path: "/mnt/longhorn-data"

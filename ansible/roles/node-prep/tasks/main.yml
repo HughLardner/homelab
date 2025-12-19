@@ -169,6 +169,45 @@
     - upgrade_result is defined
     - upgrade_result.changed
 
+# Persistent data disk configuration for Longhorn
+# This disk survives cluster rebuilds - only format if not already formatted
+- name: Check if persistent data disk exists
+  ansible.builtin.stat:
+    path: /dev/vdb
+  register: data_disk
+
+- name: Check if persistent data disk is already formatted
+  ansible.builtin.command: blkid -o value -s TYPE /dev/vdb
+  register: disk_fstype
+  failed_when: false
+  changed_when: false
+  when: data_disk.stat.exists
+
+- name: Format persistent data disk (only if unformatted)
+  community.general.filesystem:
+    fstype: ext4
+    dev: /dev/vdb
+    opts: -L k8s-data
+  when:
+    - data_disk.stat.exists
+    - disk_fstype.rc != 0 or disk_fstype.stdout == ""
+
+- name: Create Longhorn data mount point
+  ansible.builtin.file:
+    path: "{{ node_prep_longhorn_data_path | default('/mnt/longhorn-data') }}"
+    state: directory
+    mode: '0755'
+  when: data_disk.stat.exists
+
+- name: Mount persistent data disk
+  ansible.posix.mount:
+    path: "{{ node_prep_longhorn_data_path | default('/mnt/longhorn-data') }}"
+    src: /dev/vdb
+    fstype: ext4
+    opts: defaults,noatime
+    state: mounted
+  when: data_disk.stat.exists
+
 - name: Display node preparation summary
   ansible.builtin.debug:
     msg:
@@ -179,4 +218,5 @@
       - "Packages upgraded: {{ upgrade_result.changed | default(false) }}"
       - "iSCSI services enabled: {{ node_prep_enable_iscsi }}"
       - "Multipath configured: {{ multipath_config.changed | default(false) }}"
+      - "Persistent data disk: {{ data_disk.stat.exists | default(false) }}"
       - "Reboot performed: {{ upgrade_result.changed and node_prep_reboot_after_upgrade }}"

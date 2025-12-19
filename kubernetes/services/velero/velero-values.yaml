@@ -7,6 +7,13 @@
 # Required for cluster rebuilds where CRDs don't persist
 upgradeCRDs: true
 
+# Override kubectl image for CRD upgrade job
+# The chart defaults to bitnami/kubectl:1.33 which doesn't exist
+kubectl:
+  image:
+    repository: bitnami/kubectl
+    tag: "1.31"
+
 # Use existing secret for cloud credentials
 credentials:
   useSecret: true

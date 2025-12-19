@@ -71,6 +71,43 @@
       ansible.builtin.debug:
         msg: "{{ node_storage.stdout_lines }}"
 
+    # =========================================================================
+    # Configure nodes for persistent disk ONLY (prevent OS disk usage)
+    # =========================================================================
+    - name: Get all node names
+      ansible.builtin.shell: |
+        /usr/local/bin/k3s kubectl get nodes -o jsonpath='{.items[*].metadata.name}'
+      register: node_names
+      changed_when: false
+
+    - name: Label nodes for Longhorn disk config
+      ansible.builtin.command:
+        cmd: >
+          /usr/local/bin/k3s kubectl label node {{ item }}
+          node.longhorn.io/create-default-disk=config
+          --overwrite
+      loop: "{{ node_names.stdout.split() }}"
+      register: label_result
+      changed_when: "'labeled' in label_result.stdout or 'not labeled' not in label_result.stderr"
+
+    - name: Annotate nodes with persistent disk config
+      ansible.builtin.command:
+        cmd: >
+          /usr/local/bin/k3s kubectl annotate node {{ item }}
+          node.longhorn.io/default-disks-config='[{"path":"{{ longhorn_data_path }}","allowScheduling":true,"storageReserved":0,"tags":["persistent"]}]'
+          --overwrite
+      loop: "{{ node_names.stdout.split() }}"
+      register: annotate_result
+      changed_when: "'annotated' in annotate_result.stdout or 'not annotated' not in annotate_result.stderr"
+
+    - name: Display node configuration status
+      ansible.builtin.debug:
+        msg:
+          - "✅ Nodes configured for persistent storage only"
+          - "Label: node.longhorn.io/create-default-disk=config"
+          - "Disk Path: {{ longhorn_data_path }}"
+          - "⚠️  Longhorn will ONLY use {{ longhorn_data_path }} - OS disk is excluded"
+
   tasks:
     - name: Create Longhorn namespace
       ansible.builtin.command:
@@ -147,6 +184,57 @@
           --type=merge -p '{"value":"{{ longhorn_replica_count }}"}'
       register: replica_config
       changed_when: "'patched' in replica_config.stdout"
+      failed_when: false
+
+    - name: Configure Longhorn to only use labeled nodes for disk creation
+      ansible.builtin.shell: |
+        /usr/local/bin/k3s kubectl patch settings.longhorn.io -n {{ longhorn_namespace }} create-default-disk-labeled-nodes \
+          --type=merge -p '{"value":"true"}'
+      register: labeled_nodes_config
+      changed_when: "'patched' in labeled_nodes_config.stdout"
+      failed_when: false
+
+    - name: Configure Longhorn default data path
+      ansible.builtin.shell: |
+        /usr/local/bin/k3s kubectl patch settings.longhorn.io -n {{ longhorn_namespace }} default-data-path \
+          --type=merge -p '{"value":"{{ longhorn_data_path }}"}'
+      register: data_path_config
+      changed_when: "'patched' in data_path_config.stdout"
+      failed_when: false
+
+    # =========================================================================
+    # Disable any disks NOT on the persistent storage path (existing installs)
+    # =========================================================================
+    - name: Get Longhorn node disk configuration
+      ansible.builtin.shell: |
+        /usr/local/bin/k3s kubectl get nodes.longhorn.io -n {{ longhorn_namespace }} -o json | \
+        jq -r '.items[] | select(.spec.disks != null) | {name: .metadata.name, disks: [.spec.disks | to_entries[] | select(.value.path != "{{ longhorn_data_path }}") | .key]} | select(.disks | length > 0) | "\(.name):\(.disks | join(","))"'
+      register: unwanted_disks
+      changed_when: false
+      failed_when: false
+
+    - name: Report unwanted disks found
+      ansible.builtin.debug:
+        msg:
+          - "⚠️  Found disks NOT on persistent storage path!"
+          - "Disks to disable: {{ unwanted_disks.stdout_lines }}"
+          - "These disks are on the ephemeral OS disk and data will NOT survive rebuilds"
+          - "Please disable these disks in Longhorn UI: Node → Select Node → Edit Disks → Disable unwanted disk"
+      when: unwanted_disks.stdout | length > 0
+
+    - name: Disable unwanted disks on nodes (scheduling only)
+      ansible.builtin.shell: |
+        NODE_NAME=$(echo "{{ item }}" | cut -d: -f1)
+        DISK_NAMES=$(echo "{{ item }}" | cut -d: -f2)
+        for DISK in $(echo $DISK_NAMES | tr ',' ' '); do
+          echo "Disabling scheduling for disk $DISK on node $NODE_NAME"
+          /usr/local/bin/k3s kubectl patch nodes.longhorn.io -n {{ longhorn_namespace }} $NODE_NAME \
+            --type=json -p="[{\"op\": \"replace\", \"path\": \"/spec/disks/$DISK/allowScheduling\", \"value\": false}]" || true
+        done
+      loop: "{{ unwanted_disks.stdout_lines }}"
+      when: unwanted_disks.stdout | length > 0
+      register: disable_result
+      changed_when: true
       failed_when: false
 
     - name: Verify Longhorn pods are running
@@ -257,6 +345,14 @@
             Replica Count: {{ longhorn_replica_count }}
             Data Path: {{ longhorn_data_path }}
             UI Service Type: {{ longhorn_ui_service_type }}
+
+          🔒 Persistent Storage Protection:
+            - createDefaultDiskLabeledNodes: ENABLED
+            - Only using disk at: {{ longhorn_data_path }}
+            - OS disk excluded (ephemeral, does not survive rebuilds)
+            {%- if unwanted_disks.stdout | default('') | length > 0 %}
+            - ⚠️  Disabled scheduling on OS disk(s): {{ unwanted_disks.stdout_lines | join(', ') }}
+            {%- endif %}
 
           Access Longhorn UI:
             {{ ui_access }}
