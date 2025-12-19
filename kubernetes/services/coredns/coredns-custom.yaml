@@ -1,0 +1,53 @@
+---
+# CoreDNS Custom Configuration for Wildcard Domain Resolution
+#
+# This creates a wildcard DNS server block that resolves ALL *.silverseekers.org
+# domains to the Traefik LoadBalancer IP. This is required because:
+#
+# 1. Pods need to reach services via external URLs (e.g., auth.silverseekers.org)
+# 2. External DNS (Cloudflare) isn't accessible or returns wrong IPs inside cluster
+# 3. OIDC flows require using the same URL for browser and backend token exchange
+#
+# This is applied automatically by:
+#   - make coredns-fix (after Traefik is deployed)
+#   - make deploy-all (calls coredns-fix at the end)
+#
+# The template approach is scalable - add new services without touching DNS config!
+#
+# To apply manually:
+#   kubectl apply -f kubernetes/services/coredns/coredns-custom.yaml
+#   kubectl rollout restart deployment coredns -n kube-system
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: coredns-custom
+  namespace: kube-system
+data:
+  # Wildcard server block for silverseekers.org
+  # Uses CoreDNS template plugin to match any subdomain
+  silverseekers.server: |
+    silverseekers.org:53 {
+      errors
+      log
+      
+      # Handle A record queries - return Traefik LoadBalancer IP
+      # Matches: *.silverseekers.org
+      template IN A {
+        match "^(.*)\.silverseekers\.org\.$"
+        answer "{{ .Name }} 60 IN A 192.168.10.150"
+      }
+      
+      # Handle root domain
+      template IN A silverseekers.org {
+        answer "silverseekers.org. 60 IN A 192.168.10.150"
+      }
+      
+      # Handle AAAA (IPv6) queries - return empty response
+      # This prevents timeouts waiting for IPv6 resolution
+      template IN AAAA {
+        match ".*silverseekers\.org\.$"
+        rcode NOERROR
+      }
+    }
+
