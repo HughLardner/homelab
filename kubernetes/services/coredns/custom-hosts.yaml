@@ -1,35 +1,32 @@
 ---
-# CoreDNS Custom Hosts ConfigMap
-# Adds local domain entries for in-cluster DNS resolution
+# CoreDNS Custom Hosts for In-Cluster DNS Resolution
 #
-# This is needed because:
-# 1. Pods need to resolve *.silverseekers.org to access services
-# 2. The cluster DNS (CoreDNS) doesn't have access to local/external DNS
-# 3. These entries point to the Traefik LoadBalancer IP
+# This adds entries to CoreDNS NodeHosts so pods can resolve external domains
+# to the Traefik LoadBalancer IP (192.168.10.150).
 #
-# Usage:
-#   kubectl apply -f custom-hosts.yaml
+# IMPORTANT: K3s manages the coredns ConfigMap. To apply these changes:
+#   1. Get current NodeHosts: kubectl get cm coredns -n kube-system -o jsonpath='{.data.NodeHosts}'
+#   2. Append silverseekers entries
+#   3. Apply with: kubectl patch cm coredns -n kube-system ...
+#
+# This is handled by the k3s-cluster-setup playbook post-install task.
+#
+# Why this is needed:
+#   - Grafana needs to reach auth.silverseekers.org for OIDC token exchange
+#   - Without this, internal pods can't resolve the external DNS names
+#   - The LoadBalancer IP (192.168.10.150) routes through Traefik for TLS
+#
+# Entries to add to NodeHosts:
+#   192.168.10.150 auth.silverseekers.org
+#   192.168.10.150 argocd.silverseekers.org
+#   192.168.10.150 grafana.silverseekers.org
+#   192.168.10.150 traefik.silverseekers.org
+#   192.168.10.150 longhorn.silverseekers.org
+#   192.168.10.150 home.silverseekers.org
+#   192.168.10.150 s3.silverseekers.org
+
+# Script to apply (run after cluster setup):
+# kubectl get cm coredns -n kube-system -o json | \
+#   jq '.data.NodeHosts += "\n# Silverseekers domains\n192.168.10.150 auth.silverseekers.org\n192.168.10.150 argocd.silverseekers.org\n192.168.10.150 grafana.silverseekers.org\n192.168.10.150 traefik.silverseekers.org\n192.168.10.150 longhorn.silverseekers.org\n192.168.10.150 home.silverseekers.org\n192.168.10.150 s3.silverseekers.org"' | \
+#   kubectl apply -f - && \
 #   kubectl rollout restart deployment coredns -n kube-system
-#
-# Note: K3s may overwrite this on upgrades. Consider adding to Ansible playbook.
-
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: coredns-custom-hosts
-  namespace: kube-system
-  labels:
-    app: coredns-custom
-data:
-  silverseekers.hosts: |
-    # All domains point to Traefik's ClusterIP for proper TLS termination
-    # Get current IP: kubectl get svc -n traefik traefik -o jsonpath='{.spec.clusterIP}'
-    # This avoids hairpin NAT issues and ensures valid TLS certificates
-    10.43.148.102 auth.silverseekers.org
-    10.43.148.102 argocd.silverseekers.org
-    10.43.148.102 grafana.silverseekers.org
-    10.43.148.102 traefik.silverseekers.org
-    10.43.148.102 longhorn.silverseekers.org
-
-
-
