@@ -3,9 +3,9 @@
 # Kubernetes backup and restore
 # Note: Velero has no UI - monitor via Grafana dashboard (velero-homelab)
 
-# Disable CRD upgrade job - CRDs already installed
-# The job has issues with Alpine-based kubectl images
-upgradeCRDs: false
+# Enable CRD installation on fresh cluster
+# Required for cluster rebuilds where CRDs don't persist
+upgradeCRDs: true
 
 # Use existing secret for cloud credentials
 credentials:

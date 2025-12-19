@@ -18,7 +18,8 @@ defaultSettings:
   defaultReplicaCount: {{ longhorn_replica_count | default(1) }}
 
   # Storage path on each node
-  defaultDataPath: {{ longhorn_data_path | default('/var/lib/longhorn') }}
+  # Uses persistent data disk mounted at /mnt/longhorn-data - survives cluster rebuilds
+  defaultDataPath: {{ longhorn_data_path | default('/mnt/longhorn-data') }}
 
   # Automatically clean up snapshot when volume is deleted
   autoCleanupSystemGeneratedSnapshot: true

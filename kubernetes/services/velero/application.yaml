@@ -21,7 +21,7 @@ spec:
       targetRevision: 6.0.0
       helm:
         releaseName: velero
-        skipCrds: true  # CRDs already installed; skip upgrade job
+        skipCrds: false  # Install CRDs on fresh cluster
         valueFiles:
           - $values/kubernetes/services/velero/velero-values.yaml
 

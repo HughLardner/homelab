@@ -66,6 +66,11 @@ spec:
         valueFiles:
           - $values/config/homelab.yaml
 
+    # 7. Sealed secrets (Grafana admin, OIDC, MCP token)
+    - repoURL: https://github.com/HughLardner/homelab.git
+      targetRevision: HEAD
+      path: kubernetes/applications/monitoring/secrets
+
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring
