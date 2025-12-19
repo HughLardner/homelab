@@ -40,9 +40,6 @@ spec:
       max:
         cpu: "2"
         memory: "4Gi"
-      min:
-        cpu: "10m"
-        memory: "32Mi"
 ---
 # LimitRange for loki namespace
 apiVersion: v1
