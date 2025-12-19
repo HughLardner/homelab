@@ -1,6 +1,7 @@
 ---
 # Post-install Job to initialize Garage
-# Creates the velero bucket and access key
+# Configures layout, creates velero bucket and access key
+# Uses the garage binary via kubectl exec for reliability
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -14,6 +15,7 @@ metadata:
     argocd.argoproj.io/hook-delete-policy: HookSucceeded
 spec:
   ttlSecondsAfterFinished: 300
+  backoffLimit: 6
   template:
     metadata:
       labels:
@@ -21,104 +23,91 @@ spec:
         app.kubernetes.io/component: init
     spec:
       restartPolicy: OnFailure
+      serviceAccountName: garage-init
       containers:
         - name: init
-          image: curlimages/curl:8.5.0
+          image: bitnami/kubectl:1.28
           command:
             - /bin/sh
             - -c
             - |
-              # Idempotent init script - safe to run multiple times
+              # Idempotent init script using garage CLI
+              # Waits for pod, then configures via kubectl exec
               
-              ADMIN_URL="http://garage-admin:3903"
-              ADMIN_TOKEN=$(cat /secrets/admin-token)
-              
-              echo "Waiting for Garage to be ready..."
-              for i in 1 2 3 4 5 6; do
-                if curl -sf "$ADMIN_URL/health" > /dev/null 2>&1; then
-                  echo "Garage is ready"
+              echo "Waiting for garage-0 pod to be ready..."
+              for i in $(seq 1 30); do
+                if kubectl -n {{ .Release.Namespace }} get pod garage-0 -o jsonpath='{.status.phase}' 2>/dev/null | grep -q Running; then
+                  echo "garage-0 is running"
                   break
                 fi
-                echo "Waiting for Garage admin API... (attempt $i)"
+                echo "Waiting for garage-0... (attempt $i)"
                 sleep 5
               done
               
-              # Check layout version - if > 0, layout is already configured
-              LAYOUT_VERSION=$(curl -sf -H "Authorization: Bearer $ADMIN_TOKEN" "$ADMIN_URL/v1/layout" 2>/dev/null | grep -o '"version":[0-9]*' | cut -d: -f2 || echo "0")
-              echo "Current layout version: $LAYOUT_VERSION"
+              # Wait additional time for garage to fully start
+              sleep 10
               
-              if [ "$LAYOUT_VERSION" = "0" ] || [ -z "$LAYOUT_VERSION" ]; then
-                echo "Layout needs configuration..."
-                NODE_ID=$(curl -sf -H "Authorization: Bearer $ADMIN_TOKEN" "$ADMIN_URL/v1/status" 2>/dev/null | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4 || echo "")
+              echo "=== Checking layout status ==="
+              STATUS=$(kubectl -n {{ .Release.Namespace }} exec garage-0 -- /garage status 2>&1 || echo "FAILED")
+              echo "$STATUS"
+              
+              # Check if layout needs configuration (NO ROLE ASSIGNED indicates unconfigured)
+              if echo "$STATUS" | grep -q "NO ROLE ASSIGNED"; then
+                echo "=== Configuring layout ==="
+                NODE_ID=$(echo "$STATUS" | grep -E "^[a-f0-9]{16}" | awk '{print $1}')
                 
                 if [ -n "$NODE_ID" ]; then
-                  echo "Configuring node $NODE_ID..."
-                  curl -sf -X POST -H "Authorization: Bearer $ADMIN_TOKEN" \
-                    -H "Content-Type: application/json" \
-                    -d "[{\"id\": \"$NODE_ID\", \"zone\": \"dc1\", \"capacity\": 53687091200, \"tags\": [\"homelab\"]}]" \
-                    "$ADMIN_URL/v1/layout" 2>/dev/null || true
+                  echo "Assigning role to node $NODE_ID..."
+                  kubectl -n {{ .Release.Namespace }} exec garage-0 -- /garage layout assign "$NODE_ID" -z dc1 -c 50G -t homelab
                   
-                  curl -sf -X POST -H "Authorization: Bearer $ADMIN_TOKEN" \
-                    -H "Content-Type: application/json" \
-                    -d '{"version": 1}' \
-                    "$ADMIN_URL/v1/layout/apply" 2>/dev/null || true
-                  echo "Layout configured"
+                  echo "Applying layout..."
+                  kubectl -n {{ .Release.Namespace }} exec garage-0 -- /garage layout apply --version 1
+                  
+                  echo "Layout configured successfully"
+                else
+                  echo "ERROR: Could not determine node ID"
+                  exit 1
                 fi
               else
-                echo "Layout already configured (version $LAYOUT_VERSION)"
+                echo "Layout already configured"
               fi
               
-              # Check if bucket exists
-              BUCKET_RESPONSE=$(curl -sf -H "Authorization: Bearer $ADMIN_TOKEN" "$ADMIN_URL/v1/bucket?globalAlias=velero" 2>/dev/null || echo "")
+              echo "=== Checking buckets ==="
+              BUCKETS=$(kubectl -n {{ .Release.Namespace }} exec garage-0 -- /garage bucket list 2>&1)
+              echo "$BUCKETS"
               
-              if echo "$BUCKET_RESPONSE" | grep -q '"id":'; then
+              if echo "$BUCKETS" | grep -q "velero"; then
                 echo "Velero bucket already exists"
               else
                 echo "Creating velero bucket..."
-                curl -sf -X POST -H "Authorization: Bearer $ADMIN_TOKEN" \
-                  -H "Content-Type: application/json" \
-                  -d '{"globalAlias": "velero"}' \
-                  "$ADMIN_URL/v1/bucket" 2>/dev/null || echo "Bucket may already exist"
+                kubectl -n {{ .Release.Namespace }} exec garage-0 -- /garage bucket create velero
               fi
               
-              # Check if key exists (search returns array, check for accessKeyId)
-              KEY_RESPONSE=$(curl -sf -H "Authorization: Bearer $ADMIN_TOKEN" "$ADMIN_URL/v1/key?search=velero" 2>/dev/null || echo "[]")
+              echo "=== Checking keys ==="
+              KEYS=$(kubectl -n {{ .Release.Namespace }} exec garage-0 -- /garage key list 2>&1)
+              echo "$KEYS"
               
-              if echo "$KEY_RESPONSE" | grep -q '"accessKeyId":'; then
-                echo "Velero access key already exists"
+              if echo "$KEYS" | grep -q "velero"; then
+                echo "Velero key already exists"
               else
                 echo "Creating velero access key..."
-                NEW_KEY=$(curl -sf -X POST -H "Authorization: Bearer $ADMIN_TOKEN" \
-                  -H "Content-Type: application/json" \
-                  -d '{"name": "velero"}' \
-                  "$ADMIN_URL/v1/key" 2>/dev/null || echo "")
+                kubectl -n {{ .Release.Namespace }} exec garage-0 -- /garage key create velero
                 
-                if [ -n "$NEW_KEY" ]; then
-                  ACCESS_KEY=$(echo "$NEW_KEY" | grep -o '"accessKeyId":"[^"]*"' | cut -d'"' -f4)
-                  echo "Created access key: $ACCESS_KEY"
-                  echo "IMPORTANT: Check logs for secret key on first run"
-                  
-                  # Grant bucket access
-                  KEY_ID=$(echo "$NEW_KEY" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
-                  BUCKET_ID=$(curl -sf -H "Authorization: Bearer $ADMIN_TOKEN" "$ADMIN_URL/v1/bucket?globalAlias=velero" 2>/dev/null | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
-                  
-                  if [ -n "$KEY_ID" ] && [ -n "$BUCKET_ID" ]; then
-                    curl -sf -X POST -H "Authorization: Bearer $ADMIN_TOKEN" \
-                      -H "Content-Type: application/json" \
-                      -d "{\"bucketId\": \"$BUCKET_ID\", \"accessKeyId\": \"$KEY_ID\", \"permissions\": {\"read\": true, \"write\": true, \"owner\": true}}" \
-                      "$ADMIN_URL/v1/bucket/allow" 2>/dev/null || true
-                  fi
-                fi
+                echo "Granting velero key access to bucket..."
+                kubectl -n {{ .Release.Namespace }} exec garage-0 -- /garage bucket allow --read --write --owner velero --key velero
               fi
               
+              echo "=== Final status ==="
+              kubectl -n {{ .Release.Namespace }} exec garage-0 -- /garage status
+              kubectl -n {{ .Release.Namespace }} exec garage-0 -- /garage bucket list
+              kubectl -n {{ .Release.Namespace }} exec garage-0 -- /garage key list
+              
               echo "Garage initialization complete!"
-              exit 0
-          volumeMounts:
-            - name: secrets
-              mountPath: /secrets
-              readOnly: true
-      volumes:
-        - name: secrets
-          secret:
-            secretName: garage-credentials
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
 
