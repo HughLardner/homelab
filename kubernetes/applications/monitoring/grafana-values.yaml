@@ -51,11 +51,45 @@ sidecar:
     labelValue: "1"
     folder: /tmp/dashboards
     searchNamespace: ALL
+    resources:
+      requests:
+        cpu: 25m
+        memory: 64Mi
+      limits:
+        cpu: 100m
+        memory: 128Mi
   datasources:
     enabled: true
     label: grafana_datasource
     labelValue: "1"
     searchNamespace: ALL
+    resources:
+      requests:
+        cpu: 25m
+        memory: 64Mi
+      limits:
+        cpu: 100m
+        memory: 128Mi
+
+# Init container resources (for resource quota compliance)
+initChownData:
+  resources:
+    requests:
+      cpu: 25m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 64Mi
+
+# Download dashboards init container
+downloadDashboards:
+  resources:
+    requests:
+      cpu: 25m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 64Mi
 
 # Grafana configuration
 grafana.ini:
