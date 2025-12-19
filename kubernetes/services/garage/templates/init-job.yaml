@@ -26,7 +26,7 @@ spec:
       serviceAccountName: garage-init
       containers:
         - name: init
-          image: bitnami/kubectl:1.28
+          image: bitnami/kubectl:latest
           command:
             - /bin/sh
             - -c
