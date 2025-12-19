@@ -9,6 +9,13 @@ metadata:
   namespace: {{ .Release.Namespace }}
   annotations:
     kubernetes.io/ingress.class: traefik
+    # Homepage service discovery
+    gethomepage.dev/enabled: "true"
+    gethomepage.dev/name: "Longhorn"
+    gethomepage.dev/group: "Storage"
+    gethomepage.dev/icon: "longhorn"
+    gethomepage.dev/description: "Distributed Block Storage"
+    gethomepage.dev/href: "https://{{ .Values.services.longhorn.domain }}"
 spec:
   entryPoints:
     - websecure

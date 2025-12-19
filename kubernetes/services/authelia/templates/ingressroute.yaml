@@ -8,6 +8,13 @@ metadata:
   namespace: {{ .Release.Namespace }}
   annotations:
     kubernetes.io/ingress.class: traefik
+    # Homepage service discovery
+    gethomepage.dev/enabled: "true"
+    gethomepage.dev/name: "Authelia"
+    gethomepage.dev/group: "Infrastructure"
+    gethomepage.dev/icon: "authelia"
+    gethomepage.dev/description: "Single Sign-On"
+    gethomepage.dev/href: "https://{{ .Values.services.authelia.domain }}"
 spec:
   entryPoints:
     - websecure

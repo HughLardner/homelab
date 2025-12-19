@@ -77,9 +77,11 @@ data:
           href: https://gethomepage.dev
           icon: homepage
 
-  # Kubernetes - cluster integration
+  # Kubernetes - cluster integration with Traefik IngressRoute discovery
   kubernetes.yaml: |
     mode: cluster
+    ingress: true
+    traefik: true
 
   # Docker - not used in k8s deployment
   docker.yaml: ""

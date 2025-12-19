@@ -9,6 +9,13 @@ metadata:
   namespace: {{ .Release.Namespace }}
   annotations:
     kubernetes.io/ingress.class: traefik
+    # Homepage service discovery
+    gethomepage.dev/enabled: "true"
+    gethomepage.dev/name: "Traefik"
+    gethomepage.dev/group: "Infrastructure"
+    gethomepage.dev/icon: "traefik"
+    gethomepage.dev/description: "Ingress Controller"
+    gethomepage.dev/href: "https://{{ .Values.services.traefik.domain }}"
 spec:
   entryPoints:
     - websecure
