@@ -16,6 +16,14 @@ installCRDs: true
 # Replicas (reduced from 2 - HA not needed for homelab)
 replicaCount: 1
 
+# Extra arguments for the cert-manager controller
+# Use external DNS servers for DNS-01 challenge verification
+# (avoids SERVFAIL from cluster CoreDNS)
+extraArgs:
+  - --dns01-recursive-nameservers-only
+  - --dns01-recursive-nameservers=1.1.1.1:53,8.8.8.8:53
+
+
 # Global settings
 global:
   # Leader election namespace

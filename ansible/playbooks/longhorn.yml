@@ -123,25 +123,34 @@
       changed_when: false
       failed_when: false
 
-    - name: Install Longhorn prerequisites
+    - name: Add Longhorn Helm repository
       ansible.builtin.command:
-        cmd: /usr/local/bin/k3s kubectl apply -f https://raw.githubusercontent.com/longhorn/longhorn/{{ longhorn_version }}/deploy/prerequisite/longhorn-iscsi-installation.yaml
-      when: longhorn_check.rc != 0
-      register: prereq_install
-      changed_when: "'created' in prereq_install.stdout or 'configured' in prereq_install.stdout"
-
-    - name: Wait for prerequisites to be installed
-      ansible.builtin.pause:
-        seconds: 10
+        cmd: /usr/local/bin/k3s kubectl exec -n kube-system deploy/helm-controller -- helm repo add longhorn https://charts.longhorn.io
+      failed_when: false
+      changed_when: false
       when: longhorn_check.rc != 0
 
-    - name: Install Longhorn
-      ansible.builtin.command:
-        cmd: /usr/local/bin/k3s kubectl apply -f https://raw.githubusercontent.com/longhorn/longhorn/{{ longhorn_version }}/deploy/longhorn.yaml
+    - name: Install Longhorn via Helm
+      ansible.builtin.shell: |
+        helm repo add longhorn https://charts.longhorn.io
+        helm repo update
+        helm upgrade --install longhorn longhorn/longhorn \
+          --namespace {{ longhorn_namespace }} \
+          --create-namespace \
+          --set defaultSettings.createDefaultDiskLabeledNodes=true \
+          --set defaultSettings.defaultDataPath={{ longhorn_data_path }} \
+          --set defaultSettings.defaultReplicaCount={{ longhorn_replica_count }} \
+          --set persistence.defaultClass=false \
+          --set service.ui.type={{ longhorn_ui_service_type }} \
+          --version 1.6.0 \
+          --wait \
+          --timeout 10m
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
       when: longhorn_check.rc != 0
       register: longhorn_install
-      changed_when: "'created' in longhorn_install.stdout or 'configured' in longhorn_install.stdout"
-
+      changed_when: "'has been installed' in longhorn_install.stdout or 'has been upgraded' in longhorn_install.stdout"
+      
     - name: Wait for Longhorn manager to be ready
       ansible.builtin.command:
         cmd: /usr/local/bin/k3s kubectl wait --namespace {{ longhorn_namespace }} --for=condition=ready pod --selector=app=longhorn-manager --timeout=600s
