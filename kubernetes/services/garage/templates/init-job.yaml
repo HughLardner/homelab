@@ -87,11 +87,17 @@ spec:
               KEYS=$(kubectl -n {{ .Release.Namespace }} exec garage-0 -- /garage key list 2>&1)
               echo "$KEYS"
               
+              # Read predefined credentials from secret
+              ACCESS_KEY_ID=$(cat /secrets/velero-access-key-id)
+              SECRET_ACCESS_KEY=$(cat /secrets/velero-secret-access-key)
+              
               if echo "$KEYS" | grep -q "velero"; then
                 echo "Velero key already exists"
               else
-                echo "Creating velero access key..."
-                kubectl -n {{ .Release.Namespace }} exec garage-0 -- /garage key create velero
+                echo "Importing velero access key with predefined credentials..."
+                # Import ensures same key ID works across cluster rebuilds
+                kubectl -n {{ .Release.Namespace }} exec garage-0 -- /garage key import \
+                  --yes -n velero "$ACCESS_KEY_ID" "$SECRET_ACCESS_KEY"
                 
                 echo "Granting velero key access to bucket..."
                 kubectl -n {{ .Release.Namespace }} exec garage-0 -- /garage bucket allow --read --write --owner velero --key velero
@@ -103,6 +109,10 @@ spec:
               kubectl -n {{ .Release.Namespace }} exec garage-0 -- /garage key list
               
               echo "Garage initialization complete!"
+          volumeMounts:
+            - name: garage-secrets
+              mountPath: /secrets
+              readOnly: true
           resources:
             requests:
               cpu: 50m
@@ -110,4 +120,8 @@ spec:
             limits:
               cpu: 200m
               memory: 128Mi
+      volumes:
+        - name: garage-secrets
+          secret:
+            secretName: garage-credentials
 
