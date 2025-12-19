@@ -3,16 +3,9 @@
 # Kubernetes backup and restore
 # Note: Velero has no UI - monitor via Grafana dashboard (velero-homelab)
 
-# Enable CRD installation on fresh cluster
-# Required for cluster rebuilds where CRDs don't persist
-upgradeCRDs: true
-
-# Override kubectl image for CRD upgrade job
-# The chart defaults to bitnami/kubectl:1.33 which doesn't exist
-kubectl:
-  image:
-    repository: bitnami/kubectl
-    tag: "latest"
+# Disable CRD upgrade job - it has issues with kubectl image versions
+# CRDs will be installed via Helm's native mechanism (skipCrds: false in application.yaml)
+upgradeCRDs: false
 
 # Use existing secret for cloud credentials
 credentials:
