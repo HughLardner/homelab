@@ -6,10 +6,4 @@ services:
     domain: silverseekers.org
     provider: cloudflare
     policy: sync
-  # Extra arguments for the cert-manager controller
-  extraArgs:
-    # Use external recursive DNS servers for DNS-01 challenges
-    # This avoids issues with cluster DNS (CoreDNS) not resolving external domains
-    - --dns01-recursive-nameservers-only
-    - --dns01-recursive-nameservers=1.1.1.1:53,8.8.8.8:53
 
