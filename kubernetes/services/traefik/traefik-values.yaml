@@ -10,8 +10,7 @@ globalArguments:
 # Additional arguments
 additionalArguments:
   - "--log.level=INFO"
-  - "--accesslog=true"
-  - "--accesslog.bufferingsize=100"
+  - "--accesslog=false"
   - "--api.dashboard=true"
   - "--api.insecure=false" # Dashboard requires authentication
   - "--ping=true"
@@ -143,8 +142,8 @@ logs:
   general:
     level: INFO
   access:
-    enabled: true
-    bufferingSize: 100
+    # Disabled to reduce log volume - each HTTP request generates a log entry
+    enabled: false
 
 # Health checks
 livenessProbe:
