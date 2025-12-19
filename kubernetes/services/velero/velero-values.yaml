@@ -12,7 +12,7 @@ upgradeCRDs: true
 kubectl:
   image:
     repository: bitnami/kubectl
-    tag: "1.31"
+    tag: "latest"
 
 # Use existing secret for cloud credentials
 credentials:
