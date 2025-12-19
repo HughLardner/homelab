@@ -15,11 +15,11 @@
 defaultSettings:
   # Number of replicas for volumes
   # Single node = 1, increase to 2 when adding second node
-  defaultReplicaCount: { { longhorn_replica_count | default(1) } }
+  defaultReplicaCount: {{ longhorn_replica_count | default(1) }}
 
   # Storage path on each node
   # Uses persistent data disk mounted at /mnt/longhorn-data - survives cluster rebuilds
-  defaultDataPath: { { longhorn_data_path | default('/mnt/longhorn-data') } }
+  defaultDataPath: {{ longhorn_data_path | default('/mnt/longhorn-data') }}
 
   # ⚠️ CRITICAL: Only create default disks on labeled nodes
   # This prevents Longhorn from auto-discovering the VM's ephemeral OS disk
@@ -52,7 +52,7 @@ persistence:
 
   # Default replica count for StorageClass
   # Single node = 1, increase to 2 when adding second node
-  defaultClassReplicaCount: { { longhorn_replica_count | default(1) } }
+  defaultClassReplicaCount: {{ longhorn_replica_count | default(1) }}
 
   # Reclaim policy
   reclaimPolicy: Delete
@@ -61,7 +61,7 @@ persistence:
 service:
   ui:
     # Service type: ClusterIP, LoadBalancer, or NodePort
-    type: { { longhorn_ui_service_type | default('LoadBalancer') } }
+    type: {{ longhorn_ui_service_type | default('LoadBalancer') }}
     # NodePort (only if type is NodePort)
     # nodePort: 30000
     annotations:
