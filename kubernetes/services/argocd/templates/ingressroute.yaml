@@ -8,6 +8,13 @@ metadata:
   namespace: {{ .Release.Namespace }}
   annotations:
     kubernetes.io/ingress.class: traefik
+    # Homepage service discovery
+    gethomepage.dev/enabled: "true"
+    gethomepage.dev/name: "ArgoCD"
+    gethomepage.dev/group: "Infrastructure"
+    gethomepage.dev/icon: "argocd"
+    gethomepage.dev/description: "GitOps Continuous Delivery"
+    gethomepage.dev/href: "https://{{ .Values.services.argocd.domain }}"
 spec:
   entryPoints:
     - websecure

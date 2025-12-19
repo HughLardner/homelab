@@ -9,6 +9,13 @@ metadata:
   namespace: {{ .Release.Namespace }}
   annotations:
     kubernetes.io/ingress.class: traefik
+    # Homepage service discovery
+    gethomepage.dev/enabled: "true"
+    gethomepage.dev/name: "Grafana"
+    gethomepage.dev/group: "Monitoring"
+    gethomepage.dev/icon: "grafana"
+    gethomepage.dev/description: "Dashboards & Visualization"
+    gethomepage.dev/href: "https://{{ .Values.services.grafana.domain }}"
 spec:
   entryPoints:
     - websecure

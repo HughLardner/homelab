@@ -8,6 +8,14 @@ metadata:
   labels:
     app.kubernetes.io/name: garage
     app.kubernetes.io/component: s3-api
+  annotations:
+    # Homepage service discovery
+    gethomepage.dev/enabled: "true"
+    gethomepage.dev/name: "Garage"
+    gethomepage.dev/group: "Storage"
+    gethomepage.dev/icon: "minio"
+    gethomepage.dev/description: "S3-Compatible Object Storage"
+    gethomepage.dev/href: "https://grafana.silverseekers.org/d/garage"
 spec:
   entryPoints:
     - websecure
