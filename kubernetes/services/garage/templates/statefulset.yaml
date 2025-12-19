@@ -50,6 +50,10 @@ spec:
                 secretKeyRef:
                   name: garage-credentials
                   key: admin-token
+            # Reduce log verbosity - suppress INFO level health check spam
+            # Only log warnings and errors (health checks are INFO level)
+            - name: RUST_LOG
+              value: "warn"
           volumeMounts:
             - name: config
               mountPath: /etc/garage.toml
