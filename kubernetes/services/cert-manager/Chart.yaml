@@ -4,4 +4,4 @@ name: cert-manager-config
 description: ClusterIssuers and configuration for cert-manager
 type: application
 version: 1.0.0
-appVersion: "1.14.0"
+appVersion: "1.19.2"

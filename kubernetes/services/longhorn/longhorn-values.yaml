@@ -65,7 +65,7 @@ service:
     # NodePort (only if type is NodePort)
     # nodePort: 30000
     annotations:
-      metallb.universe.tf/loadBalancerIPs: "192.168.10.144" # Lock static IP
+      metallb.io/loadBalancerIPs: "192.168.10.144" # Lock static IP
       # Homepage auto-discovery
       gethomepage.dev/enabled: "true"
       gethomepage.dev/group: "Storage"

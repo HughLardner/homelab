@@ -19,7 +19,7 @@ server:
     servicePortHttps: 443
     annotations:
       # Static IP from MetalLB pool
-      metallb.universe.tf/loadBalancerIPs: "192.168.10.151"
+      metallb.io/loadBalancerIPs: "192.168.10.151"
       # Homepage auto-discovery
       gethomepage.dev/enabled: "true"
       gethomepage.dev/group: "Infrastructure"
