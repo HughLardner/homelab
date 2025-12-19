@@ -923,10 +923,26 @@ deploy-services:
 	@echo "  Configure UniFi Gateway with wildcard DNS:"
 	@echo "    *.silverseekers.org -> 192.168.10.150"
 
+# Fix CoreDNS for internal domain resolution (required for OIDC)
+coredns-fix:
+	@echo "Configuring CoreDNS for internal domain resolution..."
+	@TRAEFIK_IP=$$(kubectl get svc -n traefik traefik -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null); \
+	if [ -n "$$TRAEFIK_IP" ]; then \
+		kubectl get cm coredns -n kube-system -o json | \
+		jq --arg ip "$$TRAEFIK_IP" '.data.NodeHosts += "\n# Silverseekers domains\n" + $$ip + " auth.silverseekers.org\n" + $$ip + " argocd.silverseekers.org\n" + $$ip + " grafana.silverseekers.org\n" + $$ip + " traefik.silverseekers.org\n" + $$ip + " longhorn.silverseekers.org\n" + $$ip + " home.silverseekers.org\n" + $$ip + " s3.silverseekers.org"' | \
+		kubectl apply -f - && \
+		kubectl rollout restart deployment coredns -n kube-system && \
+		echo "✅ CoreDNS configured with Traefik IP: $$TRAEFIK_IP"; \
+	else \
+		echo "⚠️  Traefik LoadBalancer IP not found - skipping CoreDNS fix"; \
+	fi
+
 # Deploy everything: infra + platform + bootstrap + services
 deploy-all: deploy-bootstrap
 	@echo ""
 	$(MAKE) deploy-services
+	@echo ""
+	$(MAKE) coredns-fix
 	@echo ""
 	@echo "========================================"
 	@echo "✅ FULL STACK DEPLOYMENT COMPLETE!"
