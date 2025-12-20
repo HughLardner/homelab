@@ -1,0 +1,177 @@
+{{- if .Values.owner.create }}
+---
+# ConfigMap containing the Python script to create the initial owner user
+# Adapted from: https://github.com/small-hack/home-assistant-chart
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-create-owner-script
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: {{ .Release.Name }}
+    app.kubernetes.io/component: onboarding
+  annotations:
+    "helm.sh/hook": post-install
+    "helm.sh/hook-weight": "-5"
+data:
+  create_user.py: |
+    # Author: https://github.com/jessebot (small-hack/home-assistant-chart)
+    # Adapted for homelab deployment
+    import json
+    from os import environ as env
+    from os import path
+    import requests
+    import time
+
+    PVC_CHECK = env.get("PVC_CHECK", 'True')
+    MAX_RETRIES = 30
+    RETRY_DELAY = 10
+
+    class RunHomeAssistantOnboarding():
+        """
+        Runs through home assistant onboarding to create a new user and disable registration
+        """
+        def __init__(self):
+            self.headers = {
+              'Content-Type': 'application/json',
+            }
+            self.base_url = f"http://{env.get('INTERNAL_URL', 'home-assistant:8123')}"
+            self.external_url = env.get('EXTERNAL_URL', self.base_url)
+            self.debug = env.get('DEBUG', 'False') == 'True'
+            self.done_list = []
+            
+            # Wait for Home Assistant to be ready
+            self.wait_for_ha()
+            
+            if PVC_CHECK == 'True':
+                print("Checking if onboarding has already been run...")
+                if path.exists("/config/.storage/onboarding"):
+                    with open("/config/.storage/onboarding") as onboarding_file:
+                        onboarding_json = json.load(onboarding_file)
+                        onboarding_data = onboarding_json.get("data", "")
+                        if onboarding_data:
+                            self.done_list = onboarding_data.get("done", [])
+                            print(f"Current onboarding done list: {self.done_list}")
+                else:
+                    print("/config/.storage/onboarding file does not exist yet.")
+
+        def wait_for_ha(self):
+            """Wait for Home Assistant to be ready"""
+            for i in range(MAX_RETRIES):
+                try:
+                    response = requests.get(f"{self.base_url}/api/", timeout=5)
+                    if response.status_code == 200:
+                        print("Home Assistant is ready!")
+                        return
+                except Exception as e:
+                    print(f"Waiting for Home Assistant... attempt {i+1}/{MAX_RETRIES}")
+                time.sleep(RETRY_DELAY)
+            raise Exception("Home Assistant did not become ready in time")
+
+        def run_analytics_config(self) -> dict:
+            """runs the analytics config step of onboarding"""
+            if "analytics" not in self.done_list:
+                analytics_url = f"{self.base_url}/api/onboarding/analytics"
+                print(f"Posting to {analytics_url} for analytics setup")
+                response = requests.request("POST", analytics_url, headers=self.headers)
+                if self.debug:
+                    print(response.text)
+            else:
+                print("Analytics onboarding already done.")
+
+        def run_integration_config(self) -> dict:
+            """runs the integration config step of onboarding"""
+            if "integration" not in self.done_list:
+                integration_url = f"{self.base_url}/api/onboarding/integration"
+                print(f"Posting to {integration_url} for integration config")
+                response = requests.request("POST", integration_url, headers=self.headers)
+                if self.debug:
+                    print(response.text)
+            else:
+                print("Integration onboarding already done.")
+
+        def run_core_config(self) -> dict:
+            """runs the core config step of onboarding"""
+            if "core_config" not in self.done_list:
+                core_config_url = f"{self.base_url}/api/onboarding/core_config"
+                print(f"Posting to {core_config_url} for core config")
+                response = requests.request("POST", core_config_url, headers=self.headers)
+                if self.debug:
+                    print(response.text)
+            else:
+                print("Core config onboarding already done.")
+
+        def create_user(self) -> bool:
+            """creates a user via the home assistant api"""
+            if "user" not in self.done_list:
+                user_url = f"{self.base_url}/api/onboarding/users"
+                print(f"Posting to {user_url} for user creation")
+
+                client_id = self.external_url
+                if not client_id.endswith('/'):
+                    client_id = client_id + "/"
+
+                payload = json.dumps({
+                  "client_id": client_id,
+                  "name": env.get('ADMIN_NAME', 'Admin'),
+                  "username": env.get('ADMIN_USERNAME', 'admin'),
+                  "password": env.get('ADMIN_PASSWORD', "changeme123"),
+                  "language": env.get('ADMIN_LANGUAGE', 'en')
+                })
+
+                response = requests.request("POST", user_url, headers=self.headers, data=payload)
+                if self.debug:
+                    print(response.text)
+
+                try:
+                    self.auth_code = response.json().get("auth_code", "")
+                except Exception as e:
+                    print(f"Error getting auth code: {e}")
+                    print(f"Response: {response.text}")
+                    return False
+
+                if not self.auth_code:
+                    print(f"No auth code received. Response: {response.text}")
+                    return False
+
+                print("User created successfully!")
+                return True
+            else:
+                print("User creation already done.")
+                return False
+
+        def create_token(self) -> dict:
+            """create a token for further actions"""
+            token_url = f"{self.base_url}/auth/token"
+            print(f"Posting to {token_url} for bearer token")
+
+            data_binary = f'-----------------------------12687640052594540745146787337\r\nContent-Disposition: form-data; name="client_id"\r\n\r\n{self.external_url}\r\n-----------------------------12687640052594540745146787337\r\nContent-Disposition: form-data; name="code"\r\n\r\n{self.auth_code}\r\n-----------------------------12687640052594540745146787337\r\nContent-Disposition: form-data; name="grant_type"\r\n\r\nauthorization_code\r\n-----------------------------12687640052594540745146787337--\r\n'
+
+            headers = {
+              'Content-Type': 'multipart/form-data; boundary=---------------------------12687640052594540745146787337',
+              'Origin': self.external_url.rstrip('/'),
+            }
+
+            response = requests.request("POST", token_url, headers=headers, data=data_binary)
+            if self.debug:
+                print(response.text)
+
+            token = response.json().get("access_token", "")
+            if token:
+                self.headers['Authorization'] = f"Bearer {token}"
+                print("Token obtained successfully!")
+
+    if __name__ == '__main__':
+        print("Starting Home Assistant onboarding...")
+        onboarding_obj = RunHomeAssistantOnboarding()
+
+        user_created = onboarding_obj.create_user()
+        if user_created:
+            onboarding_obj.create_token()
+            onboarding_obj.run_core_config()
+            onboarding_obj.run_integration_config()
+            onboarding_obj.run_analytics_config()
+
+        print("Home Assistant onboarding complete!")
+{{- end }}
+
