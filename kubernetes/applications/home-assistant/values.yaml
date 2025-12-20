@@ -37,7 +37,7 @@ homeassistant:
   # Image configuration
   image:
     repository: ghcr.io/home-assistant/home-assistant
-    tag: "2024.12"
+    tag: "2025.12"  # Updated from 2024.12 (was over a year old)
     pullPolicy: IfNotPresent
 
   # Service configuration
