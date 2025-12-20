@@ -43,12 +43,25 @@ spec:
     namespace: home-assistant
 
   # Ignore differences that Kubernetes adds/normalizes
+  # StatefulSets get many default values added by k8s admission controllers
   ignoreDifferences:
     - group: apps
       kind: StatefulSet
-      jsonPointers:
-        - /spec/volumeClaimTemplates/0/status
-        - /spec/template/spec/containers/0/resources/limits/cpu
+      jqPathExpressions:
+        - .spec.persistentVolumeClaimRetentionPolicy
+        - .spec.podManagementPolicy
+        - .spec.revisionHistoryLimit
+        - .spec.template.spec.containers[].terminationMessagePath
+        - .spec.template.spec.containers[].terminationMessagePolicy
+        - .spec.template.spec.dnsPolicy
+        - .spec.template.spec.restartPolicy
+        - .spec.template.spec.schedulerName
+        - .spec.template.spec.securityContext
+        - .spec.template.spec.terminationGracePeriodSeconds
+        - .spec.template.spec.initContainers[].resources
+        - .spec.template.spec.initContainers[].terminationMessagePath
+        - .spec.template.spec.initContainers[].terminationMessagePolicy
+        - .spec.volumeClaimTemplates[].status
 
   syncPolicy:
     automated:
