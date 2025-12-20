@@ -47,21 +47,9 @@ spec:
   ignoreDifferences:
     - group: apps
       kind: StatefulSet
-      jqPathExpressions:
-        - .spec.persistentVolumeClaimRetentionPolicy
-        - .spec.podManagementPolicy
-        - .spec.revisionHistoryLimit
-        - .spec.template.spec.containers[].terminationMessagePath
-        - .spec.template.spec.containers[].terminationMessagePolicy
-        - .spec.template.spec.dnsPolicy
-        - .spec.template.spec.restartPolicy
-        - .spec.template.spec.schedulerName
-        - .spec.template.spec.securityContext
-        - .spec.template.spec.terminationGracePeriodSeconds
-        - .spec.template.spec.initContainers[].resources
-        - .spec.template.spec.initContainers[].terminationMessagePath
-        - .spec.template.spec.initContainers[].terminationMessagePolicy
-        - .spec.volumeClaimTemplates[].status
+      # Ignore all fields added by Kubernetes defaults
+      managedFieldsManagers:
+        - kube-controller-manager
 
   syncPolicy:
     automated:
