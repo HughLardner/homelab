@@ -21,8 +21,8 @@ spec:
           namespace: authelia
       {{- end }}
       services:
-        # Service created by the pajikos/home-assistant subchart
-        - name: {{ .Release.Name }}-homeassistant
+        # Service created by the pajikos/home-assistant subchart (using fullnameOverride)
+        - name: {{ .Values.homeassistant.fullnameOverride | default (printf "%s-homeassistant" .Release.Name) }}
           port: {{ .Values.homeassistant.service.port | default 8123 }}
   tls:
     secretName: {{ .Release.Name }}-tls

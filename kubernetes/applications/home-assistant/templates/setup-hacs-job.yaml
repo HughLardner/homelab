@@ -65,7 +65,8 @@ spec:
       volumes:
         - name: config
           persistentVolumeClaim:
-            # PVC name from the pajikos subchart: <release>-<alias>
-            claimName: {{ .Release.Name }}-homeassistant
+            # PVC name pattern for StatefulSet: <fullname>-<fullname>-<ordinal>
+            # Using fullnameOverride: home-assistant → PVC: home-assistant-home-assistant-0
+            claimName: {{ .Values.homeassistant.fullnameOverride | default (printf "%s-homeassistant" .Release.Name) }}-{{ .Values.homeassistant.fullnameOverride | default (printf "%s-homeassistant" .Release.Name) }}-0
 {{- end }}
 
