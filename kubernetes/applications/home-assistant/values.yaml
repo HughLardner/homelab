@@ -28,6 +28,13 @@ homeassistant:
   service:
     type: ClusterIP
     port: 8123
+    annotations:
+      gethomepage.dev/enabled: "true"
+      gethomepage.dev/group: "Applications"
+      gethomepage.dev/name: "Home Assistant"
+      gethomepage.dev/icon: "home-assistant"
+      gethomepage.dev/description: "Home Automation"
+      gethomepage.dev/href: "https://home-assistant.silverseekers.org"
 
   # Disable built-in ingress - we use Traefik IngressRoute
   ingress:
