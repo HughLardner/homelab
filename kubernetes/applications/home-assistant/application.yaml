@@ -42,6 +42,14 @@ spec:
     server: https://kubernetes.default.svc
     namespace: home-assistant
 
+  # Ignore differences that Kubernetes adds/normalizes
+  ignoreDifferences:
+    - group: apps
+      kind: StatefulSet
+      jsonPointers:
+        - /spec/volumeClaimTemplates/0/status
+        - /spec/template/spec/containers/0/resources/limits/cpu
+
   syncPolicy:
     automated:
       prune: true
