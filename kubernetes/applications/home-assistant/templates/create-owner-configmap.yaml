@@ -60,11 +60,13 @@ data:
             for i in range(MAX_RETRIES):
                 try:
                     response = requests.get(f"{self.base_url}/api/", timeout=5)
-                    if response.status_code == 200:
-                        print("Home Assistant is ready!")
+                    # 200 = authenticated, 401 = unauthenticated but API is up
+                    if response.status_code in [200, 401]:
+                        print(f"Home Assistant is ready! (status: {response.status_code})")
                         return
+                    print(f"Waiting for Home Assistant... attempt {i+1}/{MAX_RETRIES} (status: {response.status_code})")
                 except Exception as e:
-                    print(f"Waiting for Home Assistant... attempt {i+1}/{MAX_RETRIES}")
+                    print(f"Waiting for Home Assistant... attempt {i+1}/{MAX_RETRIES} (error: {e})")
                 time.sleep(RETRY_DELAY)
             raise Exception("Home Assistant did not become ready in time")
 
