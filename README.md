@@ -30,7 +30,7 @@ Deployed automatically via ArgoCD sync waves:
 - **NetworkPolicies** (Wave 3) - Namespace network isolation
 - **ResourcePolicies** (Wave 3) - LimitRange and ResourceQuota
 - **Loki + Promtail** (Wave 4) - Centralized logging
-- **MinIO** (Wave 4) - S3-compatible object storage
+- **Garage** (Wave 4) - S3-compatible object storage (lightweight, homelab-focused)
 - **Velero** (Wave 4) - Kubernetes backup and restore
 - **Cloudflared** (Wave 4) - Cloudflare Tunnel for external access
 - **External-DNS** (Wave 4) - Automatic DNS record management
@@ -161,7 +161,7 @@ kubectl apply -f kubernetes/applications/root-app.yaml
 #   Wave 1: Cert-Manager
 #   Wave 2: Traefik
 #   Wave 3: Authelia, NetworkPolicies, LimitRanges
-#   Wave 4: Loki, Promtail, MinIO, Velero, Cloudflared, External-DNS
+#   Wave 4: Loki, Promtail, Garage, Velero, Cloudflared, External-DNS
 #   Wave 5: Monitoring
 ```
 
@@ -228,6 +228,7 @@ make help              # Show all commands
 - [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) - Complete implementation guide with phases
 - [CLAUDE.md](CLAUDE.md) - Architecture and development guide for AI assistants
 - [SECRETS.md](SECRETS.md) - Secrets management workflow with Sealed Secrets
+- [ADDING_APPLICATIONS.md](docs/ADDING_APPLICATIONS.md) - How to add new applications to the cluster
 
 ### Infrastructure & Platform
 
@@ -244,6 +245,8 @@ make help              # Show all commands
 - [ArgoCD README](kubernetes/services/argocd/README.md) - GitOps platform
 - [Sealed Secrets README](kubernetes/services/sealed-secrets/README.md) - Secret encryption
 - [Authelia README](kubernetes/services/authelia/README.md) - SSO/2FA authentication
+- [Garage README](kubernetes/services/garage/README.md) - S3-compatible object storage
+- [Velero README](kubernetes/services/velero/README.md) - Kubernetes backup and restore
 
 ### Monitoring
 

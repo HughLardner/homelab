@@ -41,6 +41,7 @@ help:
 	@echo "  make sealed-secrets-install  - Install Sealed Secrets controller"
 	@echo "  make sealed-secrets-status   - Check Sealed Secrets status"
 	@echo "  make seal-secrets            - Encrypt secrets from secrets.yml"
+	@echo "  make new-app APP=name        - Generate new app scaffold"
 	@echo ""
 	@echo "═══════════════════════════════════════════════════════════════════"
 	@echo "  LAYER 3: Platform Services (need Layer 1-2)"
@@ -409,6 +410,25 @@ seal-secrets:
 	fi
 	@echo "Sealing secrets from config/secrets.yml..."
 	ansible-playbook ansible/playbooks/seal-secrets.yml
+
+# Generate new application scaffold
+# Usage: make new-app APP=myapp [PORT=8080] [AUTH=true] [STORAGE=5Gi]
+new-app:
+	@if [ -z "$(APP)" ]; then \
+		echo "Usage: make new-app APP=myapp [PORT=8080] [AUTH=true] [STORAGE=5Gi]"; \
+		echo ""; \
+		echo "Examples:"; \
+		echo "  make new-app APP=mywebsite"; \
+		echo "  make new-app APP=myapi PORT=3000 AUTH=true"; \
+		echo "  make new-app APP=mydb PORT=5432 STORAGE=10Gi"; \
+		exit 1; \
+	fi
+	@./scripts/new-app.sh $(APP) \
+		$(if $(PORT),--port $(PORT)) \
+		$(if $(filter true,$(AUTH)),--auth) \
+		$(if $(STORAGE),--storage $(STORAGE)) \
+		$(if $(IMAGE),--image $(IMAGE)) \
+		$(if $(WAVE),--wave $(WAVE))
 
 authelia-secrets: inventory
 	@echo "Creating Authelia Kubernetes secrets..."
