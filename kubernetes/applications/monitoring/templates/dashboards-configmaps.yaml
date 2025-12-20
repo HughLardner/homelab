@@ -742,9 +742,9 @@ data:
           "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "short"}},
           "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
           "id": 1,
-          "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["sum"], "fields": "", "values": false}, "textMode": "auto"},
-          "targets": [{"expr": "sum(count_over_time({namespace=~\"$namespace\"} [1h]))", "refId": "A"}],
-          "title": "Logs (1h)",
+          "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto"},
+          "targets": [{"expr": "sum(count_over_time({namespace=~\"$namespace\"} [$__range]))", "instant": true, "refId": "A"}],
+          "title": "Logs ($__range)",
           "type": "stat"
         },
         {
@@ -752,9 +752,9 @@ data:
           "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "red", "value": 1}]}, "unit": "short"}},
           "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
           "id": 2,
-          "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["sum"], "fields": "", "values": false}, "textMode": "auto"},
-          "targets": [{"expr": "sum(count_over_time({namespace=~\"$namespace\"} |= \"error\" [1h]))", "refId": "A"}],
-          "title": "Errors (1h)",
+          "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto"},
+          "targets": [{"expr": "sum(count_over_time({namespace=~\"$namespace\"} |~ \"(?i)error\" [$__range]))", "instant": true, "refId": "A"}],
+          "title": "Errors ($__range)",
           "type": "stat"
         },
         {
@@ -762,9 +762,9 @@ data:
           "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 1}]}, "unit": "short"}},
           "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
           "id": 3,
-          "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["sum"], "fields": "", "values": false}, "textMode": "auto"},
-          "targets": [{"expr": "sum(count_over_time({namespace=~\"$namespace\"} |= \"warn\" [1h]))", "refId": "A"}],
-          "title": "Warnings (1h)",
+          "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto"},
+          "targets": [{"expr": "sum(count_over_time({namespace=~\"$namespace\"} |~ \"(?i)warn\" [$__range]))", "instant": true, "refId": "A"}],
+          "title": "Warnings ($__range)",
           "type": "stat"
         },
         {
