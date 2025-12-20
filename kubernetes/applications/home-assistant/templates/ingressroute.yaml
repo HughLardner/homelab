@@ -6,6 +6,13 @@ metadata:
   namespace: {{ .Release.Namespace }}
   annotations:
     kubernetes.io/ingress.class: traefik
+    # Homepage auto-discovery via IngressRoute (traefik: true in kubernetes.yaml)
+    gethomepage.dev/enabled: "true"
+    gethomepage.dev/group: "Applications"
+    gethomepage.dev/name: "Home Assistant"
+    gethomepage.dev/icon: "home-assistant"
+    gethomepage.dev/description: "Home Automation"
+    gethomepage.dev/href: "https://{{ .Release.Name }}.{{ .Values.global.domain }}"
   labels:
     app.kubernetes.io/name: {{ .Release.Name }}
 spec:

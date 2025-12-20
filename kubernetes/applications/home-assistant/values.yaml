@@ -30,16 +30,11 @@ homeassistant:
     pullPolicy: IfNotPresent
 
   # Service configuration
+  # Note: Homepage annotations are on the IngressRoute, not here
+  # (Homepage uses traefik: true for discovery via IngressRoutes)
   service:
     type: ClusterIP
     port: 8123
-    annotations:
-      gethomepage.dev/enabled: "true"
-      gethomepage.dev/group: "Applications"
-      gethomepage.dev/name: "Home Assistant"
-      gethomepage.dev/icon: "home-assistant"
-      gethomepage.dev/description: "Home Automation"
-      gethomepage.dev/href: "https://home-assistant.silverseekers.org"
 
   # Disable built-in ingress - we use Traefik IngressRoute
   ingress:
@@ -58,7 +53,7 @@ homeassistant:
       cpu: 100m
       memory: 256Mi
     limits:
-      cpu: 1000m
+      cpu: "1"       # Use "1" not "1000m" to avoid ArgoCD out-of-sync due to k8s normalization
       memory: 1Gi
 
   # Environment variables for OIDC configuration
