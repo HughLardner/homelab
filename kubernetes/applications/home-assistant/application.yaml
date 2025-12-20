@@ -1,0 +1,57 @@
+---
+# ArgoCD Application for home-assistant
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: home-assistant
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
+spec:
+  project: default
+
+  sources:
+    # 1. Application chart (with helm dependencies)
+    - repoURL: https://github.com/HughLardner/homelab.git
+      targetRevision: HEAD
+      path: kubernetes/applications/home-assistant
+      helm:
+        releaseName: home-assistant
+        valueFiles:
+          - $values/config/homelab.yaml
+          - values.yaml
+        # Skip dependency update - handled by ArgoCD
+        skipCrds: false
+
+    # 2. Values reference
+    - repoURL: https://github.com/HughLardner/homelab.git
+      targetRevision: HEAD
+      ref: values
+
+    # 3. Sealed secrets
+    - repoURL: https://github.com/HughLardner/homelab.git
+      targetRevision: HEAD
+      path: kubernetes/applications/home-assistant/secrets
+      directory:
+        recurse: false
+        include: "*.yaml"
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: home-assistant
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m

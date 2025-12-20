@@ -196,6 +196,24 @@ configMap:
             - groups
           # ArgoCD actually uses client_secret_basic (not post)
           token_endpoint_auth_method: client_secret_basic
+        
+        # Home Assistant OIDC Client
+        # Requires hass-oidc-auth HACS integration
+        # Secret must match home-assistant-oidc-secret in config/secrets.yml
+        - client_id: home-assistant
+          client_name: Home Assistant
+          client_secret: '$plaintext$4972a5e37c87f2d0d1f530f028a279ecc829c61647cc5b889c9fbe2374e80694'
+          public: false
+          authorization_policy: one_factor
+          consent_mode: implicit
+          redirect_uris:
+            - https://home-assistant.silverseekers.org/auth/oidc/callback
+          scopes:
+            - openid
+            - profile
+            - email
+            - groups
+          token_endpoint_auth_method: client_secret_post
 
 # Redis subchart - disabled for single-replica homelab (in-memory sessions work fine)
 redis:

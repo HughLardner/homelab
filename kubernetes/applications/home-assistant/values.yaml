@@ -1,0 +1,110 @@
+# Home Assistant Helm Chart Configuration
+# Chart: https://github.com/pajikos/home-assistant-helm-chart
+# This chart inherits global values from config/homelab.yaml
+
+# Authelia forward auth protection
+# Disabled when using OIDC authentication (SSO login directly to HA)
+auth_enabled: false
+
+# HACS Setup Job
+# Automatically installs HACS after deployment via post-install hook
+# Adapted from: https://github.com/small-hack/home-assistant-chart
+setupHacs:
+  enabled: true
+
+# Home Assistant subchart configuration
+homeassistant:
+  # Controller type - StatefulSet for persistent storage
+  controller:
+    type: StatefulSet
+
+  # Image configuration
+  image:
+    repository: ghcr.io/home-assistant/home-assistant
+    tag: "2024.12"
+    pullPolicy: IfNotPresent
+
+  # Service configuration
+  service:
+    type: ClusterIP
+    port: 8123
+
+  # Disable built-in ingress - we use Traefik IngressRoute
+  ingress:
+    enabled: false
+
+  # Persistent storage
+  persistence:
+    enabled: true
+    size: 10Gi
+    storageClass: longhorn
+    accessMode: ReadWriteOnce
+
+  # Resource limits
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+
+  # Environment variables for OIDC configuration
+  # These are read by the hass-oidc-auth integration
+  env:
+    - name: OIDC_CLIENT_ID
+      valueFrom:
+        secretKeyRef:
+          name: home-assistant-oidc-secret
+          key: client-id
+    - name: OIDC_CLIENT_SECRET
+      valueFrom:
+        secretKeyRef:
+          name: home-assistant-oidc-secret
+          key: client-secret
+
+  # Home Assistant configuration
+  configuration:
+    enabled: true
+    forceInit: false
+    # Trust Traefik proxy and cluster network
+    trusted_proxies:
+      - 10.42.0.0/16    # K3s pod CIDR
+      - 10.43.0.0/16    # K3s service CIDR
+      - 192.168.10.0/24 # Local network
+    templateConfig: |-
+      # Loads default set of integrations. Do not remove.
+      default_config:
+
+      http:
+        use_x_forwarded_for: true
+        trusted_proxies:
+          {{- range .Values.configuration.trusted_proxies }}
+          - {{ . }}
+          {{- end }}
+
+      # Load frontend themes from the themes folder
+      frontend:
+        themes: !include_dir_merge_named themes
+
+      automation: !include automations.yaml
+      script: !include scripts.yaml
+      scene: !include scenes.yaml
+
+  # Liveness/Readiness probes
+  probes:
+    liveness:
+      enabled: true
+      initialDelaySeconds: 60
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 5
+    readiness:
+      enabled: true
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
+
+  # Host network disabled - not needed when using ingress
+  hostNetwork: false
