@@ -132,6 +132,8 @@ configs:
       issuer: https://{{ services.authelia.domain | default('auth.' + global.domain) }}
       clientID: argocd
       clientSecret: $oidc.authelia.clientSecret
+      # Explicitly set auth method to match Authelia client config
+      tokenEndpointAuthMethod: client_secret_basic
       requestedScopes:
         - openid
         - profile
