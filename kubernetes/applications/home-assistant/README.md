@@ -15,7 +15,10 @@ Custom templates provide:
 
 - Traefik IngressRoute for HTTPS access
 - cert-manager Certificate for TLS
-- **Automatic HACS installation** via post-install job (adapted from [small-hack/home-assistant-chart](https://github.com/small-hack/home-assistant-chart))
+- **Automatic HACS installation** via post-install job
+- **Automatic owner creation** - no manual onboarding required!
+
+Both automation features are adapted from [small-hack/home-assistant-chart](https://github.com/small-hack/home-assistant-chart).
 
 ## Access
 
@@ -54,29 +57,52 @@ Custom templates provide:
 └─────────────────────────────────────────────────────────┘
 ```
 
-## SSO Setup (After First Deploy)
+## Automatic Deployment
 
-HACS is automatically installed via a post-install job. You only need to complete the UI setup steps.
+Both **HACS** and the **initial owner user** are created automatically via post-install jobs!
 
-### Step 1: Initial Home Assistant Setup
+### What Happens Automatically
+
+1. **Owner Creation** (`create-owner` job): Creates the initial admin user
+   - Username: `admin` (configurable in secrets)
+   - Password: Stored in `home-assistant-owner-credentials` secret
+   - Skips the manual onboarding wizard entirely
+
+2. **HACS Installation** (`setup-hacs` job): Installs HACS files
+   - Downloads HACS to `/config/custom_components/hacs`
+   - You still need to complete HACS setup in the UI (see below)
+
+### Default Credentials
+
+The initial admin credentials are stored in `config/secrets.yml`:
+
+```yaml
+- name: home-assistant-owner-credentials
+  data:
+    ADMIN_NAME: "Admin"
+    ADMIN_USERNAME: "admin"
+    ADMIN_PASSWORD: "mo8YevUsmo8YevUs!5"
+    ADMIN_LANGUAGE: "en"
+```
+
+**⚠️ Change the password after first login!**
+
+## Post-Deploy: Complete HACS Setup in UI
+
+HACS files are automatically installed, but you need to complete the GitHub integration:
 
 1. Access https://home-assistant.silverseekers.org
-2. Complete the initial onboarding (create local admin account)
-3. This local account is a fallback if OIDC fails
+2. Login with the auto-created credentials (or change password first)
+3. Restart Home Assistant: **Settings → System → Restart**
+4. Go to **Settings → Devices & Services → Add Integration**
+5. Search for "HACS" and add it
+6. Complete GitHub authentication (requires a GitHub account)
 
-### Step 2: Complete HACS Setup in UI
-
-HACS files are automatically installed by the `setup-hacs` job. Complete the setup in the UI:
-
-1. Restart Home Assistant: **Settings → System → Restart**
-2. Go to **Settings → Devices & Services → Add Integration**
-3. Search for "HACS" and add it
-4. Complete GitHub authentication (requires a GitHub account)
-
-> **Note**: If HACS doesn't appear, check the job status:
+> **Note**: If jobs failed, check their status:
 >
 > ```bash
 > kubectl get jobs -n home-assistant
+> kubectl logs -n home-assistant job/home-assistant-create-owner
 > kubectl logs -n home-assistant job/home-assistant-setup-hacs
 > ```
 

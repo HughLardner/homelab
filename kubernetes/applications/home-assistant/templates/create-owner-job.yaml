@@ -1,0 +1,78 @@
+{{- if .Values.owner.create }}
+---
+# Job to create the initial owner user during onboarding
+# Adapted from: https://github.com/small-hack/home-assistant-chart
+# This runs after the main deployment and HACS setup
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Release.Name }}-create-owner
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: {{ .Release.Name }}
+    app.kubernetes.io/component: onboarding
+  annotations:
+    "helm.sh/hook": post-install
+    "helm.sh/hook-weight": "2"
+    "helm.sh/hook-delete-policy": hook-succeeded
+spec:
+  backoffLimit: 5
+  ttlSecondsAfterFinished: 600
+  template:
+    metadata:
+      name: create-owner
+      labels:
+        app.kubernetes.io/name: {{ .Release.Name }}
+        app.kubernetes.io/component: onboarding
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: create-owner
+          image: python:3.12-slim
+          imagePullPolicy: IfNotPresent
+          command:
+            - "sh"
+            - "-c"
+            - |
+              pip install --break-system-packages requests && \
+              echo "Running Home Assistant onboarding script..." && \
+              python /scripts/create_user.py && \
+              echo "Onboarding script completed"
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: scripts
+              mountPath: /scripts
+          envFrom:
+            - secretRef:
+                name: {{ .Values.owner.existingSecret | default (printf "%s-owner-credentials" .Release.Name) }}
+          env:
+            - name: INTERNAL_URL
+              value: "{{ .Values.homeassistant.fullnameOverride | default (printf "%s-homeassistant" .Release.Name) }}:{{ .Values.homeassistant.service.port | default 8123 }}"
+            - name: EXTERNAL_URL
+              value: "https://{{ .Release.Name }}.{{ .Values.global.domain }}/"
+            - name: PVC_CHECK
+              value: "True"
+            {{- if .Values.owner.debug }}
+            - name: DEBUG
+              value: "True"
+            {{- end }}
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+      volumes:
+        - name: scripts
+          configMap:
+            name: {{ .Release.Name }}-create-owner-script
+            defaultMode: 0555
+        - name: config
+          persistentVolumeClaim:
+            # PVC name pattern for StatefulSet: <fullname>-<fullname>-<ordinal>
+            # With fullnameOverride: home-assistant → PVC: home-assistant-home-assistant-0
+            claimName: {{ .Values.homeassistant.fullnameOverride | default (printf "%s-homeassistant" .Release.Name) }}-{{ .Values.homeassistant.fullnameOverride | default (printf "%s-homeassistant" .Release.Name) }}-0
+{{- end }}
+

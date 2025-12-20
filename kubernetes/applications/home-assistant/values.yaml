@@ -12,6 +12,17 @@ auth_enabled: false
 setupHacs:
   enabled: true
 
+# Owner User Creation
+# Automatically creates the initial admin user during first deployment
+# This skips the manual onboarding process
+# Adapted from: https://github.com/small-hack/home-assistant-chart
+owner:
+  create: true
+  # Use existing secret for credentials (created via sealed-secrets)
+  existingSecret: home-assistant-owner-credentials
+  # Enable debug output (WARNING: reveals sensitive data in logs)
+  debug: false
+
 # Home Assistant subchart configuration
 homeassistant:
   # Override fullname to avoid ugly duplication in resource names
