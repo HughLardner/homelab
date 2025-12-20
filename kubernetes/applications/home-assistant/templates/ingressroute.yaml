@@ -1,0 +1,28 @@
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: {{ .Release.Name }}
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    kubernetes.io/ingress.class: traefik
+  labels:
+    app.kubernetes.io/name: {{ .Release.Name }}
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`{{ .Release.Name }}.{{ .Values.global.domain }}`)
+      kind: Rule
+      priority: 10
+      {{- if .Values.auth_enabled }}
+      middlewares:
+        - name: authelia-forward-auth
+          namespace: authelia
+      {{- end }}
+      services:
+        # Service created by the pajikos/home-assistant subchart
+        - name: {{ .Release.Name }}-homeassistant
+          port: {{ .Values.homeassistant.service.port | default 8123 }}
+  tls:
+    secretName: {{ .Release.Name }}-tls

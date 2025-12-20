@@ -1,0 +1,71 @@
+{{- if .Values.setupHacs.enabled }}
+---
+# HACS Setup Job
+# Adapted from: https://github.com/small-hack/home-assistant-chart/blob/main/charts/home-assistant/templates/setup-hacs-job.yaml
+# Automatically installs HACS (Home Assistant Community Store) after deployment
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Release.Name }}-setup-hacs
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: {{ .Release.Name }}
+    app.kubernetes.io/component: setup-hacs
+  annotations:
+    # Run after the main chart is installed
+    "helm.sh/hook": post-install
+    "helm.sh/hook-weight": "1"
+    # Delete the job after it succeeds (keeps cluster clean)
+    "helm.sh/hook-delete-policy": hook-succeeded
+spec:
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 300
+  template:
+    metadata:
+      name: setup-hacs
+      labels:
+        app.kubernetes.io/name: {{ .Release.Name }}
+        app.kubernetes.io/component: setup-hacs
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: setup-hacs
+          image: "{{ .Values.homeassistant.image.repository }}:{{ .Values.homeassistant.image.tag }}"
+          imagePullPolicy: {{ .Values.homeassistant.image.pullPolicy }}
+          command:
+            - "sh"
+            - "-c"
+            - |
+              echo "Setting up HACS..."
+              cd /config
+              
+              # Check if HACS is already installed
+              if [ -d "/config/custom_components/hacs" ]; then
+                echo "HACS is already installed, skipping..."
+                exit 0
+              fi
+              
+              # Download and run HACS installer
+              echo "Downloading HACS installer..."
+              wget -O - https://get.hacs.xyz | bash -
+              
+              echo "HACS installation complete!"
+              echo "Restart Home Assistant and complete setup in the UI:"
+              echo "  Settings → Devices & Services → Add Integration → HACS"
+          volumeMounts:
+            - name: config
+              mountPath: /config
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+      volumes:
+        - name: config
+          persistentVolumeClaim:
+            # PVC name from the pajikos subchart: <release>-<alias>
+            claimName: {{ .Release.Name }}-homeassistant
+{{- end }}
+

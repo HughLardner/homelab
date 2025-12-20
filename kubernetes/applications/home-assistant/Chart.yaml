@@ -1,0 +1,12 @@
+apiVersion: v2
+name: home-assistant
+description: Home Assistant - Open source home automation
+type: application
+version: 1.0.0
+appVersion: "2024.12"
+
+dependencies:
+  - name: home-assistant
+    version: "0.3.35"
+    repository: https://pajikos.github.io/home-assistant-helm-chart/
+    alias: homeassistant
