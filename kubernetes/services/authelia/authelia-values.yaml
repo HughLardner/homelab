@@ -192,7 +192,8 @@ configMap:
             - profile
             - email
             - groups
-          token_endpoint_auth_method: client_secret_basic
+          # ArgoCD uses client_secret_post by default
+          token_endpoint_auth_method: client_secret_post
 
 # Redis subchart - disabled for single-replica homelab (in-memory sessions work fine)
 redis:
