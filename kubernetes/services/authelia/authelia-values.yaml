@@ -163,9 +163,10 @@ configMap:
       # OIDC Clients
       clients:
         # Grafana OIDC Client
+        # Secret must match grafana-oidc-secret in config/secrets.yml
         - client_id: grafana
           client_name: Grafana
-          client_secret: '$pbkdf2-sha512$310000$ElVYx59phkHrnkm09lzr0g$P.Pt82FGcxZfF5.5eyK9kECIvJPgVhzuUA/twroeW2iJOt2IuyVnNJTdbLpTZ6xa5r0h7BfX8m0rtLPaM84VZg'
+          client_secret: '$plaintext$7cc7e1a8589e7316cc3f3b24d17f64a5789fc05650d5b6d81c04931b34f19c6d'
           public: false
           authorization_policy: one_factor
           consent_mode: implicit
@@ -179,9 +180,10 @@ configMap:
           token_endpoint_auth_method: client_secret_post
         
         # ArgoCD OIDC Client
+        # Secret must match argocd-oidc-secret in config/secrets.yml
         - client_id: argocd
           client_name: ArgoCD
-          client_secret: '$pbkdf2-sha512$310000$GaxFT9scw26dIW9LlfnsXQ$vGu5sTaK5tFPT6EED0q.xOzsMhpc7Ny0Uin3DzXCCHDRHgRxUd17Xo7V1J2TbjjZRvkvJxL5Yx4yzOb5rEeJ3w'
+          client_secret: '$plaintext$c13af2e6c3eeb5c6a8e765f954f754d32690235e23ce061957b9074d4a03e394'
           public: false
           authorization_policy: one_factor
           consent_mode: implicit
@@ -192,7 +194,6 @@ configMap:
             - profile
             - email
             - groups
-          # ArgoCD uses client_secret_post by default
           token_endpoint_auth_method: client_secret_post
 
 # Redis subchart - disabled for single-replica homelab (in-memory sessions work fine)
