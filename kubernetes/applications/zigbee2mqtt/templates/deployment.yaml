@@ -1,0 +1,64 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zigbee2mqtt
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: zigbee2mqtt
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: zigbee2mqtt
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: zigbee2mqtt
+    spec:
+      containers:
+        - name: zigbee2mqtt
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          env:
+            {{- range $key, $value := .Values.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+            - name: ZIGBEE2MQTT_CONFIG_MQTT_SERVER
+              value: "mqtt://mosquitto.{{ .Release.Namespace }}.svc.cluster.local"
+            - name: ZIGBEE2MQTT_CONFIG_SERIAL_PORT
+              value: {{ .Values.services.zigbee2mqtt.serial_port | quote }}
+            - name: ZIGBEE2MQTT_CONFIG_SERIAL_ADAPTER
+              value: {{ .Values.services.zigbee2mqtt.serial_adapter | quote }}
+            - name: ZIGBEE2MQTT_CONFIG_FRONTEND_URL
+              value: "https://{{ .Values.services.zigbee2mqtt.domain }}"
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 5
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            failureThreshold: 3
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: zigbee2mqtt-data

@@ -1,0 +1,33 @@
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: {{ .Release.Name }}
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    kubernetes.io/ingress.class: traefik
+    gethomepage.dev/enabled: "true"
+    gethomepage.dev/group: "Home Automation"
+    gethomepage.dev/name: "Zigbee2MQTT"
+    gethomepage.dev/icon: "zigbee2mqtt"
+    gethomepage.dev/description: "Zigbee to MQTT bridge"
+    gethomepage.dev/href: "https://{{ .Values.services.zigbee2mqtt.domain }}"
+  labels:
+    app.kubernetes.io/name: {{ .Release.Name }}
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`{{ .Values.services.zigbee2mqtt.domain }}`)
+      kind: Rule
+      priority: 10
+      {{- if .Values.auth_enabled }}
+      middlewares:
+        - name: authelia-forward-auth
+          namespace: authelia
+      {{- end }}
+      services:
+        - name: zigbee2mqtt
+          port: 8080
+  tls:
+    secretName: {{ .Release.Name }}-tls

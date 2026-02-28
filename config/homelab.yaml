@@ -151,3 +151,22 @@ services:
     # Proxmox integration
     proxmox_url: "https://192.168.10.100:8006"
     proxmox_node: "pve"
+
+  # ---------------------------------------------------------------------------
+  # Mosquitto MQTT Broker
+  # ---------------------------------------------------------------------------
+  mosquitto:
+    storage_size: 1Gi
+    storage_class: longhorn
+
+  # ---------------------------------------------------------------------------
+  # Zigbee2MQTT
+  # ---------------------------------------------------------------------------
+  # SMLIGHT SLZB coordinator (CC2674P10) connected via TCP
+  zigbee2mqtt:
+    domain: zigbee2mqtt.silverseekers.org
+    auth_enabled: true
+    storage_size: 2Gi
+    storage_class: longhorn
+    serial_adapter: zstack
+    serial_port: "tcp://192.168.40.185:6638"  # Replace SMLIGHT_IP with actual IP
