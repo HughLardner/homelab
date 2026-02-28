@@ -39,6 +39,8 @@ spec:
               value: {{ .Values.services.zigbee2mqtt.serial_adapter | quote }}
             - name: ZIGBEE2MQTT_CONFIG_FRONTEND_URL
               value: "https://{{ .Values.services.zigbee2mqtt.domain }}"
+            - name: ZIGBEE2MQTT_CONFIG_ADVANCED_TRANSMIT_POWER
+              value: {{ .Values.services.zigbee2mqtt.transmit_power | default 20 | quote }}
           volumeMounts:
             - name: data
               mountPath: /data

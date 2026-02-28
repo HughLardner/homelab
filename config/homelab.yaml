@@ -169,4 +169,5 @@ services:
     storage_size: 2Gi
     storage_class: longhorn
     serial_adapter: zstack
-    serial_port: "tcp://192.168.40.185:6638"  # Replace SMLIGHT_IP with actual IP
+    serial_port: "tcp://192.168.40.185:7638"
+    transmit_power: 20
