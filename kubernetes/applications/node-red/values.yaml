@@ -1,0 +1,21 @@
+auth_enabled: true
+
+image:
+  repository: nodered/node-red
+  tag: "4.0"
+  pullPolicy: IfNotPresent
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+env:
+  TZ: Europe/London
+  # Convenience env vars — referenced in Node-RED function nodes / docs
+  HOME_ASSISTANT_URL: "http://home-assistant.home-assistant.svc.cluster.local:8123"
+  MQTT_BROKER: "mosquitto.home-automation.svc.cluster.local"
+  MQTT_PORT: "1883"

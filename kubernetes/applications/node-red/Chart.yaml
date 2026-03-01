@@ -1,0 +1,6 @@
+apiVersion: v2
+name: node-red
+description: Node-RED - Flow-based programming for the Internet of Things
+type: application
+version: 1.0.0
+appVersion: "4.0"
