@@ -160,6 +160,15 @@ services:
     storage_class: longhorn
 
   # ---------------------------------------------------------------------------
+  # Node-RED
+  # ---------------------------------------------------------------------------
+  node_red:
+    domain: node-red.silverseekers.org
+    auth_enabled: true
+    storage_size: 2Gi
+    storage_class: longhorn
+
+  # ---------------------------------------------------------------------------
   # Zigbee2MQTT
   # ---------------------------------------------------------------------------
   # SMLIGHT SLZB coordinator (CC2674P10) connected via TCP
