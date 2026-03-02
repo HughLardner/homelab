@@ -75,6 +75,19 @@ secret:
 
 # Authelia configuration
 configMap:
+  # Server authz endpoints - enable Bearer token support for machine-to-machine auth
+  server:
+    endpoints:
+      authz:
+        forward-auth:
+          implementation: 'ForwardAuth'
+          authn_strategies:
+            - name: 'HeaderAuthorization'
+              schemes:
+                - 'Basic'
+                - 'Bearer'
+            - name: 'CookieSession'
+
   # Theme
   theme: dark
   
@@ -138,6 +151,10 @@ configMap:
         resources:
           - "^/api/.*$"
           - "^/.well-known/.*$"
+      # Allow node-red-mcp OAuth2 client_credentials Bearer token access
+      - domain: 'node-red.silverseekers.org'
+        policy: one_factor
+        subject: 'oauth2:client:node-red-mcp'
       # All other subdomains require one-factor auth
       - domain: "*.silverseekers.org"
         policy: one_factor
@@ -214,6 +231,21 @@ configMap:
             - email
             - groups
           token_endpoint_auth_method: client_secret_post
+
+        # Node-RED MCP Client (machine-to-machine Bearer token)
+        # Secret must match node-red-mcp-oidc-client-secret in config/secrets.yml
+        # Use client_credentials grant to obtain a Bearer token for NODE_RED_TOKEN
+        - client_id: node-red-mcp
+          client_name: Node-RED MCP
+          client_secret: '$plaintext$<rotated-secret>'
+          public: false
+          scopes:
+            - authelia.bearer.authz
+          audience:
+            - 'https://node-red.silverseekers.org'
+          grant_types:
+            - client_credentials
+          token_endpoint_auth_method: client_secret_basic
 
 # Redis subchart - disabled for single-replica homelab (in-memory sessions work fine)
 redis:
