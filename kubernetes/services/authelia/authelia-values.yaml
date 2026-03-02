@@ -239,6 +239,7 @@ configMap:
           client_name: Node-RED MCP
           client_secret: '$plaintext$<rotated-secret>'
           public: false
+          authorization_policy: one_factor
           scopes:
             - authelia.bearer.authz
           audience:
