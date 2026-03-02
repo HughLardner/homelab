@@ -59,10 +59,43 @@ kubernetes/services/authelia/
 
 ## OIDC Clients
 
-| Client ID | Application | Redirect URI                                          |
-| --------- | ----------- | ----------------------------------------------------- |
-| grafana   | Grafana     | https://grafana.silverseekers.org/login/generic_oauth |
-| argocd    | ArgoCD      | https://argocd.silverseekers.org/auth/callback        |
+| Client ID     | Application   | Grant Type         | Redirect URI                                          |
+| ------------- | ------------- | ------------------ | ----------------------------------------------------- |
+| grafana       | Grafana       | authorization_code | https://grafana.silverseekers.org/login/generic_oauth |
+| argocd        | ArgoCD        | authorization_code | https://argocd.silverseekers.org/auth/callback        |
+| home-assistant| Home Assistant| authorization_code | https://home-assistant.silverseekers.org/auth/oidc/callback |
+| node-red-mcp  | Node-RED MCP  | client_credentials | (none — machine-to-machine Bearer token)              |
+
+### Node-RED MCP Bearer Token
+
+The `node-red-mcp` client uses the `client_credentials` grant to issue short-lived Bearer tokens that
+allow the Node-RED MCP server to authenticate against Authelia forward-auth without a user session.
+
+**Token request** (repeat when expired, ~1 hour lifetime):
+
+```bash
+curl -s -X POST "https://auth.silverseekers.org/api/oidc/token" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -u "node-red-mcp:<client-secret-from-config/secrets.yml>" \
+  -d "grant_type=client_credentials" \
+  -d "scope=authelia.bearer.authz" \
+  -d "audience=https://node-red.silverseekers.org"
+```
+
+Set the returned `access_token` value as `NODE_RED_TOKEN` in `.cursor/mcp.json`:
+
+```json
+"node-red": {
+  "command": "npx",
+  "args": ["node-red-mcp-server"],
+  "env": {
+    "NODE_RED_URL": "https://node-red.silverseekers.org",
+    "NODE_RED_TOKEN": "<access_token>"
+  }
+}
+```
+
+Then restart or reconnect the Node-RED MCP in Cursor.
 
 ## User Groups
 
