@@ -14,7 +14,7 @@ metadata:
     gethomepage.dev/description: "Home Automation"
     gethomepage.dev/href: "https://{{ .Release.Name }}.{{ .Values.global.domain }}"
     # Pod selector so Homepage can resolve status (avoids NOT FOUND when href returns redirect/401)
-    gethomepage.dev/pod-selector: "app.kubernetes.io/name=home-assistant"
+    gethomepage.dev/pod-selector: "app.kubernetes.io/name=homeassistant"
   labels:
     app.kubernetes.io/name: {{ .Release.Name }}
 spec:

@@ -1,0 +1,30 @@
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pihole-data
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: pihole
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: {{ .Values.services.pihole.storage_class | default "longhorn" }}
+  resources:
+    requests:
+      storage: {{ .Values.services.pihole.storage_size | default "1Gi" }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pihole-dnsmasq-data
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: pihole
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: {{ .Values.services.pihole.storage_class | default "longhorn" }}
+  resources:
+    requests:
+      storage: 100Mi

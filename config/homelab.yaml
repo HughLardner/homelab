@@ -52,6 +52,7 @@ services:
     replicas: 2
     service_type: LoadBalancer
     storage_class: longhorn
+    traefik_ip: "192.168.10.150"
 
   # ---------------------------------------------------------------------------
   # ArgoCD GitOps
@@ -180,3 +181,15 @@ services:
     serial_adapter: zstack
     serial_port: "tcp://192.168.40.185:7638"
     transmit_power: 20
+
+  # ---------------------------------------------------------------------------
+  # Pi-hole DNS & Ad Blocker
+  # ---------------------------------------------------------------------------
+  pihole:
+    domain: pihole.silverseekers.org
+    auth_enabled: true
+    storage_size: 1Gi
+    storage_class: longhorn
+    dns_ip: "192.168.10.151"
+    upstream_dns_1: "1.1.1.1"
+    upstream_dns_2: "1.0.0.1"
