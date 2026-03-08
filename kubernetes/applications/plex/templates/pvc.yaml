@@ -1,0 +1,34 @@
+---
+# Plex config — metadata, database, thumbnails, transcoder temp files
+# Uses longhorn-retain so the PV survives PVC deletion (protects library metadata)
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: plex-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: plex
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: {{ .Values.services.plex.config_storage_class | default "longhorn-retain" }}
+  resources:
+    requests:
+      storage: {{ .Values.services.plex.config_storage_size | default "20Gi" }}
+---
+# Plex media — libraries (movies, TV, music)
+# Uses standard longhorn; migrate to NFS PVC when NAS is added
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: plex-media
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: plex
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: {{ .Values.services.plex.media_storage_class | default "longhorn" }}
+  resources:
+    requests:
+      storage: {{ .Values.services.plex.media_storage_size | default "100Gi" }}

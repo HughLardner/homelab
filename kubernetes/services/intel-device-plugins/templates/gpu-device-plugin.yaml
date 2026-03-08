@@ -1,0 +1,15 @@
+---
+# GpuDevicePlugin CR — instructs the operator to deploy the Intel GPU device plugin
+# This registers gpu.intel.com/i915 as a schedulable resource on nodes labelled
+# with intel.feature.node.kubernetes.io/gpu=true
+apiVersion: deviceplugin.intel.com/v1
+kind: GpuDevicePlugin
+metadata:
+  name: gpudeviceplugin
+  namespace: inteldeviceplugins-system
+spec:
+  image: intel/intel-gpu-plugin:0.32.1
+  sharedDevNum: {{ .Values.sharedDevNum | default 1 }}
+  nodeSelector:
+    {{ .Values.nodeLabelKey | default "intel.feature.node.kubernetes.io/gpu" }}: {{ .Values.nodeLabelValue | default "true" | quote }}
+  logLevel: 4

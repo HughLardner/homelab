@@ -1,0 +1,63 @@
+---
+# ArgoCD Application for Intel Device Plugins Operator
+# Enables gpu.intel.com/i915 resource for Intel iGPU hardware transcoding (Plex QSV)
+# Sync Wave 1: Infrastructure tier — must be ready before workloads request GPU resources
+#
+# Prerequisites (manual — see PROXMOX-SETUP.md):
+#   1. IOMMU enabled on Proxmox host (intel_iommu=on iommu=pt)
+#   2. hostpci block added to terraform/nodes.tf and terraform apply run
+#   3. /dev/dri/renderD128 visible in the K3s VM
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: intel-device-plugins
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: default
+
+  sources:
+    # 1. Upstream Intel Device Plugins Operator Helm chart
+    - repoURL: https://intel.github.io/helm-charts/
+      chart: intel-device-plugins-operator
+      targetRevision: 0.32.1
+      helm:
+        releaseName: intel-device-plugins-operator
+        values: |
+          nodeFeatureDiscovery:
+            enabled: false
+
+    # 2. Local chart — GpuDevicePlugin CR + node label job
+    - repoURL: https://github.com/HughLardner/homelab.git
+      targetRevision: HEAD
+      path: kubernetes/services/intel-device-plugins
+      helm:
+        releaseName: intel-device-plugins-config
+        valueFiles:
+          - $values/config/homelab.yaml
+          - values.yaml
+
+    # 3. Values reference
+    - repoURL: https://github.com/HughLardner/homelab.git
+      targetRevision: HEAD
+      ref: values
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: inteldeviceplugins-system
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m

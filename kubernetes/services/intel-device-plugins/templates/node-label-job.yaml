@@ -1,0 +1,57 @@
+---
+# One-shot Job to label the K3s node with intel.feature.node.kubernetes.io/gpu=true
+# This label is required by the GpuDevicePlugin nodeSelector so the device plugin
+# DaemonSet is scheduled onto the iGPU-enabled node.
+# The Job is idempotent — kubectl label --overwrite is safe to re-run.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: node-labeler
+  namespace: inteldeviceplugins-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: node-labeler
+rules:
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: node-labeler
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: node-labeler
+subjects:
+  - kind: ServiceAccount
+    name: node-labeler
+    namespace: inteldeviceplugins-system
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: label-gpu-node
+  namespace: inteldeviceplugins-system
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  template:
+    spec:
+      serviceAccountName: node-labeler
+      restartPolicy: OnFailure
+      containers:
+        - name: kubectl
+          image: bitnami/kubectl:latest
+          command:
+            - /bin/sh
+            - -c
+            - |
+              kubectl label nodes --all \
+                intel.feature.node.kubernetes.io/gpu=true \
+                --overwrite
+              echo "Node GPU label applied successfully"

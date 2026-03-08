@@ -1,0 +1,7 @@
+# Node label is set by the node-label job in templates/
+# The operator uses intel.feature.node.kubernetes.io/gpu=true to identify GPU nodes
+nodeLabelKey: intel.feature.node.kubernetes.io/gpu
+nodeLabelValue: "true"
+
+# Number of containers that can share a single GPU device
+sharedDevNum: 1
