@@ -58,6 +58,17 @@ resource "proxmox_virtual_environment_vm" "node" {
     type   = "serial0"
   }
 
+  # Intel iGPU passthrough for hardware transcoding (Plex QSV)
+  # PCI address verified with: ssh root@proxmox01 "lspci | grep -i VGA"
+  # IOMMU must be enabled on host: intel_iommu=on iommu=pt in GRUB
+  hostpci {
+    device = "hostpci0"
+    id     = "0000:00:02"
+    pcie   = true
+    rombar = true
+    xvga   = false
+  }
+
   initialization {
     interface = "ide2"
 
@@ -105,6 +116,8 @@ resource "proxmox_virtual_environment_vm" "node" {
       initialization,
       # Protect against accidental disk recreation
       disk,
+      # Protect hostpci passthrough from being removed on subsequent applies
+      hostpci,
     ]
   }
 }

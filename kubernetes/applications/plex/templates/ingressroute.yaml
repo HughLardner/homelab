@@ -1,0 +1,30 @@
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: {{ .Release.Name }}
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    kubernetes.io/ingress.class: traefik
+    gethomepage.dev/enabled: "true"
+    gethomepage.dev/group: "Media"
+    gethomepage.dev/name: "Plex"
+    gethomepage.dev/icon: "plex"
+    gethomepage.dev/description: "Media server with Intel QSV transcoding"
+    gethomepage.dev/href: "https://{{ .Values.services.plex.domain }}"
+  labels:
+    app.kubernetes.io/name: {{ .Release.Name }}
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`{{ .Values.services.plex.domain }}`)
+      kind: Rule
+      priority: 10
+      # No Authelia middleware — Plex handles its own authentication.
+      # Adding forward-auth here would break Plex mobile/desktop clients.
+      services:
+        - name: plex
+          port: 32400
+  tls:
+    secretName: {{ .Release.Name }}-tls

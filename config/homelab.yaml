@@ -193,3 +193,14 @@ services:
     dns_ip: "192.168.10.151"
     upstream_dns_1: "1.1.1.1"
     upstream_dns_2: "1.0.0.1"
+
+  # ---------------------------------------------------------------------------
+  # Plex Media Server
+  # ---------------------------------------------------------------------------
+  plex:
+    domain: plex.silverseekers.org
+    auth_enabled: false            # Plex has its own auth — Authelia would break Plex clients
+    config_storage_size: 20Gi
+    config_storage_class: longhorn-retain  # survives PVC deletion — preserves metadata/db
+    media_storage_size: 100Gi
+    media_storage_class: longhorn          # migrate to NAS PVC when hardware arrives
