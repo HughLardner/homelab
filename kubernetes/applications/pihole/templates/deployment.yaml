@@ -40,10 +40,7 @@ spec:
             - name: PIHOLE_DNS_2
               value: {{ .Values.services.pihole.upstream_dns_2 | default "1.0.0.1" | quote }}
             - name: WEBPASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: pihole-web-secret
-                  key: WEBPASSWORD
+              value: ""
             - name: VIRTUAL_HOST
               value: {{ .Values.services.pihole.domain | quote }}
             - name: DNSMASQ_LISTENING
