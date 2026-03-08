@@ -1,0 +1,33 @@
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: {{ .Release.Name }}
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    kubernetes.io/ingress.class: traefik
+    gethomepage.dev/enabled: "true"
+    gethomepage.dev/group: "Infrastructure"
+    gethomepage.dev/name: "Pi-hole"
+    gethomepage.dev/icon: "pi-hole"
+    gethomepage.dev/description: "Network-wide ad blocking"
+    gethomepage.dev/href: "https://{{ .Values.services.pihole.domain }}"
+  labels:
+    app.kubernetes.io/name: {{ .Release.Name }}
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`{{ .Values.services.pihole.domain }}`)
+      kind: Rule
+      priority: 10
+      {{- if .Values.auth_enabled }}
+      middlewares:
+        - name: authelia-forward-auth
+          namespace: authelia
+      {{- end }}
+      services:
+        - name: pihole-web
+          port: 80
+  tls:
+    secretName: {{ .Release.Name }}-tls

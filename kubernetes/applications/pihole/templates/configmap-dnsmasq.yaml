@@ -1,0 +1,14 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pihole-local-dns
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: {{ .Release.Name }}
+data:
+  02-local-dns.conf: |
+    # Wildcard override: resolve all *.{{ .Values.global.domain }} to Traefik's LAN IP
+    # This provides split-horizon DNS — no internet round-trip for local services,
+    # and resolution continues to work if the internet connection is down.
+    address=/.{{ .Values.global.domain }}/{{ .Values.services.traefik.traefik_ip }}
