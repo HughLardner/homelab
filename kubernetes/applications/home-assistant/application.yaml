@@ -35,14 +35,19 @@ spec:
     server: https://kubernetes.default.svc
     namespace: home-assistant
 
-  # Ignore differences that Kubernetes adds/normalizes
-  # StatefulSets get many default values added by k8s admission controllers
+  # Ignore fields that Kubernetes auto-injects via admission defaulting.
+  # These are attributed to ArgoCD's own SSA manager (not kube-controller-manager),
+  # so managedFieldsManagers won't catch them. jqPathExpressions target them precisely.
   ignoreDifferences:
     - group: apps
       kind: StatefulSet
-      # Ignore all fields added by Kubernetes defaults
-      managedFieldsManagers:
-        - kube-controller-manager
+      jqPathExpressions:
+        # Kubernetes defaults volumeMode to "Filesystem" if unset in the chart
+        - .spec.volumeClaimTemplates[]?.spec.volumeMode
+        # Kubernetes adds a status subresource to VCT entries
+        - .spec.volumeClaimTemplates[]?.status
+        # kube-controller-manager defaults this retention policy on StatefulSets
+        - .spec.persistentVolumeClaimRetentionPolicy
 
   syncPolicy:
     automated:
