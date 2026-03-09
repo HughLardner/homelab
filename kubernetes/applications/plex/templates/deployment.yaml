@@ -75,7 +75,7 @@ spec:
             periodSeconds: 15
             failureThreshold: 3
         - name: filebrowser
-          image: filebrowser/filebrowser:s6
+          image: filebrowser/filebrowser:latest
           args:
             - --port=8080
             - --root=/media
