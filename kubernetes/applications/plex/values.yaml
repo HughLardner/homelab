@@ -18,3 +18,11 @@ env:
   TZ: Europe/London
   PUID: "1000"
   PGID: "1000"
+
+# Supplemental groups for /dev/dri access
+# video GID (44) is standard across distros
+# render GID varies by distro — check with: getent group render
+# Ubuntu 24.04 (this node): render = 992
+# Typical Debian/other: render = 105
+securityContext:
+  supplementalGroups: [44, 992]

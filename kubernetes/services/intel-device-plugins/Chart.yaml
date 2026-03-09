@@ -3,4 +3,4 @@ name: intel-device-plugins-config
 description: Intel GPU Device Plugin configuration for Kubernetes - enables gpu.intel.com/i915 resources
 type: application
 version: 1.0.0
-appVersion: "0.32.1"
+appVersion: "0.35.0"

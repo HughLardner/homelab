@@ -60,7 +60,12 @@ resource "proxmox_virtual_environment_vm" "node" {
 
   # Intel iGPU passthrough for hardware transcoding (Plex QSV)
   # PCI address verified with: ssh root@proxmox01 "lspci | grep -i VGA"
-  # IOMMU must be enabled on host: intel_iommu=on iommu=pt in GRUB
+  # PVE 9.1.6 requirements (see kubernetes/services/intel-device-plugins/PROXMOX-SETUP.md):
+  #   - IOMMU: intel_iommu=on iommu=pt initcall_blacklist=sysfb_init + video= flags in GRUB
+  #   - VFIO modules: vfio, vfio_iommu_type1, vfio_virqfd in /etc/modules
+  #   - Boot: update-grub + reboot (proxmox-boot-tool refresh only needed on EFI/proxmox-boot systems)
+  # romfile is NOT used — Intel N-series iGPU has no readable sysfs ROM (0-byte file).
+  # QSV-only passthrough works without romfile (xvga=false, encode/decode engines only).
   hostpci {
     device = "hostpci0"
     id     = "0000:00:02"
@@ -116,7 +121,8 @@ resource "proxmox_virtual_environment_vm" "node" {
       initialization,
       # Protect against accidental disk recreation
       disk,
-      # Protect hostpci passthrough from being removed on subsequent applies
+      # Protect hostpci passthrough (including romfile) from being removed on subsequent applies.
+      # To update romfile or other hostpci settings, use: qm set <vmid> --hostpci0 ...
       hostpci,
     ]
   }

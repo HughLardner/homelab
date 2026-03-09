@@ -8,7 +8,7 @@ metadata:
   name: gpudeviceplugin
   namespace: inteldeviceplugins-system
 spec:
-  image: intel/intel-gpu-plugin:0.32.1
+  image: intel/intel-gpu-plugin:0.35.0
   sharedDevNum: {{ .Values.sharedDevNum | default 1 }}
   nodeSelector:
     {{ .Values.nodeLabelKey | default "intel.feature.node.kubernetes.io/gpu" }}: {{ .Values.nodeLabelValue | default "true" | quote }}
