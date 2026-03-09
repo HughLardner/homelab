@@ -195,6 +195,15 @@ services:
     upstream_dns_2: "1.0.0.1"
 
   # ---------------------------------------------------------------------------
+  # Filebrowser — web UI for uploading/managing Plex media
+  # Runs as a sidecar in the Plex pod (shares plex-media RWO PVC)
+  # Protected by Authelia; accessible at files.silverseekers.org
+  # ---------------------------------------------------------------------------
+  filebrowser:
+    domain: files.silverseekers.org
+    auth_enabled: true
+
+  # ---------------------------------------------------------------------------
   # Plex Media Server
   # ---------------------------------------------------------------------------
   plex:
