@@ -151,6 +151,12 @@ configMap:
         resources:
           - "^/api/.*$"
           - "^/.well-known/.*$"
+      # Allow Grafana API access with service account tokens (MCP, automation)
+      # Grafana enforces its own auth; Authelia just steps aside for /api/* paths
+      - domain: grafana.silverseekers.org
+        policy: bypass
+        resources:
+          - "^/api/.*$"
       # Allow node-red-mcp OAuth2 client_credentials Bearer token access
       - domain: 'node-red.silverseekers.org'
         policy: one_factor
