@@ -967,3 +967,253 @@ data:
       "version": 1
     }
 
+---
+# Authelia Dashboard
+# Tracks authentication requests, failures, OIDC activity, and session durations
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-authelia
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+  annotations:
+    grafana_folder: "Infrastructure"
+data:
+  authelia.json: |
+    {
+      "description": "Authelia authentication events, OIDC activity, and session metrics",
+      "editable": true,
+      "panels": [
+        {
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "short"}},
+          "gridPos": {"h": 4, "w": 4, "x": 0, "y": 0},
+          "id": 1,
+          "options": {"colorMode": "background", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"]}},
+          "targets": [{"expr": "sum(increase(authelia_authentication_requests_total{success=\"true\"}[1h]))", "legendFormat": "Successful", "refId": "A"}],
+          "title": "Successful Auths (1h)",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 1}, {"color": "red", "value": 5}]}, "unit": "short"}},
+          "gridPos": {"h": 4, "w": 4, "x": 4, "y": 0},
+          "id": 2,
+          "options": {"colorMode": "background", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"]}},
+          "targets": [{"expr": "sum(increase(authelia_authentication_requests_total{success=\"false\"}[1h]))", "legendFormat": "Failed", "refId": "A"}],
+          "title": "Failed Auths (1h)",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "short"}},
+          "gridPos": {"h": 4, "w": 4, "x": 8, "y": 0},
+          "id": 3,
+          "options": {"colorMode": "background", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"]}},
+          "targets": [{"expr": "sum(increase(authelia_oidc_requests_total[1h]))", "legendFormat": "OIDC Requests", "refId": "A"}],
+          "title": "OIDC Requests (1h)",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 5}, {"color": "red", "value": 20}]}, "unit": "short"}},
+          "gridPos": {"h": 4, "w": 4, "x": 12, "y": 0},
+          "id": 4,
+          "options": {"colorMode": "background", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"]}},
+          "targets": [{"expr": "sum(increase(authelia_regulation_ban_events_total[24h]))", "legendFormat": "Bans", "refId": "A"}],
+          "title": "IP Bans (24h)",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "unit": "short"}},
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+          "id": 5,
+          "options": {"legend": {"calcs": ["sum"], "displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi"}},
+          "targets": [
+            {"expr": "sum by (success) (increase(authelia_authentication_requests_total[5m]))", "legendFormat": "success={{success}}", "refId": "A"}
+          ],
+          "title": "Authentication Requests (5m rate)",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "unit": "short"}},
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
+          "id": 6,
+          "options": {"legend": {"calcs": ["sum"], "displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi"}},
+          "targets": [
+            {"expr": "sum by (endpoint) (increase(authelia_oidc_requests_total[5m]))", "legendFormat": "{{endpoint}}", "refId": "A"}
+          ],
+          "title": "OIDC Endpoint Requests (5m rate)",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "unit": "s"}},
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 12},
+          "id": 7,
+          "options": {"legend": {"calcs": ["mean", "max"], "displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi"}},
+          "targets": [
+            {"expr": "histogram_quantile(0.50, sum(rate(authelia_authentication_duration_seconds_bucket[5m])) by (le))", "legendFormat": "p50", "refId": "A"},
+            {"expr": "histogram_quantile(0.95, sum(rate(authelia_authentication_duration_seconds_bucket[5m])) by (le))", "legendFormat": "p95", "refId": "B"},
+            {"expr": "histogram_quantile(0.99, sum(rate(authelia_authentication_duration_seconds_bucket[5m])) by (le))", "legendFormat": "p99", "refId": "C"}
+          ],
+          "title": "Authentication Latency (p50 / p95 / p99)",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "unit": "short"}},
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 12},
+          "id": 8,
+          "options": {"legend": {"calcs": ["lastNotNull"], "displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi"}},
+          "targets": [
+            {"expr": "sum by (regulation_type) (increase(authelia_regulation_ban_events_total[5m]))", "legendFormat": "{{regulation_type}}", "refId": "A"}
+          ],
+          "title": "Regulation / Ban Events",
+          "type": "timeseries"
+        }
+      ],
+      "schemaVersion": 38,
+      "style": "dark",
+      "tags": ["authelia", "sso", "security"],
+      "templating": {
+        "list": [
+          {"current": {"selected": false, "text": "VictoriaMetrics", "value": "VictoriaMetrics"}, "hide": 0, "includeAll": false, "label": "Datasource", "multi": false, "name": "datasource", "options": [], "query": "prometheus", "refresh": 1, "regex": "", "skipUrlSync": false, "type": "datasource"}
+        ]
+      },
+      "time": {"from": "now-6h", "to": "now"},
+      "timepicker": {},
+      "timezone": "",
+      "title": "Authelia",
+      "uid": "authelia-homelab",
+      "version": 1
+    }
+
+---
+# Promtail Pipeline Health Dashboard
+# Monitors log collection throughput, errors, and Loki push health
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-promtail
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+  annotations:
+    grafana_folder: "Logs"
+data:
+  promtail.json: |
+    {
+      "description": "Promtail log pipeline health: scrape throughput, drop rate, and Loki push latency",
+      "editable": true,
+      "panels": [
+        {
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "Bps"}},
+          "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+          "id": 1,
+          "options": {"colorMode": "background", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"]}},
+          "targets": [{"expr": "sum(rate(promtail_sent_bytes_total[5m]))", "legendFormat": "Bytes/s", "refId": "A"}],
+          "title": "Bytes Sent to Loki",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "short"}},
+          "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+          "id": 2,
+          "options": {"colorMode": "background", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"]}},
+          "targets": [{"expr": "sum(rate(promtail_read_lines_total[5m]))", "legendFormat": "Lines/s", "refId": "A"}],
+          "title": "Lines Read/s",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 1}, {"color": "red", "value": 10}]}, "unit": "short"}},
+          "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+          "id": 3,
+          "options": {"colorMode": "background", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"]}},
+          "targets": [{"expr": "sum(rate(promtail_dropped_entries_total[5m]))", "legendFormat": "Drops/s", "refId": "A"}],
+          "title": "Dropped Entries/s",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 0.1}, {"color": "red", "value": 1}]}, "unit": "s"}},
+          "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
+          "id": 4,
+          "options": {"colorMode": "background", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"]}},
+          "targets": [{"expr": "histogram_quantile(0.99, sum(rate(promtail_request_duration_seconds_bucket[5m])) by (le))", "legendFormat": "p99", "refId": "A"}],
+          "title": "Loki Push Latency p99",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "unit": "Bps"}},
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+          "id": 5,
+          "options": {"legend": {"calcs": ["mean", "max"], "displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi"}},
+          "targets": [
+            {"expr": "sum by (host) (rate(promtail_sent_bytes_total[5m]))", "legendFormat": "{{host}}", "refId": "A"}
+          ],
+          "title": "Bytes Sent to Loki by Node",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "unit": "short"}},
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
+          "id": 6,
+          "options": {"legend": {"calcs": ["sum"], "displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi"}},
+          "targets": [
+            {"expr": "sum by (host) (rate(promtail_dropped_entries_total[5m]))", "legendFormat": "dropped / {{host}}", "refId": "A"},
+            {"expr": "sum by (host) (rate(promtail_read_lines_total[5m]))", "legendFormat": "read / {{host}}", "refId": "B"}
+          ],
+          "title": "Lines Read vs Dropped by Node",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "unit": "s"}},
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 12},
+          "id": 7,
+          "options": {"legend": {"calcs": ["mean", "max"], "displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi"}},
+          "targets": [
+            {"expr": "histogram_quantile(0.50, sum(rate(promtail_request_duration_seconds_bucket[5m])) by (le, host))", "legendFormat": "p50 / {{host}}", "refId": "A"},
+            {"expr": "histogram_quantile(0.95, sum(rate(promtail_request_duration_seconds_bucket[5m])) by (le, host))", "legendFormat": "p95 / {{host}}", "refId": "B"},
+            {"expr": "histogram_quantile(0.99, sum(rate(promtail_request_duration_seconds_bucket[5m])) by (le, host))", "legendFormat": "p99 / {{host}}", "refId": "C"}
+          ],
+          "title": "Loki Push Latency by Node (p50 / p95 / p99)",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "unit": "short"}},
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 12},
+          "id": 8,
+          "options": {"legend": {"calcs": ["lastNotNull"], "displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi"}},
+          "targets": [
+            {"expr": "sum by (status_code) (rate(promtail_request_duration_seconds_count[5m]))", "legendFormat": "HTTP {{status_code}}", "refId": "A"}
+          ],
+          "title": "Loki Push Responses by Status Code",
+          "type": "timeseries"
+        }
+      ],
+      "schemaVersion": 38,
+      "style": "dark",
+      "tags": ["logs", "promtail", "loki"],
+      "templating": {
+        "list": [
+          {"current": {"selected": false, "text": "VictoriaMetrics", "value": "VictoriaMetrics"}, "hide": 0, "includeAll": false, "label": "Datasource", "multi": false, "name": "datasource", "options": [], "query": "prometheus", "refresh": 1, "regex": "", "skipUrlSync": false, "type": "datasource"}
+        ]
+      },
+      "time": {"from": "now-3h", "to": "now"},
+      "timepicker": {},
+      "timezone": "",
+      "title": "Promtail Pipeline Health",
+      "uid": "promtail-homelab",
+      "version": 1
+    }

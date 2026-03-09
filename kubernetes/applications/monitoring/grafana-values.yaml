@@ -215,19 +215,7 @@ dashboards:
       revision: 1
       datasource: VictoriaMetrics
 
-    # Kubernetes cluster monitoring (Prometheus)
-    k8s-cluster-prometheus:
-      gnetId: 315
-      revision: 3
-      datasource: VictoriaMetrics
-
     # === Kubernetes Compute Resources ===
-    # Compute Resources / Cluster
-    k8s-resources-cluster:
-      gnetId: 7187
-      revision: 1
-      datasource: VictoriaMetrics
-
     # Compute Resources / Namespace (Pods)
     k8s-resources-namespace:
       gnetId: 10000
@@ -266,12 +254,6 @@ dashboards:
       revision: 31
       datasource: VictoriaMetrics
 
-    # Node Exporter for Prometheus
-    node-exporter-prometheus:
-      gnetId: 11074
-      revision: 9
-      datasource: VictoriaMetrics
-
     # === Storage ===
     # Persistent Volumes
     persistent-volumes:
@@ -280,20 +262,8 @@ dashboards:
       datasource: VictoriaMetrics
 
     # === Workloads ===
-    # Kubernetes Pods
-    kubernetes-pods:
-      gnetId: 6336
-      revision: 1
-      datasource: VictoriaMetrics
-
-    # Kubernetes Deployments
+    # Kubernetes Deployments / StatefulSets / DaemonSets
     k8s-deployments:
-      gnetId: 8588
-      revision: 1
-      datasource: VictoriaMetrics
-
-    # Kubernetes StatefulSets
-    k8s-statefulsets:
       gnetId: 8588
       revision: 1
       datasource: VictoriaMetrics
@@ -303,4 +273,17 @@ dashboards:
     k8s-networking:
       gnetId: 12124
       revision: 1
+      datasource: VictoriaMetrics
+
+    # === Applications ===
+    # Intel GPU Metrics (for Plex hardware transcoding)
+    intel-gpu:
+      gnetId: 16763
+      revision: 1
+      datasource: VictoriaMetrics
+
+    # Pi-hole DNS stats (requires pihole-exporter)
+    pihole:
+      gnetId: 10176
+      revision: 3
       datasource: VictoriaMetrics
