@@ -22,7 +22,7 @@ spec:
       # GIDs are node-specific — configured in values.yaml
       # Check node render GID with: getent group render
       securityContext:
-        supplementalGroups: {{ .Values.securityContext.supplementalGroups }}
+        supplementalGroups: {{ .Values.securityContext.supplementalGroups | toJson }}
       containers:
         - name: plex
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
