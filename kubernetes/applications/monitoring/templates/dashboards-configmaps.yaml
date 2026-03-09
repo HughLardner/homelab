@@ -1032,7 +1032,7 @@ data:
           "id": 5,
           "options": {"legend": {"calcs": ["sum"], "displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi"}},
           "targets": [
-            {"expr": "sum by (success) (increase(authelia_authentication_requests_total[5m]))", "legendFormat": "success={{success}}", "refId": "A"}
+            {"expr": "sum by (success) (increase(authelia_authentication_requests_total[5m]))", "legendFormat": "success={{ "{{success}}" }}", "refId": "A"}
           ],
           "title": "Authentication Requests (5m rate)",
           "type": "timeseries"
@@ -1044,7 +1044,7 @@ data:
           "id": 6,
           "options": {"legend": {"calcs": ["sum"], "displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi"}},
           "targets": [
-            {"expr": "sum by (endpoint) (increase(authelia_oidc_requests_total[5m]))", "legendFormat": "{{endpoint}}", "refId": "A"}
+            {"expr": "sum by (endpoint) (increase(authelia_oidc_requests_total[5m]))", "legendFormat": "{{ "{{endpoint}}" }}", "refId": "A"}
           ],
           "title": "OIDC Endpoint Requests (5m rate)",
           "type": "timeseries"
@@ -1070,7 +1070,7 @@ data:
           "id": 8,
           "options": {"legend": {"calcs": ["lastNotNull"], "displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi"}},
           "targets": [
-            {"expr": "sum by (regulation_type) (increase(authelia_regulation_ban_events_total[5m]))", "legendFormat": "{{regulation_type}}", "refId": "A"}
+            {"expr": "sum by (regulation_type) (increase(authelia_regulation_ban_events_total[5m]))", "legendFormat": "{{ "{{regulation_type}}" }}", "refId": "A"}
           ],
           "title": "Regulation / Ban Events",
           "type": "timeseries"
@@ -1157,7 +1157,7 @@ data:
           "id": 5,
           "options": {"legend": {"calcs": ["mean", "max"], "displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi"}},
           "targets": [
-            {"expr": "sum by (host) (rate(promtail_sent_bytes_total[5m]))", "legendFormat": "{{host}}", "refId": "A"}
+            {"expr": "sum by (host) (rate(promtail_sent_bytes_total[5m]))", "legendFormat": "{{ "{{host}}" }}", "refId": "A"}
           ],
           "title": "Bytes Sent to Loki by Node",
           "type": "timeseries"
@@ -1169,8 +1169,8 @@ data:
           "id": 6,
           "options": {"legend": {"calcs": ["sum"], "displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi"}},
           "targets": [
-            {"expr": "sum by (host) (rate(promtail_dropped_entries_total[5m]))", "legendFormat": "dropped / {{host}}", "refId": "A"},
-            {"expr": "sum by (host) (rate(promtail_read_lines_total[5m]))", "legendFormat": "read / {{host}}", "refId": "B"}
+            {"expr": "sum by (host) (rate(promtail_dropped_entries_total[5m]))", "legendFormat": "dropped / {{ "{{host}}" }}", "refId": "A"},
+            {"expr": "sum by (host) (rate(promtail_read_lines_total[5m]))", "legendFormat": "read / {{ "{{host}}" }}", "refId": "B"}
           ],
           "title": "Lines Read vs Dropped by Node",
           "type": "timeseries"
@@ -1182,9 +1182,9 @@ data:
           "id": 7,
           "options": {"legend": {"calcs": ["mean", "max"], "displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi"}},
           "targets": [
-            {"expr": "histogram_quantile(0.50, sum(rate(promtail_request_duration_seconds_bucket[5m])) by (le, host))", "legendFormat": "p50 / {{host}}", "refId": "A"},
-            {"expr": "histogram_quantile(0.95, sum(rate(promtail_request_duration_seconds_bucket[5m])) by (le, host))", "legendFormat": "p95 / {{host}}", "refId": "B"},
-            {"expr": "histogram_quantile(0.99, sum(rate(promtail_request_duration_seconds_bucket[5m])) by (le, host))", "legendFormat": "p99 / {{host}}", "refId": "C"}
+            {"expr": "histogram_quantile(0.50, sum(rate(promtail_request_duration_seconds_bucket[5m])) by (le, host))", "legendFormat": "p50 / {{ "{{host}}" }}", "refId": "A"},
+            {"expr": "histogram_quantile(0.95, sum(rate(promtail_request_duration_seconds_bucket[5m])) by (le, host))", "legendFormat": "p95 / {{ "{{host}}" }}", "refId": "B"},
+            {"expr": "histogram_quantile(0.99, sum(rate(promtail_request_duration_seconds_bucket[5m])) by (le, host))", "legendFormat": "p99 / {{ "{{host}}" }}", "refId": "C"}
           ],
           "title": "Loki Push Latency by Node (p50 / p95 / p99)",
           "type": "timeseries"
@@ -1196,7 +1196,7 @@ data:
           "id": 8,
           "options": {"legend": {"calcs": ["lastNotNull"], "displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi"}},
           "targets": [
-            {"expr": "sum by (status_code) (rate(promtail_request_duration_seconds_count[5m]))", "legendFormat": "HTTP {{status_code}}", "refId": "A"}
+            {"expr": "sum by (status_code) (rate(promtail_request_duration_seconds_count[5m]))", "legendFormat": "HTTP {{ "{{status_code}}" }}", "refId": "A"}
           ],
           "title": "Loki Push Responses by Status Code",
           "type": "timeseries"
