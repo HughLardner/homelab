@@ -243,3 +243,67 @@ spec:
       interval: "60s"
       path: /metrics
 
+---
+# =============================================================================
+# Authelia Metrics Scrape
+# =============================================================================
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMServiceScrape
+metadata:
+  name: authelia
+  namespace: monitoring
+spec:
+  namespaceSelector:
+    matchNames:
+      - authelia
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: authelia
+  endpoints:
+    - port: metrics
+      interval: "60s"
+      path: /metrics
+
+---
+# =============================================================================
+# Promtail Metrics Scrape
+# =============================================================================
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMServiceScrape
+metadata:
+  name: promtail
+  namespace: monitoring
+spec:
+  namespaceSelector:
+    matchNames:
+      - promtail
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: promtail
+  endpoints:
+    - port: http-metrics
+      interval: "60s"
+      path: /metrics
+
+---
+# =============================================================================
+# Cloudflared Metrics Scrape
+# No Service is created by the cloudflared chart, so scrape pods directly
+# =============================================================================
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMPodScrape
+metadata:
+  name: cloudflared
+  namespace: monitoring
+spec:
+  namespaceSelector:
+    matchNames:
+      - cloudflared
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: cloudflared
+  podMetricsEndpoints:
+    - port: metrics
+      interval: "60s"
+      path: /metrics
+
