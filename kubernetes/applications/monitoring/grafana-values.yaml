@@ -277,8 +277,9 @@ dashboards:
 
     # === Applications ===
     # Intel GPU Metrics (for Plex hardware transcoding)
+    # https://grafana.com/grafana/dashboards/23251
     intel-gpu:
-      gnetId: 16763
+      gnetId: 23251
       revision: 1
       datasource: VictoriaMetrics
 
