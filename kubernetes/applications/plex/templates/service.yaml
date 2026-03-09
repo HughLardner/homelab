@@ -13,5 +13,9 @@ spec:
       port: 32400
       targetPort: plex
       protocol: TCP
+    - name: filebrowser
+      port: 8080
+      targetPort: filebrowser
+      protocol: TCP
   selector:
     app.kubernetes.io/name: plex

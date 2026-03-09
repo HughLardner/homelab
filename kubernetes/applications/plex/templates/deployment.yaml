@@ -74,6 +74,29 @@ spec:
             initialDelaySeconds: 60
             periodSeconds: 15
             failureThreshold: 3
+        - name: filebrowser
+          image: filebrowser/filebrowser:s6
+          args:
+            - --port=8080
+            - --root=/media
+            - --database=/fb/filebrowser.db
+            - --address=0.0.0.0
+          ports:
+            - name: filebrowser
+              containerPort: 8080
+          volumeMounts:
+            - name: media
+              mountPath: /media
+            - name: config
+              mountPath: /fb
+              subPath: filebrowser-db
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
       volumes:
         - name: config
           persistentVolumeClaim:

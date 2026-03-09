@@ -26,5 +26,14 @@ spec:
       services:
         - name: plex
           port: 32400
+    - match: Host(`{{ .Values.services.filebrowser.domain }}`)
+      kind: Rule
+      priority: 10
+      middlewares:
+        - name: authelia-forward-auth
+          namespace: authelia
+      services:
+        - name: plex
+          port: 8080
   tls:
     secretName: {{ .Release.Name }}-tls
