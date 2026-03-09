@@ -13,24 +13,17 @@ spec:
   project: default
 
   sources:
-    # 1. Application chart (with helm dependencies)
+    # 1. Application chart
     - repoURL: https://github.com/HughLardner/homelab.git
       targetRevision: HEAD
       path: kubernetes/applications/home-assistant
       helm:
         releaseName: home-assistant
         valueFiles:
-          - $values/config/homelab.yaml
           - values.yaml
-        # Skip dependency update - handled by ArgoCD
         skipCrds: false
 
-    # 2. Values reference
-    - repoURL: https://github.com/HughLardner/homelab.git
-      targetRevision: HEAD
-      ref: values
-
-    # 3. Sealed secrets
+    # 2. Sealed secrets
     - repoURL: https://github.com/HughLardner/homelab.git
       targetRevision: HEAD
       path: kubernetes/applications/home-assistant/secrets

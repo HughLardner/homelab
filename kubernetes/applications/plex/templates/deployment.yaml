@@ -81,6 +81,7 @@ spec:
             - --root=/media
             - --database=/fb/filebrowser.db
             - --address=0.0.0.0
+            - --noauth
           ports:
             - name: filebrowser
               containerPort: 8080

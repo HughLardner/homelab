@@ -1,6 +1,11 @@
 # Home Assistant Helm Chart Configuration
 # Chart: https://github.com/pajikos/home-assistant-helm-chart
-# This chart inherits global values from config/homelab.yaml
+
+# Global values (replicated from config/homelab.yaml to avoid ArgoCD multi-source
+# same-repo revision race conditions with $values refs)
+global:
+  domain: silverseekers.org
+  cert_issuer: letsencrypt-prod
 
 # Authelia forward auth protection
 # Disabled when using OIDC authentication (SSO login directly to HA)
