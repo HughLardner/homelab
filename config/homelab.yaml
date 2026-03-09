@@ -190,7 +190,7 @@ services:
     auth_enabled: true
     storage_size: 1Gi
     storage_class: longhorn
-    dns_ip: "192.168.10.151"
+    dns_ip: "192.168.10.152"
     upstream_dns_1: "1.1.1.1"
     upstream_dns_2: "1.0.0.1"
 
