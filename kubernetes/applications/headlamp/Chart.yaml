@@ -1,0 +1,9 @@
+apiVersion: v2
+name: headlamp-ingress
+description: Headlamp IngressRoute and Certificate for Traefik
+type: application
+version: 1.0.0
+appVersion: "0.40.0"
+
+# This chart creates the ingress resources for Headlamp
+# The main Headlamp deployment is handled by the upstream headlamp/headlamp chart

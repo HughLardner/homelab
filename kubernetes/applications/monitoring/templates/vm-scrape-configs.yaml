@@ -80,6 +80,29 @@ spec:
       interval: "60s"
 
 ---
+# VMServiceScrape for kube-state-metrics
+# honorLabels=true preserves the namespace/pod labels that kube-state-metrics
+# sets on each metric (e.g. kube_pod_info{namespace="home-automation"}).
+# Without this, the pods-with-annotations scrape would overwrite namespace
+# with "monitoring" (the ksm pod's own namespace), collapsing all data.
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMServiceScrape
+metadata:
+  name: kube-state-metrics
+  namespace: monitoring
+spec:
+  namespaceSelector:
+    matchNames:
+      - monitoring
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: kube-state-metrics
+  endpoints:
+    - port: http
+      interval: "60s"
+      honorLabels: true
+
+---
 # VMPodScrape for pods with prometheus.io annotations
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMPodScrape
