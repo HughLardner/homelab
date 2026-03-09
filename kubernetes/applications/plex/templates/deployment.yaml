@@ -18,9 +18,11 @@ spec:
       labels:
         app.kubernetes.io/name: plex
     spec:
-      # video(44) + render(105) groups required for /dev/dri access
+      # video + render groups required for /dev/dri access
+      # GIDs are node-specific — configured in values.yaml
+      # Check node render GID with: getent group render
       securityContext:
-        supplementalGroups: [44, 105]
+        supplementalGroups: {{ .Values.securityContext.supplementalGroups }}
       containers:
         - name: plex
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
