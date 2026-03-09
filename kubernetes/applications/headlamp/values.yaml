@@ -1,0 +1,11 @@
+# Default values for headlamp-ingress chart
+# These are overridden by config/homelab.yaml when deploying
+
+global:
+  domain: silverseekers.org
+  cert_issuer: letsencrypt-prod
+
+services:
+  headlamp:
+    domain: headlamp.silverseekers.org
+    auth_enabled: true

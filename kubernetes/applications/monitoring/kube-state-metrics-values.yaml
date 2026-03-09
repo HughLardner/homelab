@@ -11,17 +11,9 @@ resources:
     cpu: 100m
     memory: 128Mi
 
-# Service for scraping
+# Service for scraping - no prometheus.io annotations here, dedicated VMServiceScrape is used instead
 service:
   port: 8080
-  annotations:
-    prometheus.io/scrape: "true"
-    prometheus.io/port: "8080"
-
-# Pod annotations for auto-discovery
-podAnnotations:
-  prometheus.io/scrape: "true"
-  prometheus.io/port: "8080"
 
 # Collectors - enable only what's needed
 collectors:

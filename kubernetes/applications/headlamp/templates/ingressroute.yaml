@@ -1,0 +1,32 @@
+---
+# Headlamp IngressRoute
+# Access at: https://{{ .Values.services.headlamp.domain }}
+# Protected by Authelia SSO
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: headlamp
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    kubernetes.io/ingress.class: traefik
+    # Homepage service discovery
+    gethomepage.dev/enabled: "true"
+    gethomepage.dev/name: "Headlamp"
+    gethomepage.dev/group: "Kubernetes"
+    gethomepage.dev/icon: "kubernetes"
+    gethomepage.dev/description: "Kubernetes Cluster Management UI"
+    gethomepage.dev/href: "https://{{ .Values.services.headlamp.domain }}"
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`{{ .Values.services.headlamp.domain }}`)
+      kind: Rule
+      middlewares:
+        - name: authelia-forward-auth
+          namespace: authelia
+      services:
+        - name: headlamp
+          port: 4466
+  tls:
+    secretName: headlamp-tls

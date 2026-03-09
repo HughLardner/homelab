@@ -1,0 +1,85 @@
+---
+# ArgoCD Application for Headlamp Kubernetes UI
+# Deploys: Headlamp web UI with cluster-admin access for pod/resource management
+#
+# Access: https://headlamp.silverseekers.org (protected by Authelia SSO)
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: headlamp
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+
+  sources:
+    # 1. Upstream Headlamp Helm chart (Deployment, Service, RBAC, ServiceAccount)
+    - repoURL: https://kubernetes-sigs.github.io/headlamp/
+      targetRevision: 0.40.0
+      chart: headlamp
+      helm:
+        releaseName: headlamp
+        values: |
+          replicaCount: 1
+
+          image:
+            registry: ghcr.io
+            repository: headlamp-k8s/headlamp
+            pullPolicy: IfNotPresent
+
+          # In-cluster mode — reads kubeconfig from ServiceAccount token
+          config:
+            inCluster: true
+
+          # Grant cluster-admin so Headlamp can view and manage all resources
+          clusterRoleBinding:
+            create: true
+            clusterRoleName: cluster-admin
+
+          service:
+            type: ClusterIP
+            port: 4466
+
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 128Mi
+
+          # Disable built-in ingress — Traefik IngressRoute handles this
+          ingress:
+            enabled: false
+
+    # 2. Values reference (this repo) — referenced by $values
+    - repoURL: https://github.com/HughLardner/homelab.git
+      targetRevision: HEAD
+      ref: values
+
+    # 3. Local chart — Certificate + IngressRoute via Traefik
+    - repoURL: https://github.com/HughLardner/homelab.git
+      targetRevision: HEAD
+      path: kubernetes/applications/headlamp
+      helm:
+        releaseName: headlamp-ingress
+        valueFiles:
+          - $values/config/homelab.yaml
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: headlamp
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
