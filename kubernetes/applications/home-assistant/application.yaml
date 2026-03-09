@@ -48,6 +48,9 @@ spec:
         - .spec.volumeClaimTemplates[]?.status
         # kube-controller-manager defaults this retention policy on StatefulSets
         - .spec.persistentVolumeClaimRetentionPolicy
+        # kubectl rollout restart writes this annotation; Helm doesn't own it via SSA
+        # so ArgoCD can see the diff but never remove it — ignore it permanently
+        - '.spec.template.metadata.annotations["kubectl.kubernetes.io/restartedAt"]'
 
   syncPolicy:
     automated:
