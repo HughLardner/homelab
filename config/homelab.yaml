@@ -216,7 +216,7 @@ services:
   forgejo:
     domain: forgejo.silverseekers.org
     auth_enabled: false # Forgejo has its own auth system
-    storage_size: 10Gi
+    storage_size: 2Gi
     storage_class: longhorn
 
   # ---------------------------------------------------------------------------
