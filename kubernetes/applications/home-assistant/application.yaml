@@ -35,27 +35,13 @@ spec:
     server: https://kubernetes.default.svc
     namespace: home-assistant
 
-  # Ignore fields that Kubernetes auto-injects via admission defaulting.
-  # These are attributed to ArgoCD's own SSA manager (not kube-controller-manager),
-  # so managedFieldsManagers won't catch them. jqPathExpressions target them precisely.
+  # ServerSideDiff delegates diff computation to the k8s API server, which
+  # naturally handles all admission-defaulted fields (volumeMode, updateStrategy,
+  # terminationMessagePolicy, etc.) without needing an ever-growing ignoreDifferences list.
   ignoreDifferences:
     - group: apps
       kind: StatefulSet
       jqPathExpressions:
-        # VCT fields defaulted by the API server
-        - .spec.volumeClaimTemplates[]?.spec.volumeMode
-        - .spec.volumeClaimTemplates[]?.status
-        - .spec.volumeClaimTemplates[]?.apiVersion
-        - .spec.volumeClaimTemplates[]?.kind
-        - .spec.volumeClaimTemplates[]?.metadata.creationTimestamp
-        # StatefulSet spec fields defaulted by kube-controller-manager
-        - .spec.persistentVolumeClaimRetentionPolicy
-        - .spec.podManagementPolicy
-        - .spec.revisionHistoryLimit
-        - .spec.updateStrategy
-        # Container fields defaulted by the API server
-        - .spec.template.spec.containers[]?.terminationMessagePath
-        - .spec.template.spec.containers[]?.terminationMessagePolicy
         # kubectl rollout restart writes this annotation; Helm doesn't own it via SSA
         - '.spec.template.metadata.annotations["kubectl.kubernetes.io/restartedAt"]'
 
@@ -66,6 +52,7 @@ spec:
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true
+      - ServerSideDiff=true
       - RespectIgnoreDifferences=true
     retry:
       limit: 5
