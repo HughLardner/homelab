@@ -1,0 +1,16 @@
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: quartz-site
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: quartz
+    app.kubernetes.io/component: site
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: {{ .Values.services.quartz.storage_class | default "longhorn" }}
+  resources:
+    requests:
+      storage: {{ .Values.services.quartz.site_storage_size | default "1Gi" }}

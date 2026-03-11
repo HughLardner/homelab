@@ -1,0 +1,77 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: quartz-webhook
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: quartz
+    app.kubernetes.io/component: webhook
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: quartz
+      app.kubernetes.io/component: webhook
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: quartz
+        app.kubernetes.io/component: webhook
+    spec:
+      containers:
+        - name: webhook
+          image: "{{ .Values.builder.image.repository }}:{{ .Values.builder.image.tag }}"
+          imagePullPolicy: {{ .Values.builder.image.pullPolicy }}
+          command: ["sh", "/config/entrypoint.sh"]
+          ports:
+            - name: http
+              containerPort: 9000
+              protocol: TCP
+          env:
+            - name: TZ
+              value: {{ .Values.env.TZ | quote }}
+            - name: REPO_URL
+              value: {{ .Values.services.quartz.forgejo_repo_url | quote }}
+            - name: WEBHOOK_SECRET
+              value: {{ .Values.services.quartz.webhook_secret | quote }}
+          volumeMounts:
+            - name: webhook-config
+              mountPath: /config/hooks.json
+              subPath: hooks.json
+              readOnly: true
+            - name: webhook-config
+              mountPath: /config/build.sh
+              subPath: build.sh
+            - name: webhook-config
+              mountPath: /config/entrypoint.sh
+              subPath: entrypoint.sh
+            - name: repo-data
+              mountPath: /repo
+            - name: site-data
+              mountPath: /site
+          resources:
+            {{- toYaml .Values.builder.resources | nindent 12 }}
+          livenessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          readinessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 10
+      volumes:
+        - name: webhook-config
+          configMap:
+            name: quartz-webhook-config
+            defaultMode: 0755
+        - name: repo-data
+          persistentVolumeClaim:
+            claimName: quartz-repo
+        - name: site-data
+          persistentVolumeClaim:
+            claimName: quartz-site

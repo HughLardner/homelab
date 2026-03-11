@@ -1,0 +1,70 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: quartz-webhook-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: quartz
+    app.kubernetes.io/component: webhook
+data:
+  hooks.json: |
+    [
+      {
+        "id": "build",
+        "execute-command": "/config/build.sh",
+        "command-working-directory": "/repo",
+        "response-message": "Build triggered",
+        "trigger-rule": {
+          "match": {
+            "type": "value",
+            "value": "{{ "{{" }} getenv "WEBHOOK_SECRET" {{ "}}" }}",
+            "parameter": {
+              "source": "header",
+              "name": "X-Forgejo-Signature"
+            }
+          }
+        }
+      }
+    ]
+  build.sh: |
+    #!/bin/sh
+    set -e
+
+    REPO_DIR="/repo/garden"
+    SITE_DIR="/site"
+
+    if [ -d "$REPO_DIR/.git" ]; then
+      echo "Pulling latest changes..."
+      cd "$REPO_DIR"
+      git pull
+    else
+      echo "Cloning repository..."
+      git clone "$REPO_URL" "$REPO_DIR"
+      cd "$REPO_DIR"
+    fi
+
+    echo "Installing dependencies..."
+    npm ci
+
+    echo "Building Quartz site..."
+    npx quartz build --output "$SITE_DIR"
+
+    echo "Build complete."
+  entrypoint.sh: |
+    #!/bin/sh
+    set -e
+
+    apk add --no-cache git curl
+
+    ARCH=$(uname -m)
+    case "$ARCH" in
+      x86_64) ARCH="amd64" ;;
+      aarch64) ARCH="arm64" ;;
+    esac
+
+    WEBHOOK_VERSION="2.8.1"
+    curl -sSL "https://github.com/adnanh/webhook/releases/download/${WEBHOOK_VERSION}/webhook-linux-${ARCH}.tar.gz" \
+      | tar xz -C /usr/local/bin --strip-components=1
+
+    exec webhook -hooks /config/hooks.json -verbose -port 9000

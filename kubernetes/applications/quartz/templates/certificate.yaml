@@ -1,0 +1,19 @@
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: quartz-tls
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: quartz
+    app.kubernetes.io/component: tls
+spec:
+  secretName: quartz-tls
+  issuerRef:
+    name: {{ .Values.global.cert_issuer | default "letsencrypt-staging" }}
+    kind: ClusterIssuer
+  dnsNames:
+    - {{ .Values.services.quartz.domain }}
+  privateKey:
+    algorithm: ECDSA
+    size: 256
