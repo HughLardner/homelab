@@ -17,6 +17,7 @@ metadata:
     "helm.sh/hook-weight": "1"
     # Delete the job after it succeeds (keeps cluster clean)
     "helm.sh/hook-delete-policy": hook-succeeded
+    "argocd.argoproj.io/hook": Skip
 spec:
   backoffLimit: 3
   ttlSecondsAfterFinished: 300

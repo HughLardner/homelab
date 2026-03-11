@@ -13,6 +13,7 @@ metadata:
   annotations:
     "helm.sh/hook": post-install,post-upgrade
     "helm.sh/hook-weight": "-5"
+    "argocd.argoproj.io/hook": Skip
 data:
   create_user.py: |
     # Author: https://github.com/jessebot (small-hack/home-assistant-chart)

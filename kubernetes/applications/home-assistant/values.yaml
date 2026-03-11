@@ -14,15 +14,19 @@ auth_enabled: false
 # HACS Setup Job
 # Automatically installs HACS after deployment via post-install hook
 # Adapted from: https://github.com/small-hack/home-assistant-chart
+# Only enable for fresh installs; disable once setup is complete to avoid
+# ArgoCD sync loops (hooks re-trigger on every sync and can't schedule on
+# resource-constrained nodes).
 setupHacs:
-  enabled: true
+  enabled: false
 
 # Owner User Creation
 # Automatically creates the initial admin user during first deployment
 # This skips the manual onboarding process
 # Adapted from: https://github.com/small-hack/home-assistant-chart
+# Only enable for fresh installs; disable once onboarding is complete.
 owner:
-  create: true
+  create: false
   # Use existing secret for credentials (created via sealed-secrets)
   existingSecret: home-assistant-owner-credentials
   # Enable debug output (WARNING: reveals sensitive data in logs)

@@ -15,6 +15,7 @@ metadata:
     "helm.sh/hook": post-install,post-upgrade
     "helm.sh/hook-weight": "2"
     "helm.sh/hook-delete-policy": hook-succeeded
+    "argocd.argoproj.io/hook": Skip
 spec:
   backoffLimit: 5
   ttlSecondsAfterFinished: 600
