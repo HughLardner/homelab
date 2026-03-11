@@ -42,14 +42,21 @@ spec:
     - group: apps
       kind: StatefulSet
       jqPathExpressions:
-        # Kubernetes defaults volumeMode to "Filesystem" if unset in the chart
+        # VCT fields defaulted by the API server
         - .spec.volumeClaimTemplates[]?.spec.volumeMode
-        # Kubernetes adds a status subresource to VCT entries
         - .spec.volumeClaimTemplates[]?.status
-        # kube-controller-manager defaults this retention policy on StatefulSets
+        - .spec.volumeClaimTemplates[]?.apiVersion
+        - .spec.volumeClaimTemplates[]?.kind
+        - .spec.volumeClaimTemplates[]?.metadata.creationTimestamp
+        # StatefulSet spec fields defaulted by kube-controller-manager
         - .spec.persistentVolumeClaimRetentionPolicy
+        - .spec.podManagementPolicy
+        - .spec.revisionHistoryLimit
+        - .spec.updateStrategy
+        # Container fields defaulted by the API server
+        - .spec.template.spec.containers[]?.terminationMessagePath
+        - .spec.template.spec.containers[]?.terminationMessagePolicy
         # kubectl rollout restart writes this annotation; Helm doesn't own it via SSA
-        # so ArgoCD can see the diff but never remove it — ignore it permanently
         - '.spec.template.metadata.annotations["kubectl.kubernetes.io/restartedAt"]'
 
   syncPolicy:
