@@ -2,7 +2,9 @@
 # ArgoCD Application for Headlamp Kubernetes UI
 # Deploys: Headlamp web UI with cluster-admin access for pod/resource management
 #
-# Access: https://headlamp.silverseekers.org (protected by Authelia SSO)
+# Auth: Authelia SSO gates access; Headlamp auto-authenticates to the cluster
+#       via its ServiceAccount (cluster-admin). No token prompt in the UI.
+# Access: https://headlamp.silverseekers.org
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -28,9 +30,12 @@ spec:
             repository: headlamp-k8s/headlamp
             pullPolicy: IfNotPresent
 
-          # In-cluster mode — reads kubeconfig from ServiceAccount token
+          # Use kubeconfig instead of -in-cluster so the SA token is used
+          # automatically — no login prompt. Authelia handles user auth.
           config:
-            inCluster: true
+            inCluster: false
+            extraArgs:
+              - "-kubeconfig=/kubeconfig/config"
 
           # Grant cluster-admin so Headlamp can view and manage all resources
           clusterRoleBinding:
@@ -52,6 +57,44 @@ spec:
           # Disable built-in ingress — Traefik IngressRoute handles this
           ingress:
             enabled: false
+
+          # Mount the kubeconfig ConfigMap into the pod
+          volumes:
+            - name: kubeconfig
+              configMap:
+                name: headlamp-kubeconfig
+          volumeMounts:
+            - name: kubeconfig
+              mountPath: /kubeconfig
+              readOnly: true
+
+          # Create the kubeconfig ConfigMap alongside the chart resources.
+          # Uses tokenFile so the kubelet-refreshed SA token is always current.
+          extraManifests:
+            - |
+              apiVersion: v1
+              kind: ConfigMap
+              metadata:
+                name: headlamp-kubeconfig
+              data:
+                config: |
+                  apiVersion: v1
+                  kind: Config
+                  clusters:
+                  - cluster:
+                      certificate-authority: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+                      server: https://kubernetes.default.svc
+                    name: homelab
+                  contexts:
+                  - context:
+                      cluster: homelab
+                      user: headlamp-sa
+                    name: homelab
+                  current-context: homelab
+                  users:
+                  - name: headlamp-sa
+                    user:
+                      tokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
 
     # 2. Values reference (this repo) — referenced by $values
     - repoURL: https://github.com/HughLardner/homelab.git
