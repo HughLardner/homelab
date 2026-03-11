@@ -38,10 +38,14 @@ spec:
   # ServerSideDiff delegates diff computation to the k8s API server, which
   # naturally handles all admission-defaulted fields (volumeMode, updateStrategy,
   # terminationMessagePolicy, etc.) without needing an ever-growing ignoreDifferences list.
+  # The VCT apiVersion/kind fields are still needed because the API server's dry-run
+  # response omits them, but they exist in the stored live state.
   ignoreDifferences:
     - group: apps
       kind: StatefulSet
       jqPathExpressions:
+        - .spec.volumeClaimTemplates[]?.apiVersion
+        - .spec.volumeClaimTemplates[]?.kind
         # kubectl rollout restart writes this annotation; Helm doesn't own it via SSA
         - '.spec.template.metadata.annotations["kubectl.kubernetes.io/restartedAt"]'
 
