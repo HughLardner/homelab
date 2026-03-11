@@ -8,63 +8,86 @@ metadata:
     app.kubernetes.io/name: quartz
     app.kubernetes.io/component: webhook
 data:
-  hooks.json: |
-    [
-      {
-        "id": "build",
-        "execute-command": "/config/build.sh",
-        "command-working-directory": "/repo",
-        "response-message": "Build triggered",
-        "trigger-rule": {
-          "match": {
-            "type": "value",
-            "value": "{{ "{{" }} getenv "WEBHOOK_SECRET" {{ "}}" }}",
-            "parameter": {
-              "source": "header",
-              "name": "X-Forgejo-Signature"
+  server.js: |
+    const http = require("http");
+    const { execSync } = require("child_process");
+    const crypto = require("crypto");
+
+    const PORT = 9000;
+    const SECRET = process.env.WEBHOOK_SECRET || "";
+    const REPO_URL = process.env.REPO_URL || "";
+    const REPO_DIR = "/repo/garden";
+    const SITE_DIR = "/site";
+
+    function build() {
+      try {
+        const fs = require("fs");
+        if (fs.existsSync(REPO_DIR + "/.git")) {
+          console.log("Pulling latest changes...");
+          execSync("git pull", { cwd: REPO_DIR, stdio: "inherit" });
+        } else {
+          console.log("Cloning repository...");
+          execSync(`git clone ${REPO_URL} ${REPO_DIR}`, { stdio: "inherit" });
+        }
+
+        console.log("Installing dependencies...");
+        execSync("npm ci", { cwd: REPO_DIR, stdio: "inherit" });
+
+        console.log("Building Quartz site...");
+        execSync(`npx quartz build --output ${SITE_DIR}`, {
+          cwd: REPO_DIR,
+          stdio: "inherit",
+        });
+
+        console.log("Build complete.");
+        return true;
+      } catch (err) {
+        console.error("Build failed:", err.message);
+        return false;
+      }
+    }
+
+    const server = http.createServer((req, res) => {
+      if (req.method === "GET" && req.url === "/healthz") {
+        res.writeHead(200);
+        res.end("ok");
+        return;
+      }
+
+      if (req.method === "POST" && req.url === "/hooks/build") {
+        let body = "";
+        req.on("data", (chunk) => (body += chunk));
+        req.on("end", () => {
+          if (SECRET) {
+            const sig = req.headers["x-forgejo-signature"] || "";
+            const expected = crypto
+              .createHmac("sha256", SECRET)
+              .update(body)
+              .digest("hex");
+            if (sig !== expected) {
+              console.log("Webhook signature mismatch, rejecting.");
+              res.writeHead(403);
+              res.end("Forbidden");
+              return;
             }
           }
-        }
+
+          console.log("Webhook received, triggering build...");
+          res.writeHead(200);
+          res.end("Build triggered");
+
+          setImmediate(build);
+        });
+        return;
       }
-    ]
-  build.sh: |
-    #!/bin/sh
-    set -e
 
-    REPO_DIR="/repo/garden"
-    SITE_DIR="/site"
+      res.writeHead(404);
+      res.end("Not found");
+    });
 
-    if [ -d "$REPO_DIR/.git" ]; then
-      echo "Pulling latest changes..."
-      cd "$REPO_DIR"
-      git pull
-    else
-      echo "Cloning repository..."
-      git clone "$REPO_URL" "$REPO_DIR"
-      cd "$REPO_DIR"
-    fi
-
-    echo "Installing dependencies..."
-    npm ci
-
-    echo "Building Quartz site..."
-    npx quartz build --output "$SITE_DIR"
-
-    echo "Build complete."
+    server.listen(PORT, () => console.log(`Webhook server listening on :${PORT}`));
   entrypoint.sh: |
     #!/bin/sh
     set -e
-
-    apk add --no-cache git curl
-
-    ARCH=$(uname -m)
-    case "$ARCH" in
-      x86_64) ARCH="amd64" ;;
-      aarch64) ARCH="arm64" ;;
-    esac
-
-    WEBHOOK_VERSION="2.8.1"
-    curl -sSL "https://github.com/adnanh/webhook/releases/download/${WEBHOOK_VERSION}/webhook-linux-${ARCH}.tar.gz" \
-      | tar xz -C /usr/local/bin --strip-components=1
-
-    exec webhook -hooks /config/hooks.json -verbose -port 9000
+    apk add --no-cache git
+    exec node /config/server.js

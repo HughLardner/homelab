@@ -6,7 +6,7 @@ services:
   forgejo:
     domain: forgejo.silverseekers.org
     auth_enabled: false
-    storage_size: 10Gi
+    storage_size: 2Gi
     storage_class: longhorn
 
 image:
