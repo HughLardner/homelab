@@ -1,0 +1,42 @@
+global:
+  domain: silverseekers.org
+  cert_issuer: letsencrypt-prod
+
+services:
+  quartz:
+    domain: garden.silverseekers.org
+    auth_enabled: false
+    repo_storage_size: 2Gi
+    site_storage_size: 1Gi
+    storage_class: longhorn
+    forgejo_repo_url: "http://forgejo.forgejo.svc.cluster.local:3000"
+    webhook_secret: ""
+
+builder:
+  image:
+    repository: node
+    tag: "20-alpine"
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+
+nginx:
+  image:
+    repository: nginx
+    tag: "1.27-alpine"
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 20m
+      memory: 32Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+env:
+  TZ: Europe/London

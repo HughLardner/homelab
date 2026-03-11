@@ -1,0 +1,6 @@
+apiVersion: v2
+name: forgejo
+description: Forgejo - Self-hosted Git server with web editor
+type: application
+version: 1.0.0
+appVersion: "9.0"

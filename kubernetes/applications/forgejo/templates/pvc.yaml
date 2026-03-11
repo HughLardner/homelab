@@ -1,0 +1,15 @@
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: forgejo-data
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: forgejo
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: {{ .Values.services.forgejo.storage_class | default "longhorn" }}
+  resources:
+    requests:
+      storage: {{ .Values.services.forgejo.storage_size | default "10Gi" }}

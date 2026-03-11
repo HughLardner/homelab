@@ -1,0 +1,6 @@
+apiVersion: v2
+name: quartz
+description: Quartz Digital Garden - static site built from markdown via Forgejo webhook
+type: application
+version: 1.0.0
+appVersion: "4.0"

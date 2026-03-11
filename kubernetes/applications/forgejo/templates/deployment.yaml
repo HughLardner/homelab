@@ -1,0 +1,63 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: forgejo
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: forgejo
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: forgejo
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: forgejo
+    spec:
+      containers:
+        - name: forgejo
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 3000
+              protocol: TCP
+            - name: ssh
+              containerPort: 22
+              protocol: TCP
+          env:
+            - name: TZ
+              value: {{ .Values.env.TZ | quote }}
+            - name: FORGEJO__server__DOMAIN
+              value: {{ .Values.services.forgejo.domain | quote }}
+            - name: FORGEJO__server__ROOT_URL
+              value: "https://{{ .Values.services.forgejo.domain }}/"
+            - name: FORGEJO__server__SSH_DOMAIN
+              value: {{ .Values.services.forgejo.domain | quote }}
+          volumeMounts:
+            - name: forgejo-data
+              mountPath: /data
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /api/healthz
+              port: http
+            initialDelaySeconds: 60
+            periodSeconds: 15
+            failureThreshold: 5
+          readinessProbe:
+            httpGet:
+              path: /api/healthz
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 3
+      volumes:
+        - name: forgejo-data
+          persistentVolumeClaim:
+            claimName: forgejo-data

@@ -211,6 +211,27 @@ services:
     auth_enabled: true
 
   # ---------------------------------------------------------------------------
+  # Forgejo Git Server
+  # ---------------------------------------------------------------------------
+  forgejo:
+    domain: forgejo.silverseekers.org
+    auth_enabled: false # Forgejo has its own auth system
+    storage_size: 10Gi
+    storage_class: longhorn
+
+  # ---------------------------------------------------------------------------
+  # Quartz Digital Garden
+  # ---------------------------------------------------------------------------
+  quartz:
+    domain: garden.silverseekers.org
+    auth_enabled: false
+    repo_storage_size: 2Gi
+    site_storage_size: 1Gi
+    storage_class: longhorn
+    forgejo_repo_url: "http://forgejo.forgejo.svc.cluster.local:3000"
+    webhook_secret: "" # set in secrets.yml
+
+  # ---------------------------------------------------------------------------
   # Plex Media Server
   # ---------------------------------------------------------------------------
   plex:

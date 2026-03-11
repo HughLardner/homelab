@@ -1,0 +1,28 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: quartz-nginx-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: quartz
+    app.kubernetes.io/component: nginx
+data:
+  default.conf: |
+    server {
+        listen 80;
+        server_name _;
+        root /usr/share/nginx/html;
+        index index.html;
+
+        location / {
+            try_files $uri $uri.html $uri/ =404;
+        }
+
+        location /static/ {
+            expires 1y;
+            add_header Cache-Control "public, immutable";
+        }
+
+        error_page 404 /404.html;
+    }

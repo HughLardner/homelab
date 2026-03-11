@@ -1,0 +1,26 @@
+global:
+  domain: silverseekers.org
+  cert_issuer: letsencrypt-prod
+
+services:
+  forgejo:
+    domain: forgejo.silverseekers.org
+    auth_enabled: false
+    storage_size: 10Gi
+    storage_class: longhorn
+
+image:
+  repository: codeberg.org/forgejo/forgejo
+  tag: "9"
+  pullPolicy: IfNotPresent
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+
+env:
+  TZ: Europe/London
