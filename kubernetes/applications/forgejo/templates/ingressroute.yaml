@@ -6,6 +6,13 @@ metadata:
   namespace: {{ .Release.Namespace }}
   annotations:
     kubernetes.io/ingress.class: traefik
+    gethomepage.dev/enabled: "true"
+    gethomepage.dev/name: Forgejo
+    gethomepage.dev/description: Self-Hosted Git Server
+    gethomepage.dev/group: Applications
+    gethomepage.dev/icon: forgejo
+    gethomepage.dev/href: "https://{{ .Values.services.forgejo.domain }}"
+    gethomepage.dev/pod-selector: app.kubernetes.io/name=forgejo
   labels:
     app.kubernetes.io/name: forgejo
     app.kubernetes.io/component: ingress

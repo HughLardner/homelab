@@ -6,6 +6,13 @@ metadata:
   namespace: {{ .Release.Namespace }}
   annotations:
     kubernetes.io/ingress.class: traefik
+    gethomepage.dev/enabled: "true"
+    gethomepage.dev/name: Digital Garden
+    gethomepage.dev/description: Quartz Digital Garden
+    gethomepage.dev/group: Applications
+    gethomepage.dev/icon: mdi-book-open-page-variant
+    gethomepage.dev/href: "https://{{ .Values.services.quartz.domain }}"
+    gethomepage.dev/pod-selector: app.kubernetes.io/name=quartz,app.kubernetes.io/component=nginx
   labels:
     app.kubernetes.io/name: quartz
     app.kubernetes.io/component: ingress
