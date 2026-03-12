@@ -1,0 +1,6 @@
+apiVersion: v2
+name: obsidian-livesync
+description: Obsidian LiveSync - CouchDB backend for real-time Obsidian note synchronisation
+type: application
+version: 1.0.0
+appVersion: "3.4"

@@ -1,0 +1,35 @@
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: obsidian-livesync
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    kubernetes.io/ingress.class: traefik
+    gethomepage.dev/enabled: "true"
+    gethomepage.dev/name: Obsidian LiveSync
+    gethomepage.dev/description: CouchDB sync backend for Obsidian
+    gethomepage.dev/group: Applications
+    gethomepage.dev/icon: obsidian
+    gethomepage.dev/href: "https://{{ .Values.services.obsidian_livesync.domain }}"
+    gethomepage.dev/pod-selector: app.kubernetes.io/name=obsidian-livesync
+  labels:
+    app.kubernetes.io/name: obsidian-livesync
+    app.kubernetes.io/component: ingress
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`{{ .Values.services.obsidian_livesync.domain }}`)
+      kind: Rule
+      priority: 10
+      {{- if .Values.services.obsidian_livesync.auth_enabled }}
+      middlewares:
+        - name: authelia-forward-auth
+          namespace: authelia
+      {{- end }}
+      services:
+        - name: obsidian-livesync
+          port: {{ .Values.services.obsidian_livesync.couchdb_port | default 5984 }}
+  tls:
+    secretName: obsidian-livesync-tls
