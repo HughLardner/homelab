@@ -27,6 +27,14 @@ spec:
       targetRevision: HEAD
       ref: values
 
+    # 3. Sealed secrets
+    - repoURL: https://github.com/HughLardner/homelab.git
+      targetRevision: HEAD
+      path: kubernetes/applications/quartz/secrets
+      directory:
+        recurse: false
+        include: "*.yaml"
+
   destination:
     server: https://kubernetes.default.svc
     namespace: quartz
@@ -37,6 +45,7 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+      - ServerSideApply=true
     retry:
       limit: 5
       backoff:
