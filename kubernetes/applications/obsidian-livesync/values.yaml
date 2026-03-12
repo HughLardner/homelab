@@ -1,0 +1,28 @@
+global:
+  domain: silverseekers.org
+  cert_issuer: letsencrypt-prod
+
+services:
+  obsidian_livesync:
+    domain: obsidian.silverseekers.org
+    auth_enabled: false
+    storage_size: 5Gi
+    storage_class: longhorn
+    couchdb_port: 5984
+    database_name: obsidiannotes
+
+image:
+  repository: docker.io/oleduc/docker-obsidian-livesync-couchdb
+  tag: "master"
+  pullPolicy: IfNotPresent
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+env:
+  TZ: Europe/London
