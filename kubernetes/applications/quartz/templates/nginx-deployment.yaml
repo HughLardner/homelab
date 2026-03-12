@@ -27,7 +27,7 @@ spec:
             - |
               mkdir -p /site/output
               if [ ! -f /site/output/index.html ]; then
-                echo '<html><body><h1>Quartz Digital Garden</h1><p>Waiting for first build...</p></body></html>' > /site/output/index.html
+                echo '<html><head><meta http-equiv="refresh" content="10"></head><body><h1>Quartz Digital Garden</h1><p>Initial build in progress, please wait...</p></body></html>' > /site/output/index.html
               fi
           volumeMounts:
             - name: site-data
