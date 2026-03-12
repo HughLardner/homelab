@@ -24,7 +24,7 @@ data:
     const COUCHDB_DATABASE = process.env.COUCHDB_DATABASE || 'obsidiannotes';
     const REPO_DIR   = '/repo/garden';
     const CONTENT_DIR = path.join(REPO_DIR, 'content');
-    const SITE_DIR   = '/site';
+    const SITE_DIR   = '/site/output';
     const QUARTZ_REPO = 'https://github.com/jackyzha0/quartz.git';
     const BUILD_DEBOUNCE_MS = 5000;
     const HEALTH_PORT = 9000;

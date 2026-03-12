@@ -25,8 +25,9 @@ spec:
           command: ["sh", "-c"]
           args:
             - |
-              if [ ! -f /site/index.html ]; then
-                echo '<html><body><h1>Quartz Digital Garden</h1><p>Waiting for first build...</p></body></html>' > /site/index.html
+              mkdir -p /site/output
+              if [ ! -f /site/output/index.html ]; then
+                echo '<html><body><h1>Quartz Digital Garden</h1><p>Waiting for first build...</p></body></html>' > /site/output/index.html
               fi
           volumeMounts:
             - name: site-data
@@ -42,6 +43,7 @@ spec:
           volumeMounts:
             - name: site-data
               mountPath: /usr/share/nginx/html
+              subPath: output
               readOnly: true
             - name: nginx-config
               mountPath: /etc/nginx/conf.d/default.conf
