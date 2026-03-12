@@ -31,13 +31,13 @@ spec:
             - /bin/sh
             - -c
             - |
+              COUCH="http://${COUCHDB_USER}:${COUCHDB_PASSWORD}@obsidian-livesync:{{ .Values.services.obsidian_livesync.couchdb_port | default 5984 }}"
               echo "Waiting for CouchDB to be ready..."
-              until curl -sf http://obsidian-livesync:{{ .Values.services.obsidian_livesync.couchdb_port | default 5984 }}/_up; do
+              until curl -sf "${COUCH}/_up"; do
                 echo "CouchDB not ready, retrying in 5s..."
                 sleep 5
               done
               echo "CouchDB is ready. Creating _users database..."
-              curl -sf -u "${COUCHDB_USER}:${COUCHDB_PASSWORD}" \
-                -X PUT "http://obsidian-livesync:{{ .Values.services.obsidian_livesync.couchdb_port | default 5984 }}/_users" \
+              curl -sf -X PUT "${COUCH}/_users" \
                 || echo "_users database may already exist (this is OK)"
               echo "Init complete."
