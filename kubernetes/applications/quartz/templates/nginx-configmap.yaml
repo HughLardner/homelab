@@ -12,7 +12,7 @@ data:
     server {
         listen 80;
         server_name _;
-        root /usr/share/nginx/html;
+        root /usr/share/nginx/html/output;
         index index.html;
 
         location / {
