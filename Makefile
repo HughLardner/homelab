@@ -32,6 +32,7 @@ help:
 	@echo "  make metallb-install       - Install MetalLB (LoadBalancer provider)"
 	@echo "  make metallb-test          - Install MetalLB with LoadBalancer testing"
 	@echo "  make longhorn-install      - Install Longhorn (Distributed Storage)"
+	@echo "  make longhorn-upgrade     - Upgrade Longhorn to latest version (sequential)"
 	@echo "  make longhorn-status       - Check Longhorn status"
 	@echo "  make longhorn-ui           - Open Longhorn UI"
 	@echo ""
@@ -220,6 +221,10 @@ metallb-test: inventory
 longhorn-install: inventory
 	@echo "Installing Longhorn distributed storage..."
 	cd ansible && ansible-playbook playbooks/longhorn.yml
+
+longhorn-upgrade: inventory
+	@echo "Upgrading Longhorn (sequential minor version upgrades)..."
+	cd ansible && ansible-playbook playbooks/longhorn-upgrade.yml
 
 longhorn-status:
 	@echo "Longhorn Status:"

@@ -3,7 +3,7 @@ name: longhorn-ingress
 description: Longhorn IngressRoute, Certificate, and StorageClass
 type: application
 version: 1.0.1
-appVersion: "1.11"
+appVersion: "1.11.0"
 
 # This chart creates the ingress resources and storage class for Longhorn
 # The main Longhorn application is deployed using the official Longhorn Helm chart
