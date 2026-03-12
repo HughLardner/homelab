@@ -4,7 +4,7 @@ global:
 
 services:
   quartz:
-    domain: garden.silverseekers.org
+    domain: fallandrise.silverseekers.org
     auth_enabled: false
     repo_storage_size: 2Gi
     site_storage_size: 1Gi
