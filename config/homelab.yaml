@@ -232,6 +232,17 @@ services:
     webhook_secret: "" # set in secrets.yml
 
   # ---------------------------------------------------------------------------
+  # Obsidian LiveSync (CouchDB)
+  # ---------------------------------------------------------------------------
+  obsidian_livesync:
+    domain: obsidian.silverseekers.org
+    auth_enabled: false # CouchDB has its own auth; Obsidian plugin needs direct access
+    storage_size: 5Gi
+    storage_class: longhorn
+    couchdb_port: 5984
+    database_name: obsidiannotes
+
+  # ---------------------------------------------------------------------------
   # Plex Media Server
   # ---------------------------------------------------------------------------
   plex:
