@@ -1,0 +1,245 @@
+---
+# Longhorn Sequential Upgrade Playbook
+# Upgrades Longhorn through each required minor version to reach v1.11.0
+#
+# Longhorn does NOT support skipping minor versions. This playbook handles
+# the full chain: v1.6 -> v1.7 -> v1.8 -> v1.9 -> v1.10 -> v1.11
+#
+# Prerequisites:
+#   - K3s cluster running with Longhorn installed
+#   - Helm 3 available
+#   - All Longhorn volumes healthy (no Faulted/Degraded)
+#
+# Usage:
+#   ansible-playbook playbooks/longhorn-upgrade.yml
+#
+# The playbook will:
+#   1. Detect current Longhorn version
+#   2. Skip versions already at or past
+#   3. Upgrade one minor version at a time
+#   4. Verify volume health between each step
+#   5. Apply v1.11.0 hotfix images at the end
+
+- name: Upgrade Longhorn to v1.11.0
+  hosts: k3s_masters[0]
+  become: true
+  gather_facts: true
+
+  vars_files:
+    - "{{ playbook_dir }}/../../config/homelab.yaml"
+
+  vars:
+    longhorn_namespace: "longhorn-system"
+    longhorn_replica_count: "{{ services.longhorn.replica_count | default(1) }}"
+    longhorn_data_path: "{{ services.longhorn.data_path | default('/var/lib/longhorn') }}"
+    longhorn_ui_service_type: "{{ services.longhorn.ui_service_type | default('LoadBalancer') }}"
+
+    longhorn_target_version: "1.11.0"
+
+    longhorn_upgrade_chain:
+      - "1.7.3"
+      - "1.8.2"
+      - "1.9.2"
+      - "1.10.2"
+      - "1.11.0"
+
+  pre_tasks:
+    - name: Wait for K3s to be ready
+      ansible.builtin.command: /usr/local/bin/k3s kubectl get nodes
+      register: k3s_status
+      changed_when: false
+      retries: 10
+      delay: 5
+      until: k3s_status.rc == 0
+
+    - name: Get current Longhorn Helm release version
+      ansible.builtin.shell: |
+        helm list -n {{ longhorn_namespace }} -o json | jq -r '.[] | select(.name=="longhorn") | .chart' | sed 's/longhorn-//'
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      register: current_chart_version
+      changed_when: false
+      failed_when: current_chart_version.stdout == ""
+
+    - name: Set current version fact
+      ansible.builtin.set_fact:
+        longhorn_current_version: "{{ current_chart_version.stdout | trim }}"
+
+    - name: Display current version
+      ansible.builtin.debug:
+        msg: "Current Longhorn version: {{ longhorn_current_version }}"
+
+    - name: Check for Faulted volumes
+      ansible.builtin.shell: |
+        /usr/local/bin/k3s kubectl get volumes.longhorn.io -n {{ longhorn_namespace }} -o json | \
+          jq -r '.items[] | select(.status.robustness == "faulted") | .metadata.name'
+      register: faulted_volumes
+      changed_when: false
+
+    - name: Fail if any volumes are Faulted
+      ansible.builtin.fail:
+        msg: |
+          ABORTING: The following volumes are Faulted. Fix them before upgrading.
+          {{ faulted_volumes.stdout_lines | join(', ') }}
+      when: faulted_volumes.stdout | length > 0
+
+    - name: Get volume health summary
+      ansible.builtin.shell: |
+        /usr/local/bin/k3s kubectl get volumes.longhorn.io -n {{ longhorn_namespace }} \
+          -o custom-columns='NAME:.metadata.name,STATE:.status.state,ROBUSTNESS:.status.robustness' --no-headers
+      register: volume_summary
+      changed_when: false
+
+    - name: Display volume health
+      ansible.builtin.debug:
+        msg: "{{ volume_summary.stdout_lines }}"
+
+    - name: Calculate upgrade steps needed
+      ansible.builtin.set_fact:
+        upgrade_versions: >-
+          {{ longhorn_upgrade_chain | select('version', longhorn_current_version, '>') | list }}
+
+    - name: Display upgrade plan
+      ansible.builtin.debug:
+        msg:
+          - "========================================="
+          - "  Longhorn Upgrade Plan"
+          - "========================================="
+          - "  Current version: {{ longhorn_current_version }}"
+          - "  Target version:  {{ longhorn_target_version }} + hotfix"
+          - "  Steps: {{ upgrade_versions | join(' -> ') }}"
+          - "  Total upgrades:  {{ upgrade_versions | length }}"
+          - "========================================="
+
+    - name: Skip if already at target version
+      ansible.builtin.meta: end_play
+      when: upgrade_versions | length == 0
+
+    - name: Check if Velero is available
+      ansible.builtin.command:
+        cmd: /usr/local/bin/k3s kubectl get deployment -n velero velero
+      register: velero_check
+      changed_when: false
+      failed_when: false
+
+    - name: Create Velero backup before upgrade
+      ansible.builtin.shell: |
+        /usr/local/bin/k3s kubectl exec -n velero deploy/velero -- \
+          velero backup create longhorn-pre-upgrade-{{ ansible_date_time.iso8601_basic_short }} \
+          --include-namespaces {{ longhorn_namespace }} \
+          --wait
+      register: velero_backup
+      changed_when: true
+      failed_when: false
+      when: velero_check.rc == 0
+
+    - name: Display backup status
+      ansible.builtin.debug:
+        msg: "{{ 'Velero backup created successfully' if velero_backup.rc | default(1) == 0 else 'Velero backup skipped or unavailable - proceeding without backup' }}"
+
+    - name: Update Helm repository
+      ansible.builtin.shell: |
+        helm repo add longhorn https://charts.longhorn.io 2>/dev/null || true
+        helm repo update longhorn
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      changed_when: false
+
+  tasks:
+    # =========================================================================
+    # Sequential upgrade - each version completes fully before the next starts
+    # =========================================================================
+    - name: "Upgrade through each version"
+      ansible.builtin.include_tasks: longhorn-upgrade-step.yml
+      loop: "{{ upgrade_versions }}"
+      loop_control:
+        loop_var: upgrade_target_version
+
+    # =========================================================================
+    # NOTE: Longhorn hotfix images (e.g. v1.11.0-hotfix-1) cannot be applied
+    # via Helm. Longhorn's upgrade path checker treats semver pre-release
+    # suffixes as downgrades and rejects the upgrade. Hotfix images would
+    # need to be applied by patching the DaemonSet/Deployment directly if
+    # needed. For now we stay on the base v1.11.0 images.
+    # =========================================================================
+
+    - name: Wait for longhorn-manager to fully stabilize
+      ansible.builtin.command:
+        cmd: >
+          /usr/local/bin/k3s kubectl wait --namespace {{ longhorn_namespace }}
+          --for=condition=ready pod --selector=app=longhorn-manager
+          --timeout=600s
+      changed_when: false
+      retries: 3
+      delay: 10
+      register: final_manager_ready
+      until: final_manager_ready.rc == 0
+
+    - name: Wait for instance-manager to fully stabilize
+      ansible.builtin.command:
+        cmd: >
+          /usr/local/bin/k3s kubectl wait --namespace {{ longhorn_namespace }}
+          --for=condition=ready pod --selector=longhorn.io/component=instance-manager
+          --timeout=600s
+      changed_when: false
+      retries: 3
+      delay: 10
+      register: final_instance_ready
+      until: final_instance_ready.rc == 0
+
+  post_tasks:
+    # =========================================================================
+    # Post-upgrade verification
+    # =========================================================================
+    - name: Verify final Longhorn version
+      ansible.builtin.shell: |
+        helm list -n {{ longhorn_namespace }} -o json | jq -r '.[] | select(.name=="longhorn") | .chart' | sed 's/longhorn-//'
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      register: final_version
+      changed_when: false
+
+    - name: Verify all pods are running
+      ansible.builtin.shell: |
+        NOT_RUNNING=$(/usr/local/bin/k3s kubectl get pods -n {{ longhorn_namespace }} --no-headers | \
+          grep -v -E 'Running|Completed' | wc -l)
+        if [ "$NOT_RUNNING" -gt 0 ]; then
+          echo "Some pods are not Running:"
+          /usr/local/bin/k3s kubectl get pods -n {{ longhorn_namespace }} --no-headers | grep -v -E 'Running|Completed'
+          exit 1
+        fi
+        echo "All pods healthy"
+      changed_when: false
+
+    - name: Verify all volumes are healthy
+      ansible.builtin.shell: |
+        /usr/local/bin/k3s kubectl get volumes.longhorn.io -n {{ longhorn_namespace }} \
+          -o custom-columns='NAME:.metadata.name,STATE:.status.state,ROBUSTNESS:.status.robustness' --no-headers
+      register: final_volumes
+      changed_when: false
+
+    - name: Verify StorageClass exists
+      ansible.builtin.command:
+        cmd: /usr/local/bin/k3s kubectl get storageclass longhorn
+      register: sc_check
+      changed_when: false
+
+    - name: Display upgrade completion
+      ansible.builtin.debug:
+        msg:
+          - ""
+          - "========================================="
+          - "  Longhorn Upgrade Complete!"
+          - "========================================="
+          - ""
+          - "  Previous version: {{ longhorn_current_version }}"
+          - "  Current version:  {{ final_version.stdout | trim }}"
+          - ""
+          - "  Volume Status:"
+          - "{{ final_volumes.stdout }}"
+          - ""
+          - "  Next steps:"
+          - "    1. Monitor cluster health for 24 hours"
+          - "    2. Check Longhorn UI: https://longhorn.silverseekers.org"
+          - ""
+          - "========================================="

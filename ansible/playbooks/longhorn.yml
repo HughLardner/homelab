@@ -33,7 +33,7 @@
     - "{{ playbook_dir }}/../../config/homelab.yaml"
 
   vars:
-    longhorn_version: "v1.6.0"
+    longhorn_version: "v1.11.0"
     longhorn_namespace: "longhorn-system"
     longhorn_manifests_path: "{{ playbook_dir }}/../../kubernetes/services/longhorn"
     # Variables loaded from config/homelab.yaml via vars_files
@@ -123,14 +123,7 @@
       changed_when: false
       failed_when: false
 
-    - name: Add Longhorn Helm repository
-      ansible.builtin.command:
-        cmd: /usr/local/bin/k3s kubectl exec -n kube-system deploy/helm-controller -- helm repo add longhorn https://charts.longhorn.io
-      failed_when: false
-      changed_when: false
-      when: longhorn_check.rc != 0
-
-    - name: Install Longhorn via Helm
+    - name: Install or upgrade Longhorn via Helm
       ansible.builtin.shell: |
         helm repo add longhorn https://charts.longhorn.io
         helm repo update
@@ -142,12 +135,15 @@
           --set defaultSettings.defaultReplicaCount={{ longhorn_replica_count }} \
           --set persistence.defaultClass=false \
           --set service.ui.type={{ longhorn_ui_service_type }} \
-          --version 1.6.0 \
+          --set csi.attacherReplicaCount=1 \
+          --set csi.provisionerReplicaCount=1 \
+          --set csi.resizerReplicaCount=1 \
+          --set csi.snapshotterReplicaCount=0 \
+          --version 1.11.0 \
           --wait \
           --timeout 10m
       environment:
         KUBECONFIG: /etc/rancher/k3s/k3s.yaml
-      when: longhorn_check.rc != 0
       register: longhorn_install
       changed_when: "'has been installed' in longhorn_install.stdout or 'has been upgraded' in longhorn_install.stdout"
       

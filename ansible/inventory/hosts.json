@@ -1,0 +1,37 @@
+{
+  "all": {
+    "children": {
+      "k3s_cluster": {
+        "children": {
+          "k3s_masters": {
+            "hosts": {
+              "homelab-node-0": {
+                "ansible_host": "192.168.10.20",
+                "node_index": 1,
+                "node_role": "master"
+              }
+            }
+          }
+        },
+        "vars": {
+          "k3s_cluster_name": "homelab",
+          "k3s_gateway": "192.168.10.1",
+          "k3s_dns_servers": [
+            "1.1.1.1",
+            "1.0.0.1"
+          ],
+          "k3s_kube_vip": "192.168.10.15",
+          "k3s_kube_vip_hostname": "homelab-api",
+          "metallb_ipv4_pools": "192.168.10.150/28",
+          "cloudflare_api_token": "L2JJAVaa023wnNGVvjXBt1mLwjnmMDEqHVOnsc3W"
+        }
+      }
+    },
+    "vars": {
+      "ansible_user": "ubuntu",
+      "ansible_ssh_private_key_file": "~/.ssh/id_ed25519_personal",
+      "ansible_ssh_common_args": "-o StrictHostKeyChecking=no",
+      "ansible_python_interpreter": "/usr/bin/python3"
+    }
+  }
+}
