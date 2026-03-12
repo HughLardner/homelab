@@ -35,6 +35,14 @@ spec:
         recurse: false
         include: "*.yaml"
 
+    # 4. Site config (theme, layout)
+    - repoURL: https://github.com/HughLardner/homelab.git
+      targetRevision: HEAD
+      path: quartz
+      directory:
+        recurse: false
+        include: "*.yaml"
+
   destination:
     server: https://kubernetes.default.svc
     namespace: quartz

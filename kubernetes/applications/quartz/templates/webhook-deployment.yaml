@@ -60,6 +60,14 @@ spec:
               mountPath: /repo
             - name: site-data
               mountPath: /site
+            - name: quartz-site-config
+              mountPath: /repo/garden/quartz.config.ts
+              subPath: quartz.config.ts
+              readOnly: true
+            - name: quartz-site-config
+              mountPath: /repo/garden/quartz.layout.ts
+              subPath: quartz.layout.ts
+              readOnly: true
           resources:
             {{- toYaml .Values.builder.resources | nindent 12 }}
           livenessProbe:
@@ -87,3 +95,6 @@ spec:
         - name: site-data
           persistentVolumeClaim:
             claimName: quartz-site
+        - name: quartz-site-config
+          configMap:
+            name: quartz-site-config
