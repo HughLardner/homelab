@@ -9,8 +9,8 @@ services:
     repo_storage_size: 2Gi
     site_storage_size: 1Gi
     storage_class: longhorn
-    forgejo_repo_url: "http://forgejo.forgejo.svc.cluster.local:3000"
-    webhook_secret: ""
+    couchdb_host: "http://obsidian-livesync.obsidian-livesync.svc:5984"
+    couchdb_database: "obsidiannotes"
 
 builder:
   image:

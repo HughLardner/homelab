@@ -9,83 +9,228 @@ metadata:
     app.kubernetes.io/component: webhook
 data:
   server.js: |
-    const http = require("http");
-    const { execSync } = require("child_process");
-    const crypto = require("crypto");
+    'use strict';
+    const http = require('http');
+    const { execSync, spawn } = require('child_process');
+    const fs = require('fs');
+    const path = require('path');
 
-    const PORT = 9000;
-    const SECRET = process.env.WEBHOOK_SECRET || "";
-    const REPO_URL = process.env.REPO_URL || "";
-    const REPO_DIR = "/repo/garden";
-    const SITE_DIR = "/site";
+    // ---------------------------------------------------------------------------
+    // Configuration
+    // ---------------------------------------------------------------------------
+    const COUCHDB_HOST     = process.env.COUCHDB_HOST     || 'http://obsidian-livesync.obsidian-livesync.svc:5984';
+    const COUCHDB_USER     = process.env.COUCHDB_USER     || '';
+    const COUCHDB_PASSWORD = process.env.COUCHDB_PASSWORD || '';
+    const COUCHDB_DATABASE = process.env.COUCHDB_DATABASE || 'obsidiannotes';
+    const REPO_DIR   = '/repo/garden';
+    const CONTENT_DIR = path.join(REPO_DIR, 'content');
+    const SITE_DIR   = '/site';
+    const QUARTZ_REPO = 'https://github.com/jackyzha0/quartz.git';
+    const BUILD_DEBOUNCE_MS = 5000;
+    const HEALTH_PORT = 9000;
 
-    function build() {
-      try {
-        const fs = require("fs");
-        if (fs.existsSync(REPO_DIR + "/.git")) {
-          console.log("Pulling latest changes...");
-          execSync("git pull", { cwd: REPO_DIR, stdio: "inherit" });
-        } else {
-          console.log("Cloning repository...");
-          execSync(`git clone ${REPO_URL} ${REPO_DIR}`, { stdio: "inherit" });
-        }
+    const AUTH_HEADER = 'Basic ' + Buffer.from(COUCHDB_USER + ':' + COUCHDB_PASSWORD).toString('base64');
+    const TEXT_EXTS = new Set(['.md', '.canvas', '.txt', '.csv', '.json', '.yaml', '.yml', '.html', '.css', '.js', '.ts']);
 
-        console.log("Installing dependencies...");
-        execSync("npm ci", { cwd: REPO_DIR, stdio: "inherit" });
+    // ---------------------------------------------------------------------------
+    // State
+    // ---------------------------------------------------------------------------
+    let isReady        = false;
+    let buildInProgress = false;
+    let buildQueued    = false;
+    let buildTimer     = null;
 
-        console.log("Building Quartz site...");
-        execSync(`npx quartz build --output ${SITE_DIR}`, {
-          cwd: REPO_DIR,
-          stdio: "inherit",
+    // ---------------------------------------------------------------------------
+    // CouchDB client
+    // ---------------------------------------------------------------------------
+    function couchFetch(urlPath, timeoutMs) {
+      if (!timeoutMs) timeoutMs = 30000;
+      return new Promise(function(resolve, reject) {
+        var base = new URL(COUCHDB_HOST);
+        var opts = {
+          hostname: base.hostname,
+          port: parseInt(base.port) || 5984,
+          path: urlPath,
+          method: 'GET',
+          headers: { Authorization: AUTH_HEADER },
+          timeout: timeoutMs,
+        };
+        var req = http.request(opts, function(res) {
+          var body = '';
+          res.on('data', function(c) { body += c; });
+          res.on('end', function() {
+            try { resolve(JSON.parse(body)); } catch(e) { resolve(body); }
+          });
         });
-
-        console.log("Build complete.");
-        return true;
-      } catch (err) {
-        console.error("Build failed:", err.message);
-        return false;
-      }
+        req.on('error', reject);
+        req.on('timeout', function() { req.destroy(new Error('CouchDB timeout')); });
+        req.end();
+      });
     }
 
-    const server = http.createServer((req, res) => {
-      if (req.method === "GET" && req.url === "/healthz") {
-        res.writeHead(200);
-        res.end("ok");
-        return;
-      }
+    function fetchAllDocs() {
+      return couchFetch('/' + COUCHDB_DATABASE + '/_all_docs?include_docs=true')
+        .then(function(data) { return (data.rows || []).map(function(r) { return r.doc; }).filter(Boolean); });
+    }
 
-      if (req.method === "POST" && req.url === "/hooks/build") {
-        let body = "";
-        req.on("data", (chunk) => (body += chunk));
-        req.on("end", () => {
-          if (SECRET) {
-            const sig = req.headers["x-forgejo-signature"] || "";
-            const expected = crypto
-              .createHmac("sha256", SECRET)
-              .update(body)
-              .digest("hex");
-            if (sig !== expected) {
-              console.log("Webhook signature mismatch, rejecting.");
-              res.writeHead(403);
-              res.end("Forbidden");
-              return;
-            }
+    function getDbInfo() {
+      return couchFetch('/' + COUCHDB_DATABASE);
+    }
+
+    function watchChanges(since) {
+      var seq = encodeURIComponent(String(since));
+      return couchFetch('/' + COUCHDB_DATABASE + '/_changes?feed=longpoll&since=' + seq + '&include_docs=false&timeout=60000', 70000);
+    }
+
+    // ---------------------------------------------------------------------------
+    // Content sync — reconstructs vault files from LiveSync doc format
+    // ---------------------------------------------------------------------------
+    function isTextFile(filePath) {
+      return TEXT_EXTS.has(path.extname(filePath).toLowerCase());
+    }
+
+    function reconstructData(pathDoc, byId) {
+      return (pathDoc.children || []).map(function(id) {
+        var child = byId[id];
+        return child ? (child.data || '') : '';
+      }).join('');
+    }
+
+    function syncContent(docs) {
+      var byId = {};
+      docs.forEach(function(d) { byId[d._id] = d; });
+
+      var expected = new Set();
+      var written = 0;
+
+      docs.forEach(function(doc) {
+        if (!doc.path) return;
+        if (doc.type === 'leaf' || doc.type === 'versioninfo') return;
+        if (doc._deleted) return;
+
+        var filePath = path.join(CONTENT_DIR, doc.path);
+        fs.mkdirSync(path.dirname(filePath), { recursive: true });
+
+        var data = reconstructData(doc, byId);
+        if (isTextFile(doc.path)) {
+          fs.writeFileSync(filePath, data, 'utf8');
+        } else {
+          fs.writeFileSync(filePath, Buffer.from(data, 'base64'));
+        }
+        expected.add(filePath);
+        written++;
+      });
+
+      function pruneDir(dir) {
+        if (!fs.existsSync(dir)) return;
+        fs.readdirSync(dir, { withFileTypes: true }).forEach(function(entry) {
+          var full = path.join(dir, entry.name);
+          if (entry.isDirectory()) {
+            pruneDir(full);
+            try { fs.rmdirSync(full); } catch(_) {}
+          } else if (!expected.has(full)) {
+            fs.unlinkSync(full);
+            console.log('Removed stale: ' + full);
           }
-
-          console.log("Webhook received, triggering build...");
-          res.writeHead(200);
-          res.end("Build triggered");
-
-          setImmediate(build);
         });
-        return;
       }
 
-      res.writeHead(404);
-      res.end("Not found");
-    });
+      fs.mkdirSync(CONTENT_DIR, { recursive: true });
+      pruneDir(CONTENT_DIR);
+      console.log('Content synced: ' + written + ' files');
+    }
 
-    server.listen(PORT, () => console.log(`Webhook server listening on :${PORT}`));
+    // ---------------------------------------------------------------------------
+    // Quartz build
+    // ---------------------------------------------------------------------------
+    function triggerBuild() {
+      if (buildTimer) clearTimeout(buildTimer);
+      buildTimer = setTimeout(runBuild, BUILD_DEBOUNCE_MS);
+    }
+
+    function runBuild() {
+      buildTimer = null;
+      if (buildInProgress) { buildQueued = true; return; }
+      buildInProgress = true;
+      console.log('Building Quartz site...');
+      var proc = spawn('npx', ['quartz', 'build', '--output', SITE_DIR], { cwd: REPO_DIR, stdio: 'inherit' });
+      proc.on('close', function(code) {
+        buildInProgress = false;
+        if (code === 0) { console.log('Build complete.'); isReady = true; }
+        else { console.error('Build exited with code ' + code); }
+        if (buildQueued) { buildQueued = false; runBuild(); }
+      });
+      proc.on('error', function(err) {
+        buildInProgress = false;
+        console.error('Build spawn error:', err.message);
+      });
+    }
+
+    // ---------------------------------------------------------------------------
+    // Bootstrap Quartz project on first start
+    // ---------------------------------------------------------------------------
+    function bootstrap() {
+      if (fs.existsSync(path.join(REPO_DIR, 'package.json'))) {
+        console.log('Quartz project already present, skipping bootstrap.');
+        return;
+      }
+      console.log('Bootstrapping Quartz from GitHub (first start only)...');
+      execSync('git clone --depth=1 ' + QUARTZ_REPO + ' ' + REPO_DIR, { stdio: 'inherit', timeout: 180000 });
+      execSync('npm ci', { cwd: REPO_DIR, stdio: 'inherit', timeout: 360000 });
+      fs.rmSync(CONTENT_DIR, { recursive: true, force: true });
+      fs.mkdirSync(CONTENT_DIR);
+      console.log('Bootstrap complete.');
+    }
+
+    // ---------------------------------------------------------------------------
+    // Health server (always responds, even during bootstrap)
+    // ---------------------------------------------------------------------------
+    http.createServer(function(req, res) {
+      if (req.url === '/healthz') { res.writeHead(200); res.end('ok'); return; }
+      if (req.url === '/readyz')  { res.writeHead(isReady ? 200 : 503); res.end(isReady ? 'ready' : 'initializing'); return; }
+      res.writeHead(404); res.end();
+    }).listen(HEALTH_PORT, function() { console.log('Health server on :' + HEALTH_PORT); });
+
+    // ---------------------------------------------------------------------------
+    // Main
+    // ---------------------------------------------------------------------------
+    function watchLoop(since) {
+      console.log('Watching CouchDB _changes from seq ' + since + '...');
+      watchChanges(since).then(function(result) {
+        var results = result.results || [];
+        if (results.length > 0) {
+          console.log(results.length + ' change(s) detected, re-syncing...');
+          return fetchAllDocs().then(function(docs) {
+            syncContent(docs);
+            triggerBuild();
+            return result.last_seq || since;
+          });
+        }
+        return result.last_seq || since;
+      }).then(function(nextSeq) {
+        setImmediate(function() { watchLoop(nextSeq); });
+      }).catch(function(err) {
+        console.error('Changes feed error:', err.message, '- retrying in 10s');
+        setTimeout(function() { watchLoop(since); }, 10000);
+      });
+    }
+
+    getDbInfo().then(function(info) {
+      // Capture seq BEFORE full sync to avoid missing concurrent changes
+      var since = info.update_seq;
+
+      bootstrap();
+
+      console.log('Initial full sync from CouchDB...');
+      return fetchAllDocs().then(function(docs) {
+        syncContent(docs);
+        runBuild();
+        watchLoop(since);
+      });
+    }).catch(function(err) {
+      console.error('Fatal startup error:', err.message);
+      process.exit(1);
+    });
   entrypoint.sh: |
     #!/bin/sh
     set -e
