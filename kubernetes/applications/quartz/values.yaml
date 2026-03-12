@@ -15,7 +15,7 @@ services:
 builder:
   image:
     repository: node
-    tag: "22-alpine"
+    tag: "22-slim"
     pullPolicy: IfNotPresent
   resources:
     requests:
