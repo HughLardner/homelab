@@ -25,27 +25,27 @@ spec:
           command: ["sh", "-c"]
           args:
             - |
-              mkdir -p /site/output
-              if [ ! -f /site/output/index.html ]; then
-                echo '<!-- quartz-placeholder --><html><head><meta http-equiv="refresh" content="10"></head><body><h1>Quartz Digital Garden</h1><p>Initial build in progress, please wait...</p></body></html>' > /site/output/index.html
+              mkdir -p /usr/share/nginx/html/output
+              if [ ! -f /usr/share/nginx/html/output/index.html ]; then
+                echo '<!-- quartz-placeholder --><html><head><meta http-equiv="refresh" content="10"></head><body><h1>Quartz Digital Garden</h1><p>Initial build in progress, please wait...</p></body></html>' > /usr/share/nginx/html/output/index.html
               fi
           volumeMounts:
             - name: site-data
-              mountPath: /site
+              mountPath: /usr/share/nginx/html
         - name: wait-for-build
           image: busybox:1.36
           command: ["sh", "-c"]
           args:
             - |
               echo "Waiting for Quartz build to complete..."
-              until [ -f /site/output/index.html ] && ! grep -q "quartz-placeholder" /site/output/index.html; do
+              until [ -f /usr/share/nginx/html/output/index.html ] && ! grep -q "quartz-placeholder" /usr/share/nginx/html/output/index.html; do
                 echo "Build not ready yet, retrying in 15s..."
                 sleep 15
               done
               echo "Quartz build detected — nginx starting."
           volumeMounts:
             - name: site-data
-              mountPath: /site
+              mountPath: /usr/share/nginx/html
       containers:
         - name: nginx
           image: "{{ .Values.nginx.image.repository }}:{{ .Values.nginx.image.tag }}"
@@ -57,7 +57,6 @@ spec:
           volumeMounts:
             - name: site-data
               mountPath: /usr/share/nginx/html
-              subPath: output
               readOnly: true
             - name: nginx-config
               mountPath: /etc/nginx/conf.d/default.conf
