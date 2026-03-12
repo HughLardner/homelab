@@ -27,8 +27,22 @@ spec:
             - |
               mkdir -p /site/output
               if [ ! -f /site/output/index.html ]; then
-                echo '<html><head><meta http-equiv="refresh" content="10"></head><body><h1>Quartz Digital Garden</h1><p>Initial build in progress, please wait...</p></body></html>' > /site/output/index.html
+                echo '<!-- quartz-placeholder --><html><head><meta http-equiv="refresh" content="10"></head><body><h1>Quartz Digital Garden</h1><p>Initial build in progress, please wait...</p></body></html>' > /site/output/index.html
               fi
+          volumeMounts:
+            - name: site-data
+              mountPath: /site
+        - name: wait-for-build
+          image: busybox:1.36
+          command: ["sh", "-c"]
+          args:
+            - |
+              echo "Waiting for Quartz build to complete..."
+              until [ -f /site/output/index.html ] && ! grep -q "quartz-placeholder" /site/output/index.html; do
+                echo "Build not ready yet, retrying in 15s..."
+                sleep 15
+              done
+              echo "Quartz build detected — nginx starting."
           volumeMounts:
             - name: site-data
               mountPath: /site
