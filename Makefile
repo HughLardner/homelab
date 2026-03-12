@@ -1,4 +1,4 @@
-.PHONY: help init plan apply destroy ssh-node k3s-* metallb-* longhorn-* cert-manager-* certs-* traefik-* argocd-* authelia-* monitoring-* sealed-secrets-* seal-secrets kured-* root-app-deploy apps-list apps-status monitoring-secrets inventory clean clean-backups deploy-infra deploy-platform deploy-services deploy-all deploy deploy-apps rebuild
+.PHONY: help init plan apply destroy ssh-node k3s-* metallb-* longhorn-* cert-manager-* certs-* traefik-* argocd-* authelia-* monitoring-* sealed-secrets-* seal-secrets kured-* root-app-deploy apps-list apps-status monitoring-secrets inventory clean clean-backups deploy-infra deploy-platform deploy-services deploy-all deploy deploy-apps rebuild quartz-config
 
 # Default target
 help:
@@ -410,6 +410,19 @@ seal-secrets:
 	fi
 	@echo "Sealing secrets from config/secrets.yml..."
 	ansible-playbook ansible/playbooks/seal-secrets.yml
+
+# Generate Quartz site config ConfigMap from quartz/*.ts files
+quartz-config:
+	@echo "Generating quartz/quartz-site-config.yaml from quartz/*.ts..."
+	KUBECONFIG=~/.kube/config-homelab kubectl create configmap quartz-site-config \
+		--from-file=quartz.config.ts=quartz/quartz.config.ts \
+		--from-file=quartz.layout.ts=quartz/quartz.layout.ts \
+		-n quartz \
+		--dry-run=client -o yaml \
+		> quartz/quartz-site-config.yaml
+	@echo "Done. Commit quartz/ and push — ArgoCD will apply the new ConfigMap."
+	@echo "Trigger a rebuild by saving any note in Obsidian, or run:"
+	@echo "  kubectl rollout restart deploy/quartz-webhook -n quartz"
 
 # Generate new application scaffold
 # Usage: make new-app APP=myapp [PORT=8080] [AUTH=true] [STORAGE=5Gi]
