@@ -79,7 +79,36 @@ data:
 
     function watchChanges(since) {
       var seq = encodeURIComponent(String(since));
-      return couchFetch('/' + COUCHDB_DATABASE + '/_changes?feed=longpoll&since=' + seq + '&include_docs=false&timeout=60000', 70000);
+      // include_docs=true so tombstones carry the original path field,
+      // letting us delete the on-disk file immediately without a full resync.
+      return couchFetch('/' + COUCHDB_DATABASE + '/_changes?feed=longpoll&since=' + seq + '&include_docs=true&timeout=60000', 70000);
+    }
+
+    // Immediately remove on-disk files for documents marked deleted in CouchDB.
+    // Called before the full fetchAllDocs/syncContent pass so the Quartz build
+    // never sees content that has already been removed from the vault.
+    function applyDeletions(changeResults) {
+      var deleted = changeResults.filter(function(r) { return r.deleted && r.doc; });
+      if (!deleted.length) return;
+
+      deleted.forEach(function(r) {
+        var docPath = r.doc.path;
+        // Fallback: LiveSync stores _id as the lowercase path — attempt to find
+        // a matching file on disk by case-insensitive path comparison.
+        if (!docPath) {
+          console.log('Deletion tombstone has no path field (id=' + r.id + '), relying on pruneDir.');
+          return;
+        }
+        if (!isPublishable(docPath)) return;
+
+        var filePath = path.join(CONTENT_DIR, docPath);
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+          console.log('Deleted file for removed doc: ' + filePath);
+        } else {
+          console.log('Deleted doc had no on-disk file: ' + docPath);
+        }
+      });
     }
 
     // ---------------------------------------------------------------------------
@@ -252,6 +281,9 @@ data:
           var deletions = results.filter(function(r) { return r.deleted; }).length;
           var updates   = results.length - deletions;
           console.log(results.length + ' change(s) detected (' + updates + ' update(s), ' + deletions + ' deletion(s)), re-syncing...');
+          // Eagerly remove files for deleted docs before the full sync so the
+          // Quartz build never picks up stale content.
+          applyDeletions(results);
           return fetchAllDocs().then(function(docs) {
             syncContent(docs);
             triggerBuild();
