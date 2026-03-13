@@ -157,9 +157,17 @@ data:
       var byId = {};
       docs.forEach(function(d) { byId[d._id] = d; });
 
-      var expected = new Set();
       var written = 0;
       var skipped = 0;
+
+      // Wipe the content directory before rewriting so that any deleted,
+      // renamed, or moved vault notes are guaranteed to be gone. This is
+      // simpler and more reliable than trying to diff what changed — for a
+      // small vault the full rewrite is fast (<1s) and avoids any edge case
+      // where a stale file survives because a tombstone lacked a path field
+      // or _all_docs returned it with _deleted: true still in the result set.
+      fs.rmSync(CONTENT_DIR, { recursive: true, force: true });
+      fs.mkdirSync(CONTENT_DIR, { recursive: true });
 
       docs.forEach(function(doc) {
         if (!doc.path) return;
@@ -175,26 +183,9 @@ data:
         } else {
           fs.writeFileSync(filePath, reconstructBinaryData(doc, byId));
         }
-        expected.add(filePath);
         written++;
       });
 
-      function pruneDir(dir) {
-        if (!fs.existsSync(dir)) return;
-        fs.readdirSync(dir, { withFileTypes: true }).forEach(function(entry) {
-          var full = path.join(dir, entry.name);
-          if (entry.isDirectory()) {
-            pruneDir(full);
-            try { fs.rmdirSync(full); } catch(_) {}
-          } else if (!expected.has(full)) {
-            fs.unlinkSync(full);
-            console.log('Removed stale: ' + full);
-          }
-        });
-      }
-
-      fs.mkdirSync(CONTENT_DIR, { recursive: true });
-      pruneDir(CONTENT_DIR);
       console.log('Content synced: ' + written + ' files written, ' + skipped + ' system files skipped');
     }
 
