@@ -250,14 +250,27 @@ data:
         console.log('Quartz project already present, skipping bootstrap.');
         return;
       }
-      // Directory exists but has no package.json — incomplete/stale clone from
-      // a previous crash. Remove it so git clone has a clean target.
-      if (fs.existsSync(REPO_DIR)) {
-        console.log('Stale repo dir found (no package.json), removing before fresh clone...');
-        fs.rmSync(REPO_DIR, { recursive: true, force: true });
-      }
+      // Clone to a temp dir so we never try to remove ConfigMap-mounted files
+      // (quartz.config.ts / quartz.layout.ts are bind-mounted into REPO_DIR via
+      // subPath and cannot be unlinked). After cloning, copy files into REPO_DIR
+      // with no-clobber semantics — existing ConfigMap files are preserved as-is.
+      var TEMP_DIR = '/tmp/quartz-bootstrap';
+      if (fs.existsSync(TEMP_DIR)) fs.rmSync(TEMP_DIR, { recursive: true, force: true });
+
       console.log('Bootstrapping Quartz from GitHub (first start only)...');
-      execSync('git clone --depth=1 ' + QUARTZ_REPO + ' ' + REPO_DIR, { stdio: 'inherit', timeout: 180000 });
+      execSync('git clone --depth=1 ' + QUARTZ_REPO + ' ' + TEMP_DIR, { stdio: 'inherit', timeout: 180000 });
+
+      function copyNoClobber(src, dst) {
+        fs.mkdirSync(dst, { recursive: true });
+        fs.readdirSync(src, { withFileTypes: true }).forEach(function(entry) {
+          var s = path.join(src, entry.name), d = path.join(dst, entry.name);
+          if (entry.isDirectory()) { copyNoClobber(s, d); }
+          else if (!fs.existsSync(d)) { fs.copyFileSync(s, d); }
+        });
+      }
+      copyNoClobber(TEMP_DIR, REPO_DIR);
+      fs.rmSync(TEMP_DIR, { recursive: true, force: true });
+
       execSync('npm ci', { cwd: REPO_DIR, stdio: 'inherit', timeout: 360000 });
       fs.rmSync(CONTENT_DIR, { recursive: true, force: true });
       fs.mkdirSync(CONTENT_DIR);
