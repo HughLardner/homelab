@@ -245,15 +245,37 @@ data:
     http.createServer(function(req, res) {
       if (req.url === '/healthz') { res.writeHead(200); res.end('ok'); return; }
       if (req.url === '/readyz')  { res.writeHead(isReady ? 200 : 503); res.end(isReady ? 'ready' : 'initializing'); return; }
+      if (req.url === '/rebuild' && req.method === 'GET') {
+        var status = buildInProgress ? 'Build in progress...' : (isReady ? 'Site is ready.' : 'Initialising...');
+        var statusColour = buildInProgress ? '#f59e0b' : (isReady ? '#10b981' : '#6b7280');
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+        res.end('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Quartz Rebuild</title>' +
+          '<style>body{font-family:system-ui,sans-serif;background:#0f172a;color:#e2e8f0;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0}' +
+          '.card{background:#1e293b;border-radius:12px;padding:2rem 2.5rem;max-width:400px;width:100%;text-align:center;box-shadow:0 4px 24px rgba(0,0,0,.4)}' +
+          'h1{font-size:1.25rem;margin:0 0 .5rem}p{color:#94a3b8;font-size:.875rem;margin:.25rem 0}' +
+          '.status{display:inline-block;padding:.25rem .75rem;border-radius:999px;font-size:.75rem;font-weight:600;background:' + statusColour + '33;color:' + statusColour + ';margin:.75rem 0 1.5rem}' +
+          'button{background:#6366f1;color:#fff;border:none;border-radius:8px;padding:.75rem 2rem;font-size:1rem;font-weight:600;cursor:pointer;width:100%;transition:background .2s}' +
+          'button:hover{background:#4f46e5}</style></head>' +
+          '<body><div class="card"><h1>Quartz Rebuild</h1><p>Fall &amp; Rise Digital Garden</p>' +
+          '<div class="status">' + status + '</div>' +
+          '<form method="POST" action="/rebuild"><button type="submit">&#9654; Trigger Full Rebuild</button></form></div></body></html>');
+        return;
+      }
       if (req.url === '/rebuild' && req.method === 'POST') {
         console.log('Manual full rebuild requested via /rebuild...');
         fetchAllDocs().then(function(docs) {
-          // Wipe content dir so stale renamed/deleted files are guaranteed gone
           fs.rmSync(CONTENT_DIR, { recursive: true, force: true });
           fs.mkdirSync(CONTENT_DIR, { recursive: true });
           syncContent(docs);
           runBuild();
-          res.writeHead(202); res.end('Rebuild triggered');
+          res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+          res.end('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Quartz Rebuild</title>' +
+            '<meta http-equiv="refresh" content="3;url=/rebuild">' +
+            '<style>body{font-family:system-ui,sans-serif;background:#0f172a;color:#e2e8f0;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0}' +
+            '.card{background:#1e293b;border-radius:12px;padding:2rem 2.5rem;max-width:400px;width:100%;text-align:center;box-shadow:0 4px 24px rgba(0,0,0,.4)}' +
+            'h1{font-size:1.25rem;margin:0 0 .75rem}.ok{font-size:2.5rem;margin:.5rem 0}p{color:#94a3b8;font-size:.875rem}</style></head>' +
+            '<body><div class="card"><div class="ok">&#10003;</div><h1>Rebuild Triggered</h1>' +
+            '<p>Redirecting back in 3 seconds&hellip;</p></div></body></html>');
         }).catch(function(err) {
           console.error('Rebuild error:', err.message);
           res.writeHead(500); res.end('Rebuild failed: ' + err.message);
