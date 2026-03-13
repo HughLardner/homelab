@@ -212,11 +212,29 @@ data:
     }
 
     // ---------------------------------------------------------------------------
+    // ---------------------------------------------------------------------------
     // Health server (always responds, even during bootstrap)
+    // POST /rebuild  — wipes content dir and forces a full re-sync + build.
+    //   Use this when renames/deletes in Obsidian are not reflected on the site.
     // ---------------------------------------------------------------------------
     http.createServer(function(req, res) {
       if (req.url === '/healthz') { res.writeHead(200); res.end('ok'); return; }
       if (req.url === '/readyz')  { res.writeHead(isReady ? 200 : 503); res.end(isReady ? 'ready' : 'initializing'); return; }
+      if (req.url === '/rebuild' && req.method === 'POST') {
+        console.log('Manual full rebuild requested via /rebuild...');
+        fetchAllDocs().then(function(docs) {
+          // Wipe content dir so stale renamed/deleted files are guaranteed gone
+          fs.rmSync(CONTENT_DIR, { recursive: true, force: true });
+          fs.mkdirSync(CONTENT_DIR, { recursive: true });
+          syncContent(docs);
+          runBuild();
+          res.writeHead(202); res.end('Rebuild triggered');
+        }).catch(function(err) {
+          console.error('Rebuild error:', err.message);
+          res.writeHead(500); res.end('Rebuild failed: ' + err.message);
+        });
+        return;
+      }
       res.writeHead(404); res.end();
     }).listen(HEALTH_PORT, function() { console.log('Health server on :' + HEALTH_PORT); });
 
