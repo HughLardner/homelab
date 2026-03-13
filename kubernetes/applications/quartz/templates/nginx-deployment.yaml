@@ -26,7 +26,7 @@ spec:
           args:
             - |
               mkdir -p /usr/share/nginx/html/output
-              if ! ls /usr/share/nginx/html/output/index.html /usr/share/nginx/html/output/Index.html >/dev/null 2>&1; then
+              if [ ! -f /usr/share/nginx/html/output/index.html ]; then
                 echo '<!-- quartz-placeholder --><html><head><meta http-equiv="refresh" content="10"></head><body><h1>Quartz Digital Garden</h1><p>Initial build in progress, please wait...</p></body></html>' > /usr/share/nginx/html/output/index.html
               fi
           volumeMounts:
@@ -38,8 +38,7 @@ spec:
           args:
             - |
               echo "Waiting for Quartz build to complete..."
-              until ls /usr/share/nginx/html/output/index.html /usr/share/nginx/html/output/Index.html >/dev/null 2>&1 \
-                && ! grep -qi "quartz-placeholder" /usr/share/nginx/html/output/index.html /usr/share/nginx/html/output/Index.html 2>/dev/null; do
+              until [ -f /usr/share/nginx/html/output/index.html ] && ! grep -q "quartz-placeholder" /usr/share/nginx/html/output/index.html; do
                 echo "Build not ready yet, retrying in 15s..."
                 sleep 15
               done
