@@ -88,7 +88,9 @@ data:
     // Called before the full fetchAllDocs/syncContent pass so the Quartz build
     // never sees content that has already been removed from the vault.
     function applyDeletions(changeResults) {
-      var deleted = changeResults.filter(function(r) { return r.deleted && r.doc; });
+      // A change is a deletion if CouchDB tombstoned it (r.deleted) OR if
+      // LiveSync soft-deleted it by setting deleted: true on the doc body.
+      var deleted = changeResults.filter(function(r) { return r.doc && (r.deleted || r.doc.deleted); });
       if (!deleted.length) return;
 
       deleted.forEach(function(r) {
@@ -172,7 +174,7 @@ data:
       docs.forEach(function(doc) {
         if (!doc.path) return;
         if (doc.type === 'leaf' || doc.type === 'versioninfo') return;
-        if (doc._deleted) return;
+        if (doc._deleted || doc.deleted) return;
         if (!isPublishable(doc.path)) { skipped++; return; }
 
         var filePath = path.join(CONTENT_DIR, doc.path);
