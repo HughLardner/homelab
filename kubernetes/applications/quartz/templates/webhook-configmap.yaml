@@ -216,6 +216,9 @@ data:
     // Health server (always responds, even during bootstrap)
     // POST /rebuild  — wipes content dir and forces a full re-sync + build.
     //   Use this when renames/deletes in Obsidian are not reflected on the site.
+    //   Invoke (no curl in image — use node):
+    //     kubectl exec -n quartz deploy/quartz-webhook -- node -e \
+    //       "require('http').request({hostname:'localhost',port:9000,path:'/rebuild',method:'POST'},r=>r.resume()).end()"
     // ---------------------------------------------------------------------------
     http.createServer(function(req, res) {
       if (req.url === '/healthz') { res.writeHead(200); res.end('ok'); return; }
