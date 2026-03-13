@@ -86,8 +86,9 @@ const config: QuartzConfig = {
       Plugin.Static(),
       Plugin.Favicon(),
       Plugin.NotFoundPage(),
-      // Comment out CustomOgImages to speed up build time
-      Plugin.CustomOgImages(),
+      // CustomOgImages requires outbound font fetches at build time which fails
+      // inside the cluster pod — disabled until a self-hosted font approach is set up.
+      // Plugin.CustomOgImages(),
     ],
   },
 }
