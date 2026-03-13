@@ -103,7 +103,7 @@ data:
         }
         if (!isPublishable(docPath)) return;
 
-        var filePath = path.join(CONTENT_DIR, docPath);
+        var filePath = path.join(CONTENT_DIR, restorePathCase(docPath));
         if (fs.existsSync(filePath)) {
           fs.unlinkSync(filePath);
           console.log('Deleted file for removed doc: ' + filePath);
@@ -155,6 +155,24 @@ data:
       return Buffer.concat(buffers);
     }
 
+    // LiveSync normalises paths to lowercase in newer versions (APFS compat).
+    // Restore title-case for display: "locations/the sulking beholder.md"
+    // → "Locations/The Sulking Beholder.md".  Each slash-delimited segment is
+    // word-capitalised; the file extension is kept lowercase.
+    function restorePathCase(docPath) {
+      var segments = docPath.split('/');
+      return segments.map(function(seg, i) {
+        var isFile = i === segments.length - 1;
+        if (isFile) {
+          var dot = seg.lastIndexOf('.');
+          var name = dot > -1 ? seg.slice(0, dot) : seg;
+          var ext  = dot > -1 ? seg.slice(dot).toLowerCase() : '';
+          return name.replace(/(?:^|\s|-)\S/g, function(c) { return c.toUpperCase(); }) + ext;
+        }
+        return seg.replace(/(?:^|\s|-)\S/g, function(c) { return c.toUpperCase(); });
+      }).join('/');
+    }
+
     function syncContent(docs) {
       var byId = {};
       docs.forEach(function(d) { byId[d._id] = d; });
@@ -177,7 +195,7 @@ data:
         if (doc._deleted || doc.deleted) return;
         if (!isPublishable(doc.path)) { skipped++; return; }
 
-        var filePath = path.join(CONTENT_DIR, doc.path);
+        var filePath = path.join(CONTENT_DIR, restorePathCase(doc.path));
         fs.mkdirSync(path.dirname(filePath), { recursive: true });
 
         if (isTextFile(doc.path)) {
