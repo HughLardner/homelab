@@ -160,7 +160,9 @@ data:
     // → "Locations/The Sulking Beholder.md".  Each slash-delimited segment is
     // word-capitalised; the file extension is kept lowercase.
     // Exceptions map handles acronyms/abbreviations that must not be title-cased.
-    var PATH_EXCEPTIONS = { 'npcs': 'NPCs', 'pcs': 'PCs' };
+    // 'index' is kept lowercase because Quartz treats index.md as a special root
+    // page and generates index.html — renaming it breaks directory resolution.
+    var PATH_EXCEPTIONS = { 'npcs': 'NPCs', 'pcs': 'PCs', 'index': 'index' };
 
     function restorePathCase(docPath) {
       var segments = docPath.split('/');
