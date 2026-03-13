@@ -103,11 +103,25 @@ data:
       return true;
     }
 
-    function reconstructData(pathDoc, byId) {
+    // Text files: join chunk data strings directly (plain text, no padding issue).
+    function reconstructTextData(pathDoc, byId) {
       return (pathDoc.children || []).map(function(id) {
         var child = byId[id];
         return child ? (child.data || '') : '';
       }).join('');
+    }
+
+    // Binary files: each chunk is independently base64-encoded with padding.
+    // Joining the base64 strings causes Buffer.from() to stop at the first
+    // padding character, truncating the file after 1 chunk (~100KB).
+    // Fix: decode each chunk individually and concatenate the raw Buffers.
+    function reconstructBinaryData(pathDoc, byId) {
+      var buffers = (pathDoc.children || []).map(function(id) {
+        var child = byId[id];
+        if (!child) { console.warn('Missing chunk ' + id + ' for ' + pathDoc.path); return Buffer.alloc(0); }
+        return Buffer.from(child.data || '', 'base64');
+      });
+      return Buffer.concat(buffers);
     }
 
     function syncContent(docs) {
@@ -127,11 +141,10 @@ data:
         var filePath = path.join(CONTENT_DIR, doc.path);
         fs.mkdirSync(path.dirname(filePath), { recursive: true });
 
-        var data = reconstructData(doc, byId);
         if (isTextFile(doc.path)) {
-          fs.writeFileSync(filePath, data, 'utf8');
+          fs.writeFileSync(filePath, reconstructTextData(doc, byId), 'utf8');
         } else {
-          fs.writeFileSync(filePath, Buffer.from(data, 'base64'));
+          fs.writeFileSync(filePath, reconstructBinaryData(doc, byId));
         }
         expected.add(filePath);
         written++;
