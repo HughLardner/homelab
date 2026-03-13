@@ -250,6 +250,12 @@ data:
         console.log('Quartz project already present, skipping bootstrap.');
         return;
       }
+      // Directory exists but has no package.json — incomplete/stale clone from
+      // a previous crash. Remove it so git clone has a clean target.
+      if (fs.existsSync(REPO_DIR)) {
+        console.log('Stale repo dir found (no package.json), removing before fresh clone...');
+        fs.rmSync(REPO_DIR, { recursive: true, force: true });
+      }
       console.log('Bootstrapping Quartz from GitHub (first start only)...');
       execSync('git clone --depth=1 ' + QUARTZ_REPO + ' ' + REPO_DIR, { stdio: 'inherit', timeout: 180000 });
       execSync('npm ci', { cwd: REPO_DIR, stdio: 'inherit', timeout: 360000 });
