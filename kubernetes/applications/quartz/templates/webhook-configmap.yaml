@@ -159,6 +159,9 @@ data:
     // Restore title-case for display: "locations/the sulking beholder.md"
     // → "Locations/The Sulking Beholder.md".  Each slash-delimited segment is
     // word-capitalised; the file extension is kept lowercase.
+    // Exceptions map handles acronyms/abbreviations that must not be title-cased.
+    var PATH_EXCEPTIONS = { 'npcs': 'NPCs', 'pcs': 'PCs' };
+
     function restorePathCase(docPath) {
       var segments = docPath.split('/');
       return segments.map(function(seg, i) {
@@ -167,8 +170,12 @@ data:
           var dot = seg.lastIndexOf('.');
           var name = dot > -1 ? seg.slice(0, dot) : seg;
           var ext  = dot > -1 ? seg.slice(dot).toLowerCase() : '';
+          var lower = name.toLowerCase();
+          if (PATH_EXCEPTIONS[lower]) return PATH_EXCEPTIONS[lower] + ext;
           return name.replace(/(?:^|\s|-)\S/g, function(c) { return c.toUpperCase(); }) + ext;
         }
+        var lower = seg.toLowerCase();
+        if (PATH_EXCEPTIONS[lower]) return PATH_EXCEPTIONS[lower];
         return seg.replace(/(?:^|\s|-)\S/g, function(c) { return c.toUpperCase(); });
       }).join('/');
     }
