@@ -17,6 +17,7 @@ policy: sync
 sources:
   - ingress
   - service
+  - traefik-proxy
 
 # Cloudflare specific settings - use API Token (not API Key + Email)
 env:

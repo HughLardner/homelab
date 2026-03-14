@@ -6,6 +6,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   annotations:
     kubernetes.io/ingress.class: traefik
+    external-dns.alpha.kubernetes.io/hostname: "{{ .Values.services.quartz.domain }}"
     gethomepage.dev/enabled: "true"
     gethomepage.dev/name: Digital Garden
     gethomepage.dev/description: Quartz Digital Garden
