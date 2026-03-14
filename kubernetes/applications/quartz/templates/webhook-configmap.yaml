@@ -219,28 +219,6 @@ data:
     }
 
     // ---------------------------------------------------------------------------
-    // Folder notes — rename FolderName/FolderName.md -> FolderName/index.md
-    // The Obsidian Folder Notes plugin stores folder notes as a file whose name
-    // matches its parent folder (folder_name convention). Quartz's FolderPage
-    // emitter only treats index.md as a folder content page, so we rename before
-    // each build. The vault on disk is never touched — only the synced copy here.
-    // ---------------------------------------------------------------------------
-    function renameFolderNotes(dir) {
-      var entries = fs.readdirSync(dir, { withFileTypes: true });
-      entries.forEach(function(entry) {
-        var fullPath = path.join(dir, entry.name);
-        if (!entry.isDirectory()) return;
-        renameFolderNotes(fullPath);
-        var folderNote = path.join(fullPath, entry.name + '.md');
-        var indexFile  = path.join(fullPath, 'index.md');
-        if (fs.existsSync(folderNote) && !fs.existsSync(indexFile)) {
-          fs.renameSync(folderNote, indexFile);
-          console.log('[folder-notes] renamed ' + entry.name + '.md -> index.md in ' + fullPath);
-        }
-      });
-    }
-
-    // ---------------------------------------------------------------------------
     // Quartz build
     // ---------------------------------------------------------------------------
     function triggerBuild() {
@@ -252,7 +230,6 @@ data:
       buildTimer = null;
       if (buildInProgress) { buildQueued = true; return; }
       buildInProgress = true;
-      renameFolderNotes(CONTENT_DIR);
       console.log('Building Quartz site...');
       var proc = spawn('npx', ['quartz', 'build', '--output', SITE_DIR], { cwd: REPO_DIR, stdio: 'inherit' });
       proc.on('close', function(code) {
@@ -300,6 +277,35 @@ data:
       fs.rmSync(CONTENT_DIR, { recursive: true, force: true });
       fs.mkdirSync(CONTENT_DIR);
       console.log('Bootstrap complete.');
+    }
+
+    // ---------------------------------------------------------------------------
+    // Patch folderPage.tsx to recognise the Obsidian Folder Notes convention:
+    // a file named FolderName/FolderName.md (slugified: folder/folder-name)
+    // should be treated as the folder's index page. This runs on every startup
+    // so it applies even when bootstrap is skipped (Quartz already on PVC).
+    // ---------------------------------------------------------------------------
+    function patchFolderPage() {
+      var folderPagePath = path.join(REPO_DIR, 'quartz/plugins/emitters/folderPage.tsx');
+      if (!fs.existsSync(folderPagePath)) {
+        console.warn('[patch] folderPage.tsx not found, skipping patch.');
+        return;
+      }
+      var src = fs.readFileSync(folderPagePath, 'utf8');
+      if (src.includes('Obsidian Folder Notes convention')) {
+        console.log('[patch] folderPage.tsx already patched, skipping.');
+        return;
+      }
+      var patched = src.replace(
+        'if (folders.has(slug)) {\n      folderInfo[slug] = [tree, file]\n    }',
+        'if (folders.has(slug)) {\n      folderInfo[slug] = [tree, file]\n    } else {\n      // Obsidian Folder Notes convention: FolderName/FolderName.md\n      const parentFolder = stripSlashes(path.dirname(file.data.slug!)) as SimpleSlug\n      const baseName = path.basename(file.data.slug!)\n      if (folders.has(parentFolder) && baseName === path.basename(parentFolder as string)) {\n        folderInfo[parentFolder] = [tree, file]\n      }\n    }'
+      );
+      if (patched === src) {
+        console.warn('[patch] WARNING: folderPage.tsx patch did not apply — upstream pattern changed. Folder notes will fall back to auto-generated listings.');
+      } else {
+        fs.writeFileSync(folderPagePath, patched, 'utf8');
+        console.log('[patch] folderPage.tsx patched for Obsidian Folder Notes support.');
+      }
     }
 
     // ---------------------------------------------------------------------------
@@ -388,6 +394,7 @@ data:
       var since = info.update_seq;
 
       bootstrap();
+      patchFolderPage();
 
       console.log('Initial full sync from CouchDB...');
       return fetchAllDocs().then(function(docs) {
