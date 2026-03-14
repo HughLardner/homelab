@@ -221,7 +221,7 @@ data:
     // ---------------------------------------------------------------------------
     // Folder notes — rename FolderName/FolderName.md -> FolderName/index.md
     // The Obsidian Folder Notes plugin stores folder notes as a file whose name
-    // matches its parent folder ({{folder_name}} convention). Quartz's FolderPage
+    // matches its parent folder (folder_name convention). Quartz's FolderPage
     // emitter only treats index.md as a folder content page, so we rename before
     // each build. The vault on disk is never touched — only the synced copy here.
     // ---------------------------------------------------------------------------
