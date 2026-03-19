@@ -52,10 +52,10 @@ spec:
     group_interval: "5m"
     repeat_interval: "4h"
     routes:
-      # Critical alerts repeat more frequently
+      # Critical alerts repeat more frequently.
+      # matchers must be PromQL-style strings, not objects.
       - matchers:
-          - name: severity
-            value: critical
+          - 'severity="critical"'
         receiver: "homeassistant"
         repeat_interval: "1h"
 
