@@ -14,10 +14,13 @@ domainFilters:
 policy: sync
 
 # Source types to watch
+# traefik-proxy removed — modern Traefik uses traefik.io/v1alpha1 (not the old
+# traefik.containo.us group) and external-dns times out trying to list the old API,
+# causing a fatal crash. IngressRoute hostnames are already covered by the Cloudflare
+# tunnel (cloudflared) so DNS auto-discovery via external-dns is not needed for them.
 sources:
   - ingress
   - service
-  - traefik-proxy
 
 # Cloudflare specific settings - use API Token (not API Key + Email)
 env:
