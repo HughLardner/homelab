@@ -1002,6 +1002,251 @@ data:
     }
 
 ---
+# Workload Status Dashboard
+# Answers: what is running, how long has it been up, which services are scaled to zero,
+# and what HTTP traffic is keeping services alive (preventing KEDA scale-down).
+# Services with scaledownPeriod=1800s scale to zero 30 min after their last Traefik request.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-workload-status
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+  annotations:
+    grafana_folder: "Kubernetes"
+data:
+  workload-status.json: |
+    {
+      "description": "Deployment health, pod uptime, KEDA scale-to-zero state, and the HTTP traffic that keeps services alive",
+      "editable": true,
+      "graphTooltip": 1,
+      "links": [],
+      "panels": [
+        {
+          "collapsed": false,
+          "gridPos": {"h": 1, "w": 24, "x": 0, "y": 0},
+          "id": 100,
+          "title": "Overview",
+          "type": "row"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "description": "Deployments with at least one ready replica right now",
+          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "short"}},
+          "gridPos": {"h": 4, "w": 6, "x": 0, "y": 1},
+          "id": 1,
+          "options": {"colorMode": "value", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"]}},
+          "targets": [{"expr": "count(kube_deployment_status_replicas_ready > 0)", "refId": "A"}],
+          "title": "Deployments Running",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "description": "Deployments currently scaled to zero — these are KEDA idle services waiting for the next request to wake them. They will be unavailable for ~10–20s after the first request.",
+          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 1}]}, "unit": "short"}},
+          "gridPos": {"h": 4, "w": 6, "x": 6, "y": 1},
+          "id": 2,
+          "options": {"colorMode": "background", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"]}},
+          "targets": [{"expr": "count(kube_deployment_spec_replicas == 0) or vector(0)", "refId": "A"}],
+          "title": "Scaled to Zero",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "description": "Total pod container restarts across the cluster in the last 24h. High values indicate crashing or OOM-killed containers.",
+          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 5}, {"color": "red", "value": 20}]}, "unit": "short"}},
+          "gridPos": {"h": 4, "w": 6, "x": 12, "y": 1},
+          "id": 3,
+          "options": {"colorMode": "background", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"]}},
+          "targets": [{"expr": "sum(increase(kube_pod_container_status_restarts_total[24h]))", "refId": "A"}],
+          "title": "Container Restarts (24h)",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "description": "Total pods currently running across all namespaces",
+          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "short"}},
+          "gridPos": {"h": 4, "w": 6, "x": 18, "y": 1},
+          "id": 4,
+          "options": {"colorMode": "value", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"]}},
+          "targets": [{"expr": "count(kube_pod_status_phase{phase=\"Running\"})", "refId": "A"}],
+          "title": "Pods Running",
+          "type": "stat"
+        },
+        {
+          "collapsed": false,
+          "gridPos": {"h": 1, "w": 24, "x": 0, "y": 5},
+          "id": 101,
+          "title": "Deployment Status",
+          "type": "row"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "description": "All deployments across application namespaces. Ready = pods currently serving traffic. Desired = configured replica count (0 means KEDA has scaled it down). A deployment with Ready=0 and Desired=0 is idle and scaled to zero — it will start automatically on the next HTTP request.",
+          "fieldConfig": {
+            "defaults": {"color": {"mode": "thresholds"}, "custom": {"align": "auto", "displayMode": "auto"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}},
+            "overrides": [
+              {
+                "matcher": {"id": "byName", "options": "Ready"},
+                "properties": [
+                  {"id": "custom.displayMode", "value": "color-background"},
+                  {"id": "thresholds", "value": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "green", "value": 1}]}}
+                ]
+              },
+              {
+                "matcher": {"id": "byName", "options": "Restarts"},
+                "properties": [
+                  {"id": "custom.displayMode", "value": "color-background"},
+                  {"id": "thresholds", "value": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 3}, {"color": "red", "value": 10}]}}
+                ]
+              }
+            ]
+          },
+          "gridPos": {"h": 12, "w": 24, "x": 0, "y": 6},
+          "id": 5,
+          "options": {"footer": {"show": false}, "showHeader": true, "sortBy": [{"desc": false, "displayName": "Namespace"}]},
+          "targets": [
+            {
+              "expr": "kube_deployment_status_replicas_ready",
+              "format": "table", "instant": true, "refId": "A"
+            },
+            {
+              "expr": "kube_deployment_spec_replicas",
+              "format": "table", "instant": true, "refId": "B"
+            },
+            {
+              "expr": "sum by (namespace, pod) (kube_pod_container_status_restarts_total)",
+              "format": "table", "instant": true, "refId": "C"
+            }
+          ],
+          "title": "Deployments (Ready / Desired / Restarts)",
+          "transformations": [
+            {"id": "filterFieldsByName", "options": {"include": {"names": ["namespace", "deployment", "Value #A", "Value #B", "Value #C"]}}},
+            {"id": "seriesToColumns", "options": {"byField": "deployment"}},
+            {"id": "organize", "options": {
+              "excludeByName": {"Time": true, "Time 1": true, "Time 2": true, "Time 3": true, "namespace 1": true, "namespace 2": true},
+              "renameByName": {"Value #A": "Ready", "Value #B": "Desired", "Value #C": "Restarts", "namespace": "Namespace", "deployment": "Deployment"}
+            }}
+          ],
+          "type": "table"
+        },
+        {
+          "collapsed": false,
+          "gridPos": {"h": 1, "w": 24, "x": 0, "y": 18},
+          "id": 102,
+          "title": "Pod Uptime",
+          "type": "row"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "description": "How long each running pod has been up. Short uptime on an otherwise stable service means it recently restarted or was woken from KEDA scale-to-zero. Sorted by uptime ascending so recently-started pods appear at the top.",
+          "fieldConfig": {
+            "defaults": {"color": {"mode": "thresholds"}, "custom": {"align": "auto", "displayMode": "auto"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "s"},
+            "overrides": [
+              {
+                "matcher": {"id": "byName", "options": "Uptime"},
+                "properties": [
+                  {"id": "unit", "value": "s"},
+                  {"id": "custom.displayMode", "value": "color-background"},
+                  {"id": "thresholds", "value": {"mode": "absolute", "steps": [{"color": "yellow", "value": null}, {"color": "green", "value": 300}]}}
+                ]
+              }
+            ]
+          },
+          "gridPos": {"h": 12, "w": 24, "x": 0, "y": 19},
+          "id": 6,
+          "options": {"footer": {"show": false}, "showHeader": true, "sortBy": [{"desc": false, "displayName": "Uptime"}]},
+          "targets": [
+            {
+              "expr": "time() - kube_pod_start_time{namespace!~\"kube-system|kube-node-lease|kube-public\"}",
+              "format": "table", "instant": true, "refId": "A",
+              "legendFormat": "Uptime"
+            }
+          ],
+          "title": "Pod Uptime (sorted by most recently started)",
+          "transformations": [
+            {"id": "organize", "options": {
+              "excludeByName": {"Time": true, "__name__": true, "instance": true, "job": true, "uid": true},
+              "renameByName": {"Value": "Uptime", "namespace": "Namespace", "pod": "Pod", "node": "Node"}
+            }}
+          ],
+          "type": "table"
+        },
+        {
+          "collapsed": false,
+          "gridPos": {"h": 1, "w": 24, "x": 0, "y": 31},
+          "id": 103,
+          "title": "HTTP Traffic — What Keeps Services Alive",
+          "type": "row"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "description": "HTTP request rate per service through Traefik (requests/second, 5-minute average). This is the signal KEDA HTTP uses to decide whether to keep a service running. A service with zero traffic for 30 minutes will be scaled to zero. Hover over a gap in the graph to see exactly when traffic stopped.",
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"drawStyle": "line", "fillOpacity": 5, "lineWidth": 1, "showPoints": "never", "spanNulls": false}, "unit": "reqps"}},
+          "gridPos": {"h": 10, "w": 24, "x": 0, "y": 32},
+          "id": 7,
+          "options": {"legend": {"calcs": ["lastNotNull", "max"], "displayMode": "table", "placement": "right", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+          "targets": [
+            {
+              "expr": "sum by (service) (rate(traefik_service_requests_total{namespace!~\"kube-system\"}[5m]))",
+              "legendFormat": "{{ "{{" }}service{{ "}}" }}", "refId": "A"
+            }
+          ],
+          "title": "HTTP Requests/s per Service (30-min silence = scale to zero)",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "description": "Which services received any HTTP traffic in the last 30 minutes (the KEDA scale-down window). A service showing here will NOT scale down yet. A service absent from this list may scale down shortly if it has already been idle for 30 minutes.",
+          "fieldConfig": {
+            "defaults": {"color": {"mode": "thresholds"}, "custom": {"align": "auto", "displayMode": "auto"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "reqps"},
+            "overrides": [
+              {
+                "matcher": {"id": "byName", "options": "Req/s (last 30m avg)"},
+                "properties": [
+                  {"id": "custom.displayMode", "value": "color-background"},
+                  {"id": "thresholds", "value": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "green", "value": 0.001}]}}
+                ]
+              }
+            ]
+          },
+          "gridPos": {"h": 10, "w": 24, "x": 0, "y": 42},
+          "id": 8,
+          "options": {"footer": {"show": false}, "showHeader": true, "sortBy": [{"desc": true, "displayName": "Req/s (last 30m avg)"}]},
+          "targets": [
+            {
+              "expr": "sum by (service) (rate(traefik_service_requests_total[30m]))",
+              "format": "table", "instant": true, "refId": "A"
+            }
+          ],
+          "title": "Active Services in Last 30 Minutes (0 = eligible for scale-down)",
+          "transformations": [
+            {"id": "organize", "options": {
+              "excludeByName": {"Time": true},
+              "renameByName": {"Value": "Req/s (last 30m avg)", "service": "Service"}
+            }}
+          ],
+          "type": "table"
+        }
+      ],
+      "schemaVersion": 38,
+      "style": "dark",
+      "tags": ["kubernetes", "keda", "workloads", "uptime", "scaling"],
+      "templating": {
+        "list": [
+          {"current": {"selected": false, "text": "VictoriaMetrics", "value": "VictoriaMetrics"}, "hide": 0, "includeAll": false, "label": "Datasource", "multi": false, "name": "datasource", "options": [], "query": "prometheus", "refresh": 1, "regex": "", "skipUrlSync": false, "type": "datasource"}
+        ]
+      },
+      "time": {"from": "now-1h", "to": "now"},
+      "timepicker": {},
+      "timezone": "browser",
+      "title": "Workload Status",
+      "uid": "workload-status-homelab",
+      "version": 1
+    }
+
+---
 # ResourceQuota Dashboard
 # Source: Custom dashboard for namespace resource quota monitoring
 apiVersion: v1
@@ -1012,7 +1257,7 @@ metadata:
   labels:
     grafana_dashboard: "1"
   annotations:
-    grafana_folder: "Kubernetes"
+    grafana_folder: "Apps"
 data:
   resourcequota.json: |
     {
