@@ -1,7 +1,7 @@
 ---
 # ArgoCD Application for Garage
 # S3-compatible object storage for Velero backups
-# Sync Wave 4: After security layer
+# Sync Wave 5: After security layer
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -9,7 +9,14 @@ metadata:
   namespace: argocd
   annotations:
     argocd.argoproj.io/sync-wave: "5"
-    # Wave 5: S3 object storage — needed by velero (wave 5, same wave is fine) (no official chart, using local)
+    # Wave 5: S3 object storage — needed by velero (same wave, parallel is fine)
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+
+  sources:
+    # Garage local Helm chart
     - repoURL: https://github.com/HughLardner/homelab.git
       targetRevision: HEAD
       path: kubernetes/services/garage
@@ -44,4 +51,3 @@ metadata:
         duration: 5s
         factor: 2
         maxDuration: 3m
-

@@ -1,7 +1,7 @@
 ---
 # ArgoCD Application for External-DNS
 # Automatic DNS record management via Cloudflare
-# Sync Wave 4: After Traefik is deployed
+# Sync Wave 5: After Traefik is deployed
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -10,6 +10,13 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "5"
     # Wave 5: DNS management — after traefik (wave 3)
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+
+  sources:
+    # External-DNS Helm Chart
     - repoURL: https://kubernetes-sigs.github.io/external-dns/
       chart: external-dns
       targetRevision: 1.14.3
@@ -44,4 +51,3 @@ metadata:
         duration: 5s
         factor: 2
         maxDuration: 3m
-

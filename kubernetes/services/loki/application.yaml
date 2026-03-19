@@ -1,7 +1,7 @@
 ---
 # ArgoCD Application for Loki
 # Centralized log aggregation
-# Sync Wave 4: Infrastructure services
+# Sync Wave 5: Infrastructure services
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -10,6 +10,13 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "5"
     # Wave 5: Log aggregation — after core infra, before promtail (wave 6)
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+
+  sources:
+    # Loki Helm Chart
     - repoURL: https://grafana.github.io/helm-charts
       chart: loki
       targetRevision: 6.6.2
@@ -39,4 +46,3 @@ metadata:
         duration: 5s
         factor: 2
         maxDuration: 3m
-

@@ -1,7 +1,7 @@
 ---
 # ArgoCD Application for NetworkPolicies
 # Network isolation for namespaces
-# Sync Wave 3: With security layer
+# Sync Wave 1: Lightweight, no storage deps
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -10,15 +10,21 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "1"
     # Wave 1: NetworkPolicies are lightweight and have no storage deps
-    - repoURL: https://github.com/HughLardner/homelab.git
-      targetRevision: HEAD
-      path: kubernetes/services/network-policies/templates
-      directory:
-        recurse: false
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+
+  source:
+    repoURL: https://github.com/HughLardner/homelab.git
+    targetRevision: HEAD
+    path: kubernetes/services/network-policies/templates
+    directory:
+      recurse: false
 
   destination:
     server: https://kubernetes.default.svc
-    namespace: default  # Policies are applied per-namespace in templates
+    namespace: default
 
   syncPolicy:
     automated:
@@ -30,4 +36,3 @@ metadata:
         duration: 5s
         factor: 2
         maxDuration: 3m
-
