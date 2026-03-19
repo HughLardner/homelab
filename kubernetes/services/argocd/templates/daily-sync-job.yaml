@@ -1,0 +1,81 @@
+---
+# ServiceAccount used exclusively by the daily-sync CronJob.
+# No token mount needed — uses projected SA token via automountServiceAccountToken.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: argocd-daily-refresh
+  namespace: argocd
+automountServiceAccountToken: true
+---
+# Grants the SA the minimum permissions needed to annotate Application CRs.
+# Annotating with argocd.argoproj.io/refresh=hard tells the app-controller to
+# re-fetch from Git and, because selfHeal is enabled on all apps, sync any drift.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: argocd-daily-refresh
+  namespace: argocd
+rules:
+  - apiGroups: ["argoproj.io"]
+    resources: ["applications"]
+    verbs: ["get", "list", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: argocd-daily-refresh
+  namespace: argocd
+subjects:
+  - kind: ServiceAccount
+    name: argocd-daily-refresh
+    namespace: argocd
+roleRef:
+  kind: Role
+  apiGroup: rbac.authorization.k8s.io
+  name: argocd-daily-refresh
+---
+# Runs at 06:00 Dublin time every day.
+# Annotates every Application with refresh=hard, which causes ArgoCD to
+# re-check Git. With selfHeal enabled, any detected drift is synced immediately.
+# This is the safety net when GitHub webhooks are missed (e.g. cluster downtime).
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: argocd-daily-refresh
+  namespace: argocd
+spec:
+  schedule: "0 6 * * *"
+  timeZone: "Europe/Dublin"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 300
+      template:
+        spec:
+          serviceAccountName: argocd-daily-refresh
+          restartPolicy: OnFailure
+          containers:
+            - name: kubectl
+              image: bitnami/kubectl:latest
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -e
+                  echo "[$(date)] Triggering hard refresh for all ArgoCD Applications..."
+                  kubectl annotate applications.argoproj.io \
+                    --all \
+                    --namespace argocd \
+                    --overwrite \
+                    argocd.argoproj.io/refresh=hard
+                  echo "[$(date)] Refresh annotations applied. ArgoCD will sync any detected drift."
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  cpu: 100m
+                  memory: 64Mi

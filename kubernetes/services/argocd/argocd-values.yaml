@@ -122,6 +122,11 @@ configs:
     # Resource tracking method
     application.resourceTrackingMethod: annotation
 
+    # Disable continuous reconciliation polling — rely on GitHub webhooks for
+    # immediate sync on push, and the daily-sync CronJob for drift detection.
+    # A large fallback interval (24h) prevents any "never sync" edge cases.
+    timeout.reconciliation: "24h"
+
     # =========================================================================
     # Authelia SSO Integration (OIDC)
     # =========================================================================
