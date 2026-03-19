@@ -51,6 +51,10 @@ sidecar:
     labelValue: "1"
     folder: /tmp/dashboards
     searchNamespace: ALL
+    # Read the grafana_folder annotation from ConfigMaps to place dashboards in folders
+    folderAnnotation: grafana_folder
+    provider:
+      foldersFromFilesStructure: false
     resources:
       requests:
         cpu: 10m
@@ -185,106 +189,60 @@ datasources:
         jsonData:
           maxLines: 1000
 
-# Dashboard providers
+# Dashboard providers — one per folder so gnet dashboards land in the right place.
+# Custom ConfigMap dashboards use the grafana_folder annotation (sidecar.folderAnnotation above).
 dashboardProviders:
   dashboardproviders.yaml:
     apiVersion: 1
     providers:
-      - name: "default"
+      - name: "kubernetes"
         orgId: 1
-        folder: ""
+        folder: "Kubernetes"
         type: file
         disableDeletion: false
         editable: true
         options:
-          path: /var/lib/grafana/dashboards/default
+          path: /var/lib/grafana/dashboards/kubernetes
+      - name: "apps"
+        orgId: 1
+        folder: "Apps"
+        type: file
+        disableDeletion: false
+        editable: true
+        options:
+          path: /var/lib/grafana/dashboards/apps
 
-# Pre-load dashboards from Grafana.com
-# These replicate the dashboards from kube-prometheus-stack
+# Pre-load dashboards from Grafana.com.
+# Removed: victoriametrics (too meta), k8s-apiserver (broken — 1 text panel),
+#   k8s-resources-namespace (redundant with kubernetes-cluster),
+#   k8s-deployments (redundant with kubernetes-cluster + pod overview),
+#   k8s-kubelet (K8s internals, not useful for daily homelab ops),
+#   k8s-networking (single-node, minimal value), node-exporter (Node I/O Health
+#   custom dashboard covers this homelab better).
+# CoreDNS and Pi-hole merged into the custom DNS Health dashboard (ConfigMap).
 dashboards:
-  default:
-    # === Victoria Metrics ===
-    victoriametrics:
-      gnetId: 10229
-      revision: 35
-      datasource: VictoriaMetrics
-
-    # === Kubernetes Cluster Overview ===
+  kubernetes:
+    # At-a-glance cluster health: pod counts, CPU, memory, load, top pods
     kubernetes-cluster:
       gnetId: 7249
       revision: 1
       datasource: VictoriaMetrics
 
-    # === Kubernetes Compute Resources ===
-    # Compute Resources / Namespace (Pods)
-    k8s-resources-namespace:
-      gnetId: 10000
-      revision: 1
-      datasource: VictoriaMetrics
-
-    # Compute Resources / Pod
+    # Drill-down by namespace / pod / container for CPU, memory, and network
     k8s-resources-pod:
       gnetId: 6781
       revision: 1
       datasource: VictoriaMetrics
 
-    # === Kubernetes System ===
-    # Kubernetes API Server
-    k8s-apiserver:
-      gnetId: 12654
-      revision: 1
-      datasource: VictoriaMetrics
-
-    # Kubernetes Kubelet
-    k8s-kubelet:
-      gnetId: 16361
-      revision: 1
-      datasource: VictoriaMetrics
-
-    # CoreDNS
-    coredns:
-      gnetId: 14981
-      revision: 2
-      datasource: VictoriaMetrics
-
-    # === Node Metrics ===
-    # Node Exporter Full
-    node-exporter:
-      gnetId: 1860
-      revision: 31
-      datasource: VictoriaMetrics
-
-    # === Storage ===
-    # Persistent Volumes
+    # PVC fill predictions, storage class usage, volumes nearing capacity
     persistent-volumes:
       gnetId: 13646
       revision: 2
       datasource: VictoriaMetrics
 
-    # === Workloads ===
-    # Kubernetes Deployments / StatefulSets / DaemonSets
-    k8s-deployments:
-      gnetId: 8588
-      revision: 1
-      datasource: VictoriaMetrics
-
-    # === Networking ===
-    # Kubernetes Networking
-    k8s-networking:
-      gnetId: 12124
-      revision: 1
-      datasource: VictoriaMetrics
-
-    # === Applications ===
-    # Intel GPU Metrics (for Plex hardware transcoding)
-    # https://grafana.com/grafana/dashboards/23251
+  apps:
+    # Intel GPU utilisation — used by Plex for hardware video transcoding
     intel-gpu:
       gnetId: 23251
       revision: 1
-      datasource: VictoriaMetrics
-
-    # Pi-hole DNS stats (requires pihole-exporter)
-    pihole:
-      gnetId: 10176
-      revision: 3
       datasource: VictoriaMetrics

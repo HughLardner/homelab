@@ -463,254 +463,439 @@ data:
     }
 
 ---
-# Cert-Manager Dashboard
-# Source: https://grafana.com/grafana/dashboards/11001
+# Platform Health Dashboard
+# Merged view of Authelia (SSO), Cert-Manager (TLS), and Velero (backups).
+# These three services are all "is this background service alive?" checks —
+# grouping them here means one dashboard to open when something feels broken.
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: grafana-dashboard-cert-manager
+  name: grafana-dashboard-platform-health
   namespace: monitoring
   labels:
     grafana_dashboard: "1"
   annotations:
     grafana_folder: "Infrastructure"
 data:
-  cert-manager.json: |
+  platform-health.json: |
     {
-      "annotations": {"list": []},
-      "description": "Cert-Manager certificate status and expiry",
+      "description": "Combined health view: Authelia SSO login events, Cert-Manager TLS certificate expiry, and Velero backup status",
       "editable": true,
-      "fiscalYearStartMonth": 0,
-      "graphTooltip": 0,
+      "graphTooltip": 1,
       "links": [],
-      "liveNow": false,
       "panels": [
         {
+          "collapsed": false,
+          "gridPos": {"h": 1, "w": 24, "x": 0, "y": 0},
+          "id": 100,
+          "title": "Authelia — SSO & Authentication",
+          "type": "row"
+        },
+        {
           "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "description": "Successful logins via Authelia in the past hour",
           "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "short"}},
-          "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+          "gridPos": {"h": 4, "w": 6, "x": 0, "y": 1},
           "id": 1,
-          "options": {"colorMode": "value", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto"},
+          "options": {"colorMode": "background", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"]}},
+          "targets": [{"expr": "sum(increase(authelia_authentication_requests_total{success=\"true\"}[1h]))", "refId": "A"}],
+          "title": "Successful Auths (1h)",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "description": "Failed login attempts in the past hour — yellow at 1+, red at 5+",
+          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 1}, {"color": "red", "value": 5}]}, "unit": "short"}},
+          "gridPos": {"h": 4, "w": 6, "x": 6, "y": 1},
+          "id": 2,
+          "options": {"colorMode": "background", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"]}},
+          "targets": [{"expr": "sum(increase(authelia_authentication_requests_total{success=\"false\"}[1h]))", "refId": "A"}],
+          "title": "Failed Auths (1h)",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "description": "IPs that Authelia auto-banned for repeated failures in the past 24h",
+          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 1}, {"color": "red", "value": 5}]}, "unit": "short"}},
+          "gridPos": {"h": 4, "w": 6, "x": 12, "y": 1},
+          "id": 3,
+          "options": {"colorMode": "background", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"]}},
+          "targets": [{"expr": "sum(increase(authelia_regulation_ban_events_total[24h]))", "refId": "A"}],
+          "title": "IP Bans (24h)",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "description": "OIDC token requests from apps like Grafana, Home Assistant, Node-RED in the past hour",
+          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "short"}},
+          "gridPos": {"h": 4, "w": 6, "x": 18, "y": 1},
+          "id": 4,
+          "options": {"colorMode": "background", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"]}},
+          "targets": [{"expr": "sum(increase(authelia_oidc_requests_total[1h]))", "refId": "A"}],
+          "title": "OIDC Token Requests (1h)",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "description": "Authentication requests over time split by success/failure. A spike in failures can indicate a brute-force attempt.",
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "unit": "short"}},
+          "gridPos": {"h": 8, "w": 24, "x": 0, "y": 5},
+          "id": 5,
+          "options": {"legend": {"calcs": ["sum"], "displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi"}},
+          "targets": [
+            {"expr": "sum by (success) (increase(authelia_authentication_requests_total[5m]))", "legendFormat": "success={{success}}", "refId": "A"}
+          ],
+          "title": "Authentication Requests (5m rate)",
+          "type": "timeseries"
+        },
+        {
+          "collapsed": false,
+          "gridPos": {"h": 1, "w": 24, "x": 0, "y": 13},
+          "id": 101,
+          "title": "Cert-Manager — TLS Certificates",
+          "type": "row"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "description": "Certificates with a valid Ready=True status from Let's Encrypt",
+          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "short"}},
+          "gridPos": {"h": 4, "w": 6, "x": 0, "y": 14},
+          "id": 6,
+          "options": {"colorMode": "value", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"]}},
           "targets": [{"expr": "count(certmanager_certificate_ready_status{condition=\"True\"})", "refId": "A"}],
           "title": "Ready Certificates",
           "type": "stat"
         },
         {
           "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "description": "Certificates that are NOT ready — red if any exist. Check cert-manager logs if this is non-zero.",
           "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "red", "value": 1}]}, "unit": "short"}},
-          "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
-          "id": 2,
-          "options": {"colorMode": "value", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto"},
+          "gridPos": {"h": 4, "w": 6, "x": 6, "y": 14},
+          "id": 7,
+          "options": {"colorMode": "value", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"]}},
           "targets": [{"expr": "count(certmanager_certificate_ready_status{condition=\"False\"}) or vector(0)", "refId": "A"}],
           "title": "Not Ready Certificates",
           "type": "stat"
         },
         {
           "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "description": "Time until the soonest certificate expires. Red = less than 7 days, yellow = less than 30 days.",
           "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "yellow", "value": 604800}, {"color": "green", "value": 2592000}]}, "unit": "s"}},
-          "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
-          "id": 3,
-          "options": {"colorMode": "value", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["min"], "fields": "", "values": false}, "textMode": "auto"},
+          "gridPos": {"h": 4, "w": 12, "x": 12, "y": 14},
+          "id": 8,
+          "options": {"colorMode": "value", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["min"]}},
           "targets": [{"expr": "min(certmanager_certificate_expiration_timestamp_seconds - time())", "refId": "A"}],
-          "title": "Earliest Expiry",
+          "title": "Soonest Certificate Expiry",
           "type": "stat"
         },
         {
           "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "short"}},
-          "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
-          "id": 4,
-          "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto"},
-          "targets": [{"expr": "sum(increase(certmanager_http_acme_client_request_count[24h]))", "refId": "A"}],
-          "title": "ACME Requests (24h)",
-          "type": "stat"
-        },
-        {
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "", "axisPlacement": "auto", "barAlignment": 0, "drawStyle": "line", "fillOpacity": 10, "gradientMode": "none", "hideFrom": {"legend": false, "tooltip": false, "viz": false}, "lineInterpolation": "linear", "lineWidth": 1, "pointSize": 5, "scaleDistribution": {"type": "linear"}, "showPoints": "never", "spanNulls": false, "stacking": {"group": "A", "mode": "none"}, "thresholdsStyle": {"mode": "line+area"}}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "transparent", "value": 604800}]}, "unit": "s"}},
-          "gridPos": {"h": 8, "w": 24, "x": 0, "y": 4},
-          "id": 5,
+          "description": "How long each certificate has remaining. The red zone marks less than 7 days — cert-manager should auto-renew at 2/3 of lifetime (typically 60 days before expiry for 90-day Let's Encrypt certs).",
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"drawStyle": "line", "fillOpacity": 10, "lineWidth": 1, "showPoints": "never"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "transparent", "value": 604800}]}, "unit": "s"}},
+          "gridPos": {"h": 8, "w": 24, "x": 0, "y": 18},
+          "id": 9,
           "options": {"legend": {"calcs": ["lastNotNull"], "displayMode": "table", "placement": "right", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
-          "targets": [{"expr": "certmanager_certificate_expiration_timestamp_seconds - time()", "legendFormat": "{{ "{{" }}namespace{{ "}}" }}/{{ "{{" }}name{{ "}}" }}", "refId": "A"}],
-          "title": "Certificate Time Until Expiry",
+          "targets": [{"expr": "certmanager_certificate_expiration_timestamp_seconds - time()", "legendFormat": "{{namespace}}/{{name}}", "refId": "A"}],
+          "title": "Certificate Time Until Expiry (per cert)",
           "type": "timeseries"
         },
         {
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"align": "auto", "displayMode": "color-background", "inspect": false}, "mappings": [{"options": {"0": {"color": "red", "index": 1, "text": "Not Ready"}, "1": {"color": "green", "index": 0, "text": "Ready"}}, "type": "value"}], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}}},
-          "gridPos": {"h": 8, "w": 24, "x": 0, "y": 12},
-          "id": 6,
-          "options": {"footer": {"fields": "", "reducer": ["sum"], "show": false}, "showHeader": true, "sortBy": [{"desc": false, "displayName": "Time Until Expiry"}]},
-          "targets": [{"expr": "certmanager_certificate_ready_status{condition=\"True\"}", "format": "table", "instant": true, "refId": "A"}, {"expr": "certmanager_certificate_expiration_timestamp_seconds - time()", "format": "table", "instant": true, "refId": "B"}],
-          "title": "Certificate Status",
-          "transformations": [{"id": "seriesToColumns", "options": {"byField": "name"}}, {"id": "organize", "options": {"excludeByName": {"Time": true, "Time 1": true, "Time 2": true, "Value #A": false, "__name__": true, "__name__ 1": true, "__name__ 2": true, "condition": true, "exported_namespace": true, "exported_namespace 1": true, "exported_namespace 2": true, "instance": true, "instance 1": true, "instance 2": true, "issuer_group": true, "issuer_group 1": true, "issuer_group 2": true, "issuer_kind": true, "issuer_kind 1": true, "issuer_kind 2": true, "issuer_name": true, "issuer_name 1": true, "issuer_name 2": true, "job": true, "job 1": true, "job 2": true, "name 1": true, "namespace 1": true, "namespace 2": true}, "indexByName": {}, "renameByName": {"Value #A": "Ready", "Value #B": "Time Until Expiry", "name": "Certificate", "namespace": "Namespace"}}}],
-          "type": "table"
-        }
-      ],
-      "schemaVersion": 38,
-      "style": "dark",
-      "tags": ["cert-manager", "certificates", "tls"],
-      "templating": {
-        "list": [
-          {"current": {"selected": false, "text": "VictoriaMetrics", "value": "VictoriaMetrics"}, "hide": 0, "includeAll": false, "label": "Datasource", "multi": false, "name": "datasource", "options": [], "query": "prometheus", "refresh": 1, "regex": "", "skipUrlSync": false, "type": "datasource"}
-        ]
-      },
-      "time": {"from": "now-1h", "to": "now"},
-      "timepicker": {},
-      "timezone": "",
-      "title": "Cert-Manager",
-      "uid": "cert-manager-homelab",
-      "version": 1
-    }
-
----
-# Velero Backup Dashboard
-# Source: Custom dashboard for backup monitoring
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: grafana-dashboard-velero
-  namespace: monitoring
-  labels:
-    grafana_dashboard: "1"
-  annotations:
-    grafana_folder: "Infrastructure"
-data:
-  velero.json: |
-    {
-      "annotations": {"list": []},
-      "description": "Velero backup and restore status",
-      "editable": true,
-      "fiscalYearStartMonth": 0,
-      "graphTooltip": 0,
-      "links": [],
-      "liveNow": false,
-      "panels": [
-        {
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "short"}},
-          "gridPos": {"h": 4, "w": 4, "x": 0, "y": 0},
-          "id": 1,
-          "options": {"colorMode": "value", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto"},
-          "targets": [{"expr": "count(velero_backup_last_status{schedule!=\"\"})", "refId": "A"}],
-          "title": "Scheduled Backups",
-          "type": "stat"
+          "collapsed": false,
+          "gridPos": {"h": 1, "w": 24, "x": 0, "y": 26},
+          "id": 102,
+          "title": "Velero — Backup & Restore",
+          "type": "row"
         },
         {
           "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "short"}},
-          "gridPos": {"h": 4, "w": 4, "x": 4, "y": 0},
-          "id": 2,
-          "options": {"colorMode": "value", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto"},
-          "targets": [{"expr": "sum(velero_backup_success_total) or vector(0)", "refId": "A"}],
-          "title": "Successful Backups",
-          "type": "stat"
-        },
-        {
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "description": "Backup failures total — red if any exist. A failure means your scheduled backup did not complete.",
           "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "red", "value": 1}]}, "unit": "short"}},
-          "gridPos": {"h": 4, "w": 4, "x": 8, "y": 0},
-          "id": 3,
-          "options": {"colorMode": "value", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto"},
+          "gridPos": {"h": 4, "w": 6, "x": 0, "y": 27},
+          "id": 10,
+          "options": {"colorMode": "background", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"]}},
           "targets": [{"expr": "sum(velero_backup_failure_total) or vector(0)", "refId": "A"}],
           "title": "Failed Backups",
           "type": "stat"
         },
         {
           "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 1}]}, "unit": "short"}},
-          "gridPos": {"h": 4, "w": 4, "x": 12, "y": 0},
-          "id": 4,
-          "options": {"colorMode": "value", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto"},
-          "targets": [{"expr": "sum(velero_backup_partial_failure_total) or vector(0)", "refId": "A"}],
-          "title": "Partial Failures",
-          "type": "stat"
-        },
-        {
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "yellow", "value": 43200}, {"color": "green", "value": 86400}]}, "unit": "s"}},
-          "gridPos": {"h": 4, "w": 4, "x": 16, "y": 0},
-          "id": 5,
-          "options": {"colorMode": "value", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto"},
+          "description": "How long since the last successful scheduled backup. Red = more than 24h, yellow = more than 12h.",
+          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 43200}, {"color": "red", "value": 86400}]}, "unit": "s"}},
+          "gridPos": {"h": 4, "w": 6, "x": 6, "y": 27},
+          "id": 11,
+          "options": {"colorMode": "background", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"]}},
           "targets": [{"expr": "time() - max(velero_backup_last_successful_timestamp{schedule!=\"\"})", "refId": "A"}],
-          "title": "Since Last Backup",
+          "title": "Time Since Last Backup",
           "type": "stat"
         },
         {
           "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "bytes"}},
-          "gridPos": {"h": 4, "w": 4, "x": 20, "y": 0},
-          "id": 6,
-          "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto"},
-          "targets": [{"expr": "sum(velero_backup_items_total)", "refId": "A"}],
-          "title": "Total Items Backed Up",
+          "description": "Total successful backups run to date",
+          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "short"}},
+          "gridPos": {"h": 4, "w": 6, "x": 12, "y": 27},
+          "id": 12,
+          "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"]}},
+          "targets": [{"expr": "sum(velero_backup_success_total) or vector(0)", "refId": "A"}],
+          "title": "Total Successful Backups",
           "type": "stat"
         },
         {
           "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "", "axisPlacement": "auto", "barAlignment": 0, "drawStyle": "line", "fillOpacity": 10, "gradientMode": "none", "hideFrom": {"legend": false, "tooltip": false, "viz": false}, "lineInterpolation": "linear", "lineWidth": 1, "pointSize": 5, "scaleDistribution": {"type": "linear"}, "showPoints": "auto", "spanNulls": false, "stacking": {"group": "A", "mode": "none"}, "thresholdsStyle": {"mode": "off"}}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "short"}},
-          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
-          "id": 7,
-          "options": {"legend": {"calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "none"}},
-          "targets": [{"expr": "increase(velero_backup_success_total[1h])", "legendFormat": "Successful", "refId": "A"}, {"expr": "increase(velero_backup_failure_total[1h])", "legendFormat": "Failed", "refId": "B"}, {"expr": "increase(velero_backup_partial_failure_total[1h])", "legendFormat": "Partial Failure", "refId": "C"}],
+          "description": "Number of active scheduled backup jobs configured in Velero",
+          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "short"}},
+          "gridPos": {"h": 4, "w": 6, "x": 18, "y": 27},
+          "id": 13,
+          "options": {"colorMode": "value", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"]}},
+          "targets": [{"expr": "count(velero_backup_last_status{schedule!=\"\"})", "refId": "A"}],
+          "title": "Scheduled Backup Jobs",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "description": "Backup outcomes per schedule over time. Partial failures mean some resources were skipped — check Velero logs for details.",
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"drawStyle": "line", "fillOpacity": 10, "lineWidth": 1, "showPoints": "auto"}, "unit": "short"}},
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 31},
+          "id": 14,
+          "options": {"legend": {"calcs": [], "displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi"}},
+          "targets": [
+            {"expr": "increase(velero_backup_success_total[1h])", "legendFormat": "Successful", "refId": "A"},
+            {"expr": "increase(velero_backup_failure_total[1h])", "legendFormat": "Failed", "refId": "B"},
+            {"expr": "increase(velero_backup_partial_failure_total[1h])", "legendFormat": "Partial Failure", "refId": "C"}
+          ],
           "title": "Backup Results Over Time",
           "type": "timeseries"
         },
         {
           "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "", "axisPlacement": "auto", "barAlignment": 0, "drawStyle": "line", "fillOpacity": 10, "gradientMode": "none", "hideFrom": {"legend": false, "tooltip": false, "viz": false}, "lineInterpolation": "linear", "lineWidth": 1, "pointSize": 5, "scaleDistribution": {"type": "linear"}, "showPoints": "never", "spanNulls": false, "stacking": {"group": "A", "mode": "none"}, "thresholdsStyle": {"mode": "off"}}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "s"}},
-          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
-          "id": 8,
-          "options": {"legend": {"calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "none"}},
-          "targets": [{"expr": "velero_backup_duration_seconds{schedule!=\"\"}", "legendFormat": "{{ "{{" }}schedule{{ "}}" }}", "refId": "A"}],
-          "title": "Backup Duration",
-          "type": "timeseries"
-        },
-        {
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "custom": {"align": "auto", "displayMode": "color-background-solid", "inspect": false}, "mappings": [{"options": {"0": {"color": "red", "index": 1, "text": "Failed"}, "1": {"color": "green", "index": 0, "text": "Success"}}, "type": "value"}], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}}},
-          "gridPos": {"h": 8, "w": 24, "x": 0, "y": 12},
-          "id": 9,
-          "options": {"footer": {"fields": "", "reducer": ["sum"], "show": false}, "showHeader": true, "sortBy": [{"desc": true, "displayName": "Last Success"}]},
+          "description": "1 = last backup for this schedule was successful, 0 = failed",
+          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "custom": {"displayMode": "color-background-solid"}, "mappings": [{"options": {"0": {"color": "red", "index": 1, "text": "Failed"}, "1": {"color": "green", "index": 0, "text": "Success"}}, "type": "value"}], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}}},
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 31},
+          "id": 15,
+          "options": {"footer": {"show": false}, "showHeader": true, "sortBy": [{"desc": true, "displayName": "Last Result"}]},
           "targets": [{"expr": "velero_backup_last_status{schedule!=\"\"}", "format": "table", "instant": true, "refId": "A"}],
           "title": "Scheduled Backup Status",
-          "transformations": [{"id": "organize", "options": {"excludeByName": {"Time": true, "Value": false, "__name__": true, "instance": true, "job": true}, "indexByName": {}, "renameByName": {"Value": "Status", "schedule": "Schedule"}}}],
+          "transformations": [{"id": "organize", "options": {"excludeByName": {"Time": true, "Value": false, "__name__": true, "instance": true, "job": true}, "renameByName": {"Value": "Last Result", "schedule": "Schedule"}}}],
           "type": "table"
-        },
-        {
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "", "axisPlacement": "auto", "barAlignment": 0, "drawStyle": "line", "fillOpacity": 10, "gradientMode": "none", "hideFrom": {"legend": false, "tooltip": false, "viz": false}, "lineInterpolation": "linear", "lineWidth": 1, "pointSize": 5, "scaleDistribution": {"type": "linear"}, "showPoints": "never", "spanNulls": false, "stacking": {"group": "A", "mode": "none"}, "thresholdsStyle": {"mode": "off"}}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "short"}},
-          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 20},
-          "id": 10,
-          "options": {"legend": {"calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "none"}},
-          "targets": [{"expr": "increase(velero_restore_success_total[24h])", "legendFormat": "Successful", "refId": "A"}, {"expr": "increase(velero_restore_failed_total[24h])", "legendFormat": "Failed", "refId": "B"}],
-          "title": "Restores (24h)",
-          "type": "timeseries"
-        },
-        {
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "", "axisPlacement": "auto", "barAlignment": 0, "drawStyle": "line", "fillOpacity": 10, "gradientMode": "none", "hideFrom": {"legend": false, "tooltip": false, "viz": false}, "lineInterpolation": "linear", "lineWidth": 1, "pointSize": 5, "scaleDistribution": {"type": "linear"}, "showPoints": "never", "spanNulls": false, "stacking": {"group": "A", "mode": "none"}, "thresholdsStyle": {"mode": "off"}}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "short"}},
-          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 20},
-          "id": 11,
-          "options": {"legend": {"calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "none"}},
-          "targets": [{"expr": "velero_backup_items_total{schedule!=\"\"}", "legendFormat": "{{ "{{" }}schedule{{ "}}" }}", "refId": "A"}],
-          "title": "Items Per Backup",
-          "type": "timeseries"
         }
       ],
       "schemaVersion": 38,
       "style": "dark",
-      "tags": ["velero", "backup", "disaster-recovery"],
+      "tags": ["authelia", "cert-manager", "velero", "security", "tls", "backup"],
       "templating": {
         "list": [
           {"current": {"selected": false, "text": "VictoriaMetrics", "value": "VictoriaMetrics"}, "hide": 0, "includeAll": false, "label": "Datasource", "multi": false, "name": "datasource", "options": [], "query": "prometheus", "refresh": 1, "regex": "", "skipUrlSync": false, "type": "datasource"}
         ]
       },
-      "time": {"from": "now-24h", "to": "now"},
+      "time": {"from": "now-6h", "to": "now"},
       "timepicker": {},
       "timezone": "",
-      "title": "Velero Backups",
-      "uid": "velero-homelab",
+      "title": "Platform Health",
+      "uid": "platform-health-homelab",
+      "version": 1
+    }
+
+---
+# DNS Health Dashboard
+# Merged view of Pi-hole (home network DNS + ad-blocking) and CoreDNS (Kubernetes internal DNS).
+# Pi-hole handles all DNS for the home network and blocks ads/trackers.
+# CoreDNS is the internal Kubernetes DNS resolver (service discovery between pods).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-dns-health
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+  annotations:
+    grafana_folder: "Apps"
+data:
+  dns-health.json: |
+    {
+      "description": "Pi-hole home network DNS ad-blocker stats and CoreDNS Kubernetes internal DNS performance",
+      "editable": true,
+      "graphTooltip": 1,
+      "links": [],
+      "panels": [
+        {
+          "collapsed": false,
+          "gridPos": {"h": 1, "w": 24, "x": 0, "y": 0},
+          "id": 100,
+          "title": "Pi-hole — Home Network DNS & Ad-Blocking",
+          "type": "row"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "description": "1 = Pi-hole is active and blocking. 0 = disabled. Red if disabled.",
+          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "mappings": [{"options": {"0": {"color": "red", "index": 1, "text": "Disabled"}, "1": {"color": "green", "index": 0, "text": "Active"}}, "type": "value"}], "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "green", "value": 1}]}, "unit": "short"}},
+          "gridPos": {"h": 4, "w": 4, "x": 0, "y": 1},
+          "id": 1,
+          "options": {"colorMode": "background", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"]}},
+          "targets": [{"expr": "pihole_status", "refId": "A"}],
+          "title": "Pi-hole Status",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "description": "Total DNS queries processed by Pi-hole today",
+          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "short"}},
+          "gridPos": {"h": 4, "w": 4, "x": 4, "y": 1},
+          "id": 2,
+          "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"]}},
+          "targets": [{"expr": "pihole_dns_queries_today", "refId": "A"}],
+          "title": "Queries Today",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "description": "Ad/tracker DNS queries blocked today",
+          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "short"}},
+          "gridPos": {"h": 4, "w": 4, "x": 8, "y": 1},
+          "id": 3,
+          "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"]}},
+          "targets": [{"expr": "pihole_ads_blocked_today", "refId": "A"}],
+          "title": "Ads Blocked Today",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "description": "Percentage of all queries that were blocked. Typically 10–30% for a home network.",
+          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "percent"}},
+          "gridPos": {"h": 4, "w": 4, "x": 12, "y": 1},
+          "id": 4,
+          "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"]}},
+          "targets": [{"expr": "pihole_ads_percentage_today", "refId": "A"}],
+          "title": "Block Rate %",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "description": "Total unique domains on the blocklist. Larger = more coverage.",
+          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "short"}},
+          "gridPos": {"h": 4, "w": 4, "x": 16, "y": 1},
+          "id": 5,
+          "options": {"colorMode": "value", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"]}},
+          "targets": [{"expr": "pihole_domains_being_blocked", "refId": "A"}],
+          "title": "Blocklist Size",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "description": "Unique client IPs that have made DNS requests to Pi-hole today",
+          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "short"}},
+          "gridPos": {"h": 4, "w": 4, "x": 20, "y": 1},
+          "id": 6,
+          "options": {"colorMode": "value", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"]}},
+          "targets": [{"expr": "pihole_unique_clients", "refId": "A"}],
+          "title": "Unique Clients Today",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "description": "DNS queries over time broken down by outcome: forwarded to upstream DNS (e.g. Cloudflare), answered from Pi-hole cache, or blocked.",
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"drawStyle": "line", "fillOpacity": 10, "lineWidth": 1, "showPoints": "never", "stacking": {"mode": "none"}}, "unit": "short"}},
+          "gridPos": {"h": 8, "w": 24, "x": 0, "y": 5},
+          "id": 7,
+          "options": {"legend": {"calcs": ["lastNotNull"], "displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi", "sort": "desc"}},
+          "targets": [
+            {"expr": "pihole_dns_queries_today", "legendFormat": "Total Queries", "refId": "A"},
+            {"expr": "pihole_ads_blocked_today", "legendFormat": "Blocked", "refId": "B"},
+            {"expr": "pihole_queries_cached", "legendFormat": "Cached", "refId": "C"},
+            {"expr": "pihole_queries_forwarded", "legendFormat": "Forwarded to Upstream", "refId": "D"}
+          ],
+          "title": "Query Breakdown Over Time",
+          "type": "timeseries"
+        },
+        {
+          "collapsed": false,
+          "gridPos": {"h": 1, "w": 24, "x": 0, "y": 13},
+          "id": 101,
+          "title": "CoreDNS — Kubernetes Internal DNS",
+          "type": "row"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "description": "DNS requests per second being handled by CoreDNS for Kubernetes service discovery (e.g. pod-to-pod lookups like 'my-service.default.svc.cluster.local')",
+          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "reqps"}},
+          "gridPos": {"h": 4, "w": 6, "x": 0, "y": 14},
+          "id": 8,
+          "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"]}},
+          "targets": [{"expr": "sum(rate(coredns_dns_requests_total[5m]))", "refId": "A"}],
+          "title": "Request Rate",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "description": "Cache hit rate — higher is better. CoreDNS caches responses to reduce upstream load. A low hit rate may indicate short TTLs.",
+          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "yellow", "value": null}, {"color": "green", "value": 0.5}]}, "unit": "percentunit"}},
+          "gridPos": {"h": 4, "w": 6, "x": 6, "y": 14},
+          "id": 9,
+          "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"]}},
+          "targets": [{"expr": "sum(rate(coredns_cache_hits_total[5m])) / (sum(rate(coredns_cache_hits_total[5m])) + sum(rate(coredns_cache_misses_total[5m])))", "refId": "A"}],
+          "title": "Cache Hit Rate",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "description": "99th percentile DNS response time in milliseconds. Should normally be well under 10ms inside the cluster.",
+          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 0.01}, {"color": "red", "value": 0.1}]}, "unit": "s"}},
+          "gridPos": {"h": 4, "w": 6, "x": 12, "y": 14},
+          "id": 10,
+          "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"]}},
+          "targets": [{"expr": "histogram_quantile(0.99, sum(rate(coredns_dns_request_duration_seconds_bucket[5m])) by (le))", "refId": "A"}],
+          "title": "Request Latency p99",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "description": "NXDOMAIN = name not found (e.g. a pod looking up a service that doesn't exist). A spike here can indicate misconfigured services.",
+          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 10}]}, "unit": "short"}},
+          "gridPos": {"h": 4, "w": 6, "x": 18, "y": 14},
+          "id": 11,
+          "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"]}},
+          "targets": [{"expr": "sum(rate(coredns_dns_responses_total{rcode=\"NXDOMAIN\"}[5m]))", "refId": "A"}],
+          "title": "NXDOMAIN Responses/s",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "description": "DNS request rate broken down by record type. A = IPv4 lookups (most common), AAAA = IPv6, SRV = service discovery.",
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"drawStyle": "line", "fillOpacity": 10, "lineWidth": 1, "showPoints": "never"}, "unit": "reqps"}},
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 18},
+          "id": 12,
+          "options": {"legend": {"calcs": ["lastNotNull"], "displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi"}},
+          "targets": [
+            {"expr": "sum by (type) (rate(coredns_dns_requests_total[5m]))", "legendFormat": "{{type}}", "refId": "A"}
+          ],
+          "title": "Request Rate by Record Type",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "description": "Response codes over time. NOERROR = resolved successfully. NXDOMAIN = name not found. SERVFAIL = upstream error. High SERVFAIL means CoreDNS cannot reach its upstream resolver.",
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"drawStyle": "line", "fillOpacity": 10, "lineWidth": 1, "showPoints": "never"}, "unit": "reqps"}},
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 18},
+          "id": 13,
+          "options": {"legend": {"calcs": ["lastNotNull"], "displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi"}},
+          "targets": [
+            {"expr": "sum by (rcode) (rate(coredns_dns_responses_total[5m]))", "legendFormat": "{{rcode}}", "refId": "A"}
+          ],
+          "title": "Response Codes",
+          "type": "timeseries"
+        }
+      ],
+      "schemaVersion": 38,
+      "style": "dark",
+      "tags": ["dns", "pihole", "coredns"],
+      "templating": {
+        "list": [
+          {"current": {"selected": false, "text": "VictoriaMetrics", "value": "VictoriaMetrics"}, "hide": 0, "includeAll": false, "label": "Datasource", "multi": false, "name": "datasource", "options": [], "query": "prometheus", "refresh": 1, "regex": "", "skipUrlSync": false, "type": "datasource"}
+        ]
+      },
+      "time": {"from": "now-6h", "to": "now"},
+      "timepicker": {},
+      "timezone": "",
+      "title": "DNS Health",
+      "uid": "dns-health-homelab",
       "version": 1
     }
 
@@ -968,257 +1153,6 @@ data:
     }
 
 ---
-# Authelia Dashboard
-# Tracks authentication requests, failures, OIDC activity, and session durations
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: grafana-dashboard-authelia
-  namespace: monitoring
-  labels:
-    grafana_dashboard: "1"
-  annotations:
-    grafana_folder: "Infrastructure"
-data:
-  authelia.json: |
-    {
-      "description": "Authelia authentication events, OIDC activity, and session metrics",
-      "editable": true,
-      "panels": [
-        {
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "short"}},
-          "gridPos": {"h": 4, "w": 4, "x": 0, "y": 0},
-          "id": 1,
-          "options": {"colorMode": "background", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"]}},
-          "targets": [{"expr": "sum(increase(authelia_authentication_requests_total{success=\"true\"}[1h]))", "legendFormat": "Successful", "refId": "A"}],
-          "title": "Successful Auths (1h)",
-          "type": "stat"
-        },
-        {
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 1}, {"color": "red", "value": 5}]}, "unit": "short"}},
-          "gridPos": {"h": 4, "w": 4, "x": 4, "y": 0},
-          "id": 2,
-          "options": {"colorMode": "background", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"]}},
-          "targets": [{"expr": "sum(increase(authelia_authentication_requests_total{success=\"false\"}[1h]))", "legendFormat": "Failed", "refId": "A"}],
-          "title": "Failed Auths (1h)",
-          "type": "stat"
-        },
-        {
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "short"}},
-          "gridPos": {"h": 4, "w": 4, "x": 8, "y": 0},
-          "id": 3,
-          "options": {"colorMode": "background", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"]}},
-          "targets": [{"expr": "sum(increase(authelia_oidc_requests_total[1h]))", "legendFormat": "OIDC Requests", "refId": "A"}],
-          "title": "OIDC Requests (1h)",
-          "type": "stat"
-        },
-        {
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 5}, {"color": "red", "value": 20}]}, "unit": "short"}},
-          "gridPos": {"h": 4, "w": 4, "x": 12, "y": 0},
-          "id": 4,
-          "options": {"colorMode": "background", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"]}},
-          "targets": [{"expr": "sum(increase(authelia_regulation_ban_events_total[24h]))", "legendFormat": "Bans", "refId": "A"}],
-          "title": "IP Bans (24h)",
-          "type": "stat"
-        },
-        {
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "unit": "short"}},
-          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
-          "id": 5,
-          "options": {"legend": {"calcs": ["sum"], "displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi"}},
-          "targets": [
-            {"expr": "sum by (success) (increase(authelia_authentication_requests_total[5m]))", "legendFormat": "success={{ "{{success}}" }}", "refId": "A"}
-          ],
-          "title": "Authentication Requests (5m rate)",
-          "type": "timeseries"
-        },
-        {
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "unit": "short"}},
-          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
-          "id": 6,
-          "options": {"legend": {"calcs": ["sum"], "displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi"}},
-          "targets": [
-            {"expr": "sum by (endpoint) (increase(authelia_oidc_requests_total[5m]))", "legendFormat": "{{ "{{endpoint}}" }}", "refId": "A"}
-          ],
-          "title": "OIDC Endpoint Requests (5m rate)",
-          "type": "timeseries"
-        },
-        {
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "unit": "s"}},
-          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 12},
-          "id": 7,
-          "options": {"legend": {"calcs": ["mean", "max"], "displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi"}},
-          "targets": [
-            {"expr": "histogram_quantile(0.50, sum(rate(authelia_authentication_duration_seconds_bucket[5m])) by (le))", "legendFormat": "p50", "refId": "A"},
-            {"expr": "histogram_quantile(0.95, sum(rate(authelia_authentication_duration_seconds_bucket[5m])) by (le))", "legendFormat": "p95", "refId": "B"},
-            {"expr": "histogram_quantile(0.99, sum(rate(authelia_authentication_duration_seconds_bucket[5m])) by (le))", "legendFormat": "p99", "refId": "C"}
-          ],
-          "title": "Authentication Latency (p50 / p95 / p99)",
-          "type": "timeseries"
-        },
-        {
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "unit": "short"}},
-          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 12},
-          "id": 8,
-          "options": {"legend": {"calcs": ["lastNotNull"], "displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi"}},
-          "targets": [
-            {"expr": "sum by (regulation_type) (increase(authelia_regulation_ban_events_total[5m]))", "legendFormat": "{{ "{{regulation_type}}" }}", "refId": "A"}
-          ],
-          "title": "Regulation / Ban Events",
-          "type": "timeseries"
-        }
-      ],
-      "schemaVersion": 38,
-      "style": "dark",
-      "tags": ["authelia", "sso", "security"],
-      "templating": {
-        "list": [
-          {"current": {"selected": false, "text": "VictoriaMetrics", "value": "VictoriaMetrics"}, "hide": 0, "includeAll": false, "label": "Datasource", "multi": false, "name": "datasource", "options": [], "query": "prometheus", "refresh": 1, "regex": "", "skipUrlSync": false, "type": "datasource"}
-        ]
-      },
-      "time": {"from": "now-6h", "to": "now"},
-      "timepicker": {},
-      "timezone": "",
-      "title": "Authelia",
-      "uid": "authelia-homelab",
-      "version": 1
-    }
-
----
-# Promtail Pipeline Health Dashboard
-# Monitors log collection throughput, errors, and Loki push health
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: grafana-dashboard-promtail
-  namespace: monitoring
-  labels:
-    grafana_dashboard: "1"
-  annotations:
-    grafana_folder: "Logs"
-data:
-  promtail.json: |
-    {
-      "description": "Promtail log pipeline health: scrape throughput, drop rate, and Loki push latency",
-      "editable": true,
-      "panels": [
-        {
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "Bps"}},
-          "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
-          "id": 1,
-          "options": {"colorMode": "background", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"]}},
-          "targets": [{"expr": "sum(rate(promtail_sent_bytes_total[5m]))", "legendFormat": "Bytes/s", "refId": "A"}],
-          "title": "Bytes Sent to Loki",
-          "type": "stat"
-        },
-        {
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "short"}},
-          "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
-          "id": 2,
-          "options": {"colorMode": "background", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"]}},
-          "targets": [{"expr": "sum(rate(promtail_read_lines_total[5m]))", "legendFormat": "Lines/s", "refId": "A"}],
-          "title": "Lines Read/s",
-          "type": "stat"
-        },
-        {
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 1}, {"color": "red", "value": 10}]}, "unit": "short"}},
-          "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
-          "id": 3,
-          "options": {"colorMode": "background", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"]}},
-          "targets": [{"expr": "sum(rate(promtail_dropped_entries_total[5m]))", "legendFormat": "Drops/s", "refId": "A"}],
-          "title": "Dropped Entries/s",
-          "type": "stat"
-        },
-        {
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 0.1}, {"color": "red", "value": 1}]}, "unit": "s"}},
-          "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
-          "id": 4,
-          "options": {"colorMode": "background", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"]}},
-          "targets": [{"expr": "histogram_quantile(0.99, sum(rate(promtail_request_duration_seconds_bucket[5m])) by (le))", "legendFormat": "p99", "refId": "A"}],
-          "title": "Loki Push Latency p99",
-          "type": "stat"
-        },
-        {
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "unit": "Bps"}},
-          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
-          "id": 5,
-          "options": {"legend": {"calcs": ["mean", "max"], "displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi"}},
-          "targets": [
-            {"expr": "sum by (host) (rate(promtail_sent_bytes_total[5m]))", "legendFormat": "{{ "{{host}}" }}", "refId": "A"}
-          ],
-          "title": "Bytes Sent to Loki by Node",
-          "type": "timeseries"
-        },
-        {
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "unit": "short"}},
-          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
-          "id": 6,
-          "options": {"legend": {"calcs": ["sum"], "displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi"}},
-          "targets": [
-            {"expr": "sum by (host) (rate(promtail_dropped_entries_total[5m]))", "legendFormat": "dropped / {{ "{{host}}" }}", "refId": "A"},
-            {"expr": "sum by (host) (rate(promtail_read_lines_total[5m]))", "legendFormat": "read / {{ "{{host}}" }}", "refId": "B"}
-          ],
-          "title": "Lines Read vs Dropped by Node",
-          "type": "timeseries"
-        },
-        {
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "unit": "s"}},
-          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 12},
-          "id": 7,
-          "options": {"legend": {"calcs": ["mean", "max"], "displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi"}},
-          "targets": [
-            {"expr": "histogram_quantile(0.50, sum(rate(promtail_request_duration_seconds_bucket[5m])) by (le, host))", "legendFormat": "p50 / {{ "{{host}}" }}", "refId": "A"},
-            {"expr": "histogram_quantile(0.95, sum(rate(promtail_request_duration_seconds_bucket[5m])) by (le, host))", "legendFormat": "p95 / {{ "{{host}}" }}", "refId": "B"},
-            {"expr": "histogram_quantile(0.99, sum(rate(promtail_request_duration_seconds_bucket[5m])) by (le, host))", "legendFormat": "p99 / {{ "{{host}}" }}", "refId": "C"}
-          ],
-          "title": "Loki Push Latency by Node (p50 / p95 / p99)",
-          "type": "timeseries"
-        },
-        {
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "unit": "short"}},
-          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 12},
-          "id": 8,
-          "options": {"legend": {"calcs": ["lastNotNull"], "displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi"}},
-          "targets": [
-            {"expr": "sum by (status_code) (rate(promtail_request_duration_seconds_count[5m]))", "legendFormat": "HTTP {{ "{{status_code}}" }}", "refId": "A"}
-          ],
-          "title": "Loki Push Responses by Status Code",
-          "type": "timeseries"
-        }
-      ],
-      "schemaVersion": 38,
-      "style": "dark",
-      "tags": ["logs", "promtail", "loki"],
-      "templating": {
-        "list": [
-          {"current": {"selected": false, "text": "VictoriaMetrics", "value": "VictoriaMetrics"}, "hide": 0, "includeAll": false, "label": "Datasource", "multi": false, "name": "datasource", "options": [], "query": "prometheus", "refresh": 1, "regex": "", "skipUrlSync": false, "type": "datasource"}
-        ]
-      },
-      "time": {"from": "now-3h", "to": "now"},
-      "timepicker": {},
-      "timezone": "",
-      "title": "Promtail Pipeline Health",
-      "uid": "promtail-homelab",
-      "version": 1
-    }
-
----
 # Node I/O Health Dashboard
 # Tracks disk I/O saturation, iowait, load average, memory pressure and Longhorn volumes.
 # Created following the 2026-03-18 I/O saturation incident.
@@ -1231,7 +1165,7 @@ metadata:
   labels:
     grafana_dashboard: "1"
   annotations:
-    grafana_folder: "Infrastructure"
+    grafana_folder: "Node"
 data:
   node-io.json: |
     {
