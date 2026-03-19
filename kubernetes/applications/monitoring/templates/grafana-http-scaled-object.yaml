@@ -23,26 +23,3 @@ spec:
     max: 1
   # Scale down after 30 minutes of no HTTP traffic
   scaledownPeriod: 1800
-
----
-# ScaledObject (cron): hard scale-down 00:00–07:00 Europe/Dublin.
-apiVersion: keda.sh/v1alpha1
-kind: ScaledObject
-metadata:
-  name: grafana-cron
-  namespace: {{ .Release.Namespace }}
-spec:
-  scaleTargetRef:
-    name: grafana
-    kind: Deployment
-    apiVersion: apps/v1
-  minReplicaCount: 0
-  maxReplicaCount: 1
-  cooldownPeriod: 30
-  triggers:
-    - type: cron
-      metadata:
-        timezone: Europe/Dublin
-        start: "0 7 * * *"
-        end: "0 0 * * *"
-        desiredReplicas: "1"
