@@ -8,14 +8,8 @@ metadata:
   name: cloudflared
   namespace: argocd
   annotations:
-    argocd.argoproj.io/sync-wave: "4"
-  finalizers:
-    - resources-finalizer.argocd.argoproj.io
-spec:
-  project: default
-
-  sources:
-    # Cloudflared Helm chart (Deployment, ConfigMap, Secret)
+    argocd.argoproj.io/sync-wave: "5"
+    # Wave 5: External access tunnel — after traefik (wave 3) (Deployment, ConfigMap, Secret)
     - repoURL: https://github.com/HughLardner/homelab.git
       targetRevision: HEAD
       path: kubernetes/services/cloudflared

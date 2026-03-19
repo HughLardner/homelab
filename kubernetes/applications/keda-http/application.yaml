@@ -17,7 +17,8 @@ metadata:
   name: keda-http
   namespace: argocd
   annotations:
-    argocd.argoproj.io/sync-wave: "3"
+    argocd.argoproj.io/sync-wave: "4"
+    # Wave 4: HTTP add-on depends on KEDA operator CRDs (wave 3)
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
@@ -25,7 +26,7 @@ spec:
 
   source:
     repoURL: https://kedacore.github.io/charts
-    targetRevision: 0.9.1
+    targetRevision: 0.12.2
     chart: keda-add-ons-http
     helm:
       releaseName: keda-http

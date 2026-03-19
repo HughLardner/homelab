@@ -9,6 +9,7 @@ metadata:
   namespace: argocd
   annotations:
     argocd.argoproj.io/sync-wave: "1"
+    # Wave 1: no storage deps — must be ready before any TLS certificates are issued
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:

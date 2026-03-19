@@ -1,0 +1,67 @@
+---
+# Longhorn global settings tuned for a single-node homelab on constrained hardware.
+#
+# Key goals:
+#   1. Limit concurrent volume attach/detach during startup to prevent I/O saturation
+#   2. Reduce replica rebuild I/O that competes with running workloads
+#   3. Keep LUKS attach timeouts realistic for an encrypted single-replica setup
+#
+# These settings are applied via the longhorn-setting ConfigMap which Longhorn
+# reads on startup and reconciles periodically.
+# Docs: https://longhorn.io/docs/latest/references/settings/
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: longhorn-setting
+  namespace: longhorn-system
+data:
+  # ---------------------------------------------------------------------------
+  # Concurrent I/O limits — the primary fix for the startup thundering-herd
+  # ---------------------------------------------------------------------------
+
+  # Max simultaneous volume attach/detach operations across the whole node.
+  # Default is unlimited. Set to 2 so volumes attach in batches of 2,
+  # preventing 20+ iSCSI sessions from opening simultaneously on boot.
+  concurrent-automatic-engine-upgrade-per-node-limit: "2"
+
+  # Max simultaneous replica rebuilds (e.g. after a crash). Default unlimited.
+  # Set to 1 so rebuild I/O doesn't compete with running workloads.
+  concurrent-replica-rebuild-per-node-limit: "1"
+
+  # Max simultaneous backup/restore operations.
+  concurrent-volume-backup-restore-per-node-limit: "1"
+
+  # ---------------------------------------------------------------------------
+  # Volume attach timeout — give LUKS-encrypted volumes more time to attach
+  # ---------------------------------------------------------------------------
+
+  # Default engine start timeout is 20s which is too short for LUKS volumes.
+  # 60s gives the kernel time to set up the dm-crypt device before timing out.
+  engine-replica-timeout: "60"
+
+  # ---------------------------------------------------------------------------
+  # Replica/rebuild settings for single-node
+  # ---------------------------------------------------------------------------
+
+  # With one node, replicas can only go on this node.
+  # Disable auto-balance which would just churn I/O.
+  replica-auto-balance: "disabled"
+
+  # Allow scheduling even if the only available node has an existing replica.
+  # Required for single-node operation.
+  allow-volume-creation-with-degraded-availability: "true"
+
+  # ---------------------------------------------------------------------------
+  # Storage reserved — prevent Longhorn from filling the OS disk completely
+  # ---------------------------------------------------------------------------
+
+  # Reserve 20% of disk for OS/K3s overhead. Default is 25% which is fine,
+  # but being explicit here for clarity.
+  storage-reserved-percentage-for-default-disk: "20"
+
+  # ---------------------------------------------------------------------------
+  # Node drain / pod disruption
+  # ---------------------------------------------------------------------------
+
+  # Evict replicas when a node is cordoned, reducing recovery I/O later.
+  node-drain-policy: "block-for-eviction-if-contains-last-replica"

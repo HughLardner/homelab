@@ -8,6 +8,7 @@ metadata:
     - resources-finalizer.argocd.argoproj.io
   annotations:
     argocd.argoproj.io/sync-wave: "9"
+    # Wave 9: Plex has two large Longhorn volumes — starts last to avoid I/O storm
 spec:
   project: default
 

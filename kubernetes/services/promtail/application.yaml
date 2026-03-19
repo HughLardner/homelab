@@ -8,14 +8,8 @@ metadata:
   name: promtail
   namespace: argocd
   annotations:
-    argocd.argoproj.io/sync-wave: "4"
-  finalizers:
-    - resources-finalizer.argocd.argoproj.io
-spec:
-  project: default
-
-  sources:
-    # Promtail Helm Chart
+    argocd.argoproj.io/sync-wave: "6"
+    # Wave 6: Log shipper — after loki (wave 5)
     - repoURL: https://grafana.github.io/helm-charts
       chart: promtail
       targetRevision: 6.15.5

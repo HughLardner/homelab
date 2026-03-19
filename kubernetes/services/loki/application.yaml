@@ -8,14 +8,8 @@ metadata:
   name: loki
   namespace: argocd
   annotations:
-    argocd.argoproj.io/sync-wave: "4"
-  finalizers:
-    - resources-finalizer.argocd.argoproj.io
-spec:
-  project: default
-
-  sources:
-    # Loki Helm Chart
+    argocd.argoproj.io/sync-wave: "5"
+    # Wave 5: Log aggregation — after core infra, before promtail (wave 6)
     - repoURL: https://grafana.github.io/helm-charts
       chart: loki
       targetRevision: 6.6.2

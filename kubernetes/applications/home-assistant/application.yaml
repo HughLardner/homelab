@@ -9,6 +9,7 @@ metadata:
     - resources-finalizer.argocd.argoproj.io
   annotations:
     argocd.argoproj.io/sync-wave: "6"
+    # Wave 6: Core IoT hub — after authelia (wave 5) and mosquitto (wave 6, parallel)
 spec:
   project: default
 

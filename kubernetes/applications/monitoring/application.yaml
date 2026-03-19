@@ -9,6 +9,9 @@ kind: Application
 metadata:
   name: monitoring
   namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "7"
+    # Wave 7: Monitoring stack is heavy (VMSingle PVC + Grafana); starts after core services
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:

@@ -8,6 +8,7 @@ metadata:
     - resources-finalizer.argocd.argoproj.io
   annotations:
     argocd.argoproj.io/sync-wave: "9"
+    # Wave 9: Git server — heaviest interactive app, last to start
 spec:
   project: default
 

@@ -8,15 +8,8 @@ metadata:
   name: resource-policies
   namespace: argocd
   annotations:
-    argocd.argoproj.io/sync-wave: "3"
-  finalizers:
-    - resources-finalizer.argocd.argoproj.io
-spec:
-  project: default
-
-  sources:
-    # Resource policy templates (plain manifests, no Helm templating)
-    - repoURL: https://github.com/HughLardner/homelab.git
+    argocd.argoproj.io/sync-wave: "1"
+    # Wave 1: PriorityClasses needed before any pod is scheduled
       targetRevision: HEAD
       path: kubernetes/services/resource-policies/templates
       directory:

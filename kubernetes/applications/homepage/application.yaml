@@ -9,6 +9,9 @@ kind: Application
 metadata:
   name: homepage
   namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "7"
+    # Wave 7: Dashboard — needs all services visible before it renders correctly
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:

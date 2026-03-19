@@ -8,14 +8,8 @@ metadata:
   name: network-policies
   namespace: argocd
   annotations:
-    argocd.argoproj.io/sync-wave: "3"
-  finalizers:
-    - resources-finalizer.argocd.argoproj.io
-spec:
-  project: default
-
-  sources:
-    # NetworkPolicy templates (plain manifests, no Helm templating)
+    argocd.argoproj.io/sync-wave: "1"
+    # Wave 1: NetworkPolicies are lightweight and have no storage deps
     - repoURL: https://github.com/HughLardner/homelab.git
       targetRevision: HEAD
       path: kubernetes/services/network-policies/templates

@@ -8,14 +8,8 @@ metadata:
   name: garage
   namespace: argocd
   annotations:
-    argocd.argoproj.io/sync-wave: "4"
-  finalizers:
-    - resources-finalizer.argocd.argoproj.io
-spec:
-  project: default
-
-  sources:
-    # Custom Helm chart for Garage (no official chart, using local)
+    argocd.argoproj.io/sync-wave: "5"
+    # Wave 5: S3 object storage — needed by velero (wave 5, same wave is fine) (no official chart, using local)
     - repoURL: https://github.com/HughLardner/homelab.git
       targetRevision: HEAD
       path: kubernetes/services/garage

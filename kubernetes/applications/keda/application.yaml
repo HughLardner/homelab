@@ -11,7 +11,8 @@ metadata:
   name: keda
   namespace: argocd
   annotations:
-    argocd.argoproj.io/sync-wave: "2"
+    argocd.argoproj.io/sync-wave: "3"
+    # Wave 3: KEDA operator CRDs must exist before keda-http (wave 4) and HTTPScaledObjects (wave 5+)
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
@@ -64,6 +65,7 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+      - ServerSideApply=true
     retry:
       limit: 5
       backoff:

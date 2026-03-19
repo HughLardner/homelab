@@ -7,7 +7,8 @@ metadata:
   finalizers:
     - resources-finalizer.argocd.argoproj.io
   annotations:
-    argocd.argoproj.io/sync-wave: "7"
+    argocd.argoproj.io/sync-wave: "6"
+    # Wave 6: DNS — needed before external services resolve correctly
 spec:
   project: default
 

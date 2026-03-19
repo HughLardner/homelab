@@ -7,7 +7,8 @@ metadata:
   finalizers:
     - resources-finalizer.argocd.argoproj.io
   annotations:
-    argocd.argoproj.io/sync-wave: "8"
+    argocd.argoproj.io/sync-wave: "7"
+    # Wave 7: Zigbee bridge — after mosquitto (wave 6)
 spec:
   project: default
 

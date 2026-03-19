@@ -10,6 +10,9 @@ kind: Application
 metadata:
   name: headlamp
   namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "9"
+    # Wave 9: K8s UI — optional tooling, starts last
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
