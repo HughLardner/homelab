@@ -16,6 +16,7 @@ spec:
     name: grafana
     kind: Deployment
     apiVersion: apps/v1
+    service: grafana
     port: 3000
   replicas:
     min: 0

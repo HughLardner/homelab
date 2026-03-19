@@ -15,6 +15,7 @@ spec:
     name: forgejo
     kind: Deployment
     apiVersion: apps/v1
+    service: forgejo
     port: 3000
   replicas:
     min: 0
