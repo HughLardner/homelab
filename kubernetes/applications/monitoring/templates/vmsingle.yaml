@@ -7,10 +7,12 @@ metadata:
   name: vmsingle
   namespace: monitoring
 spec:
-  # Retention: raised to 15d to match config/homelab.yaml and to have history across incidents
-  retentionPeriod: "15d"
+  # Retention: 3d is sufficient for dashboards and incident investigations on this
+  # single-disk 12GB node. 15d caused sustained 300+ MB/s disk reads (vmalert
+  # scanning the full dataset on every evaluation cycle), saturating vda.
+  retentionPeriod: "3d"
 
-  # Resource limits (much lower than Prometheus)
+  # Resource limits
   resources:
     requests:
       cpu: 100m
@@ -19,7 +21,8 @@ spec:
       cpu: 500m
       memory: 512Mi
 
-  # Persistent storage: raised to 10Gi to match config/homelab.yaml prometheus_storage_size
+  # Persistent storage: keep at 10Gi (cannot shrink existing PVC); retention=3d
+  # controls actual disk usage.
   storage:
     storageClassName: local-path
     accessModes:
@@ -33,7 +36,9 @@ spec:
     # Deduplication window
     dedup.minScrapeInterval: "30s"
     # Memory management
-    memory.allowedPercent: "80"
-    # Search settings
-    search.maxConcurrentRequests: "4"
+    memory.allowedPercent: "60"
+    # Limit concurrent queries to reduce burst I/O
+    search.maxConcurrentRequests: "2"
     search.maxQueueDuration: "30s"
+    # Cap how far back queries can look to reduce I/O per query
+    search.maxLookback: "3d"
