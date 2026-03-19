@@ -41,6 +41,9 @@ spec:
               memory: 128Mi
 
         interceptor:
+          # Allow slow backend responses (e.g. Grafana datasource proxy to VictoriaMetrics).
+          # Default 500ms causes 502 Bad Gateway on dashboard/annotation queries.
+          responseHeaderTimeout: 60s
           resources:
             requests:
               cpu: 10m
