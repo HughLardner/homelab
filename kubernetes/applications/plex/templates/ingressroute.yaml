@@ -12,6 +12,8 @@ metadata:
     gethomepage.dev/icon: "plex"
     gethomepage.dev/description: "Media server with Intel QSV transcoding"
     gethomepage.dev/href: "https://{{ .Values.services.plex.domain }}"
+    # Use K8s pod status instead of HTTP ping — avoids Homepage waking Plex (KEDA scale-to-zero).
+    gethomepage.dev/pod-selector: app.kubernetes.io/name=plex
   labels:
     app.kubernetes.io/name: {{ .Release.Name }}
 spec:
@@ -44,6 +46,8 @@ metadata:
     gethomepage.dev/icon: "filebrowser"
     gethomepage.dev/description: "Media file manager"
     gethomepage.dev/href: "https://{{ .Values.services.filebrowser.domain }}"
+    # Same pod as Plex; use pod status so Homepage does not probe this URL.
+    gethomepage.dev/pod-selector: app.kubernetes.io/name=plex
   labels:
     app.kubernetes.io/name: filebrowser
 spec:
