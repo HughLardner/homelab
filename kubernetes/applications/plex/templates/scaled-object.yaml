@@ -1,0 +1,39 @@
+---
+# Cron-based scale-to-zero for Plex.
+#
+# Why cron instead of HTTP idle detection:
+#   Plex maintains persistent background connections to plex.tv and client
+#   keep-alives. The KEDA HTTP add-on can't distinguish these from active
+#   streams, so the interceptor always appears busy and never scales to 0.
+#   A cron trigger sidesteps this entirely.
+#
+# Schedule (Europe/Dublin):
+#   - 01:00 → scale to 0 (quiet hours, no one watching)
+#   - 09:00 → scale to 1 (morning readiness)
+#
+# Manual wake (outside scheduled hours): use the Home Assistant
+# "Wake Plex" automation or: kubectl scale deploy/plex -n media --replicas=1
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: plex
+  namespace: {{ .Release.Namespace }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: plex
+  minReplicaCount: 0
+  maxReplicaCount: 1
+  # Wait 30 minutes of inactivity before scaling down.
+  # This prevents rapid scale-down/up cycling around the cron boundary.
+  cooldownPeriod: 1800
+  triggers:
+    - type: cron
+      metadata:
+        timezone: Europe/Dublin
+        # Scale UP at 09:00 — ready for morning/daytime use
+        start: "0 9 * * *"
+        # Scale DOWN at 01:00 — quiet hours, no active streams expected
+        end: "0 1 * * *"
+        desiredReplicas: "1"
