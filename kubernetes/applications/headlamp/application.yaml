@@ -125,6 +125,11 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+      # RespectIgnoreDifferences ensures ArgoCD does not overwrite the replicas
+      # field even during an explicit sync (webhook, manual UI, daily CronJob).
+      # Without this, ignoreDifferences only stops OutOfSync detection — syncs
+      # would still reset replicas to 1, fighting KEDA's scale-to-zero.
+      - RespectIgnoreDifferences=true
     retry:
       limit: 5
       backoff:
