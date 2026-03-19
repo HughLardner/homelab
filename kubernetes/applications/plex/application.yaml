@@ -44,3 +44,12 @@ spec:
         duration: 5s
         factor: 2
         maxDuration: 3m
+
+  # KEDA's HTTPScaledObject manages replicas — ignore divergence to prevent
+  # ArgoCD from fighting the autoscaler when it scales the deployment to 0.
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      name: plex
+      jsonPointers:
+        - /spec/replicas
