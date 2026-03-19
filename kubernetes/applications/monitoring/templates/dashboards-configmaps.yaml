@@ -543,7 +543,7 @@ data:
           "id": 5,
           "options": {"legend": {"calcs": ["sum"], "displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi"}},
           "targets": [
-            {"expr": "sum by (success) (increase(authelia_authentication_requests_total[5m]))", "legendFormat": "success={{success}}", "refId": "A"}
+            {"expr": "sum by (success) (increase(authelia_authentication_requests_total[5m]))", "legendFormat": "success={{ "{{" }}success{{ "}}" }}", "refId": "A"}
           ],
           "title": "Authentication Requests (5m rate)",
           "type": "timeseries"
@@ -595,7 +595,7 @@ data:
           "gridPos": {"h": 8, "w": 24, "x": 0, "y": 18},
           "id": 9,
           "options": {"legend": {"calcs": ["lastNotNull"], "displayMode": "table", "placement": "right", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
-          "targets": [{"expr": "certmanager_certificate_expiration_timestamp_seconds - time()", "legendFormat": "{{namespace}}/{{name}}", "refId": "A"}],
+          "targets": [{"expr": "certmanager_certificate_expiration_timestamp_seconds - time()", "legendFormat": "{{ "{{" }}namespace{{ "}}" }}/{{ "{{" }}name{{ "}}" }}", "refId": "A"}],
           "title": "Certificate Time Until Expiry (per cert)",
           "type": "timeseries"
         },
@@ -864,7 +864,7 @@ data:
           "id": 12,
           "options": {"legend": {"calcs": ["lastNotNull"], "displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi"}},
           "targets": [
-            {"expr": "sum by (type) (rate(coredns_dns_requests_total[5m]))", "legendFormat": "{{type}}", "refId": "A"}
+            {"expr": "sum by (type) (rate(coredns_dns_requests_total[5m]))", "legendFormat": "{{ "{{" }}type{{ "}}" }}", "refId": "A"}
           ],
           "title": "Request Rate by Record Type",
           "type": "timeseries"
@@ -877,7 +877,7 @@ data:
           "id": 13,
           "options": {"legend": {"calcs": ["lastNotNull"], "displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi"}},
           "targets": [
-            {"expr": "sum by (rcode) (rate(coredns_dns_responses_total[5m]))", "legendFormat": "{{rcode}}", "refId": "A"}
+            {"expr": "sum by (rcode) (rate(coredns_dns_responses_total[5m]))", "legendFormat": "{{ "{{" }}rcode{{ "}}" }}", "refId": "A"}
           ],
           "title": "Response Codes",
           "type": "timeseries"
