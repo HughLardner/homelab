@@ -128,7 +128,12 @@
     dest: /etc/systemd/journald.conf.d/ratelimit.conf
     content: |
       [Journal]
-      RateLimitBurst=2000
+      # Cap total journal size on disk (default ~10% of disk = ~10GB on this node).
+      SystemMaxUse=500M
+      SystemMaxFileSize=50M
+      # Rate limit: 500 messages per 30s. Prevents crashlooping pods from
+      # amplifying disk I/O. 500/30s is still generous for healthy services.
+      RateLimitBurst=500
       RateLimitIntervalSec=30s
     mode: '0644'
   when: node_prep_configure_journald_ratelimit | default(true) | bool
@@ -141,6 +146,59 @@
   when:
     - node_prep_configure_journald_ratelimit | default(true) | bool
     - journald_ratelimit is changed
+
+# K3s API server throttling - protect the control plane from reconciliation storms
+- name: Ensure K3s config directory exists
+  ansible.builtin.file:
+    path: /etc/rancher/k3s
+    state: directory
+    mode: '0755'
+  when: node_prep_configure_k3s_api_throttle | default(true) | bool
+
+- name: Deploy K3s API server throttling config
+  ansible.builtin.copy:
+    dest: /etc/rancher/k3s/config.yaml
+    content: |
+      # Throttle concurrent API requests to prevent the server from being overwhelmed
+      # by a burst from ArgoCD/KEDA/vm-operator all reconciling simultaneously.
+      # Defaults are 400 (readonly) and 200 (mutating) — too high for a single-node
+      # homelab where the API server shares CPU/disk with all workloads.
+      kube-apiserver-arg:
+        - "max-requests-inflight=150"
+        - "max-mutating-requests-inflight=50"
+        - "watch-cache-sizes=nodes#100,pods#500"
+    mode: '0644'
+  when: node_prep_configure_k3s_api_throttle | default(true) | bool
+  register: k3s_config_result
+
+# K3s systemd CPU priority - ensure control plane isn't starved by pods
+- name: Ensure K3s systemd override directory exists
+  ansible.builtin.file:
+    path: /etc/systemd/system/k3s.service.d
+    state: directory
+    mode: '0755'
+  when: node_prep_configure_k3s_cpu_priority | default(true) | bool
+
+- name: Deploy K3s systemd CPU priority override
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/k3s.service.d/cpu-priority.conf
+    content: |
+      [Service]
+      # Give k3s (etcd + API server + controller-manager + scheduler) higher CPU
+      # scheduling weight than the default (100). This ensures that when pods
+      # compete for CPU, the control plane is served first and remains responsive.
+      # CPUWeight range: 1-10000, default 100. 400 = 4x higher priority than pods.
+      CPUWeight=400
+    mode: '0644'
+  when: node_prep_configure_k3s_cpu_priority | default(true) | bool
+  register: k3s_cpu_priority_result
+
+- name: Reload systemd daemon after K3s override changes
+  ansible.builtin.systemd:
+    daemon_reload: true
+  when:
+    - k3s_cpu_priority_result is defined
+    - k3s_cpu_priority_result.changed
 
 - name: Disable swap
   ansible.builtin.command: swapoff -a

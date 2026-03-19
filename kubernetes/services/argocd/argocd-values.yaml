@@ -100,6 +100,23 @@ configs:
     # Skip TLS verification for OIDC (for Let's Encrypt staging certs)
     oidc.tls.insecure.skip.verify: true
 
+    # =========================================================================
+    # API Server Load Reduction
+    # =========================================================================
+    # Default status-processors=20 + operation-processors=10 means 30 concurrent
+    # API calls from ArgoCD alone on a 4-core/12GB single-node cluster. With 29
+    # apps that causes API saturation. These values are tuned for the cluster size.
+    controller.status.processors: "5"
+    controller.operation.processors: "2"
+
+    # Increase self-heal timeout from 5s to 30s to dampen reactive API storms.
+    # 5s means every resource fluctuation triggers immediate reconciliation.
+    controller.self.heal.timeout.seconds: "30"
+
+    # Cap repo-server parallelism (default 0 = unlimited). Prevents burst Helm
+    # template rendering from saturating CPU during simultaneous app syncs.
+    reposerver.parallelism.limit: "3"
+
   # Secret configuration
   secret:
     # Create the argocd-secret (password will be set by Ansible)

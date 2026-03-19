@@ -12,6 +12,19 @@ operator:
       cpu: 200m
       memory: 128Mi
 
+  # Make the liveness probe tolerant of temporary API server unavailability.
+  # Default failureThreshold=3 + periodSeconds=15 = pod killed after 45s of any
+  # API slowness. During a reconciliation burst that is far too aggressive.
+  # 10 failures × 30s = 5 minutes of sustained failure before restart.
+  livenessProbe:
+    failureThreshold: 10
+    periodSeconds: 30
+    timeoutSeconds: 10
+  readinessProbe:
+    failureThreshold: 5
+    periodSeconds: 30
+    timeoutSeconds: 10
+
 # Enable CRD installation
 crds:
   enabled: true
