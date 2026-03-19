@@ -9,6 +9,8 @@ services:
     storage_size: 10Gi
     storage_class: longhorn
 
+priorityClassName: homelab-interactive
+
 image:
   repository: codeberg.org/forgejo/forgejo
   tag: "9"

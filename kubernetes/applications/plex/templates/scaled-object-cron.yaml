@@ -1,0 +1,28 @@
+---
+# ScaledObject (cron trigger): enforce hard scale-down during maintenance window.
+# Plex is forced to 0 replicas between 00:00 and 07:00 Europe/Dublin.
+# This prevents KEDA HTTP interceptor from waking Plex due to health checks or
+# background requests during low-usage hours.
+#
+# Outside this window (07:00–00:00), scale-to-zero is governed by HTTPScaledObject
+# (idle timeout: 20 minutes of no traffic).
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: plex-cron
+  namespace: {{ .Release.Namespace }}
+spec:
+  scaleTargetRef:
+    name: plex
+    kind: Deployment
+    apiVersion: apps/v1
+  minReplicaCount: 0
+  maxReplicaCount: 1
+  cooldownPeriod: 30
+  triggers:
+    - type: cron
+      metadata:
+        timezone: Europe/Dublin
+        start: "0 7 * * *"    # Allow wake from 07:00
+        end: "0 0 * * *"      # Force to 0 at 00:00
+        desiredReplicas: "1"

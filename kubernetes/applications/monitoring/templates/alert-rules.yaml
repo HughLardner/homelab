@@ -1,0 +1,119 @@
+---
+# VMRule - Node I/O and Memory alert rules
+# Auto-selected by VMAlert via selectAllByDefault: true
+# See docs/runbooks/node-io-saturation-recovery.md for response procedures
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMRule
+metadata:
+  name: node-health
+  namespace: monitoring
+spec:
+  groups:
+    - name: node-io
+      interval: 60s
+      rules:
+        - alert: NodeHighIOWait
+          expr: avg(rate(node_cpu_seconds_total{mode="iowait"}[5m])) * 100 > 30
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Node I/O wait is high ({{ $value | printf \"%.1f\" }}%)"
+            description: >-
+              Average CPU iowait on {{ $labels.instance }} has been above 30% for 5 minutes.
+              This indicates the disk is struggling to keep up with I/O demand.
+              Current value: {{ $value | printf "%.1f" }}%.
+            runbook_url: "https://github.com/HughLardner/homelab/blob/main/docs/runbooks/node-io-saturation-recovery.md"
+
+        - alert: NodeCriticalIOWait
+          expr: avg(rate(node_cpu_seconds_total{mode="iowait"}[5m])) * 100 > 60
+          for: 3m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Node I/O wait is CRITICAL ({{ $value | printf \"%.1f\" }}%)"
+            description: >-
+              Average CPU iowait on {{ $labels.instance }} has been above 60% for 3 minutes.
+              The node is approaching the saturation level that caused the 2026-03-18 incident (86-91%).
+              Take immediate action: check iotop, consider scaling down vmagent and non-critical workloads.
+            runbook_url: "https://github.com/HughLardner/homelab/blob/main/docs/runbooks/node-io-saturation-recovery.md"
+
+        - alert: NodeDiskIOSaturated
+          expr: rate(node_disk_io_time_seconds_total{device="vda"}[5m]) > 0.80
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Node OS disk (vda) I/O utilisation is high ({{ $value | printf \"%.0f\" }}%)"
+            description: >-
+              The vda disk (OS disk) on {{ $labels.instance }} has been at more than 80% I/O utilisation
+              for 5 minutes. During the 2026-03-18 incident vda reached 75% and was still climbing.
+              This is the primary driver of iowait.
+            runbook_url: "https://github.com/HughLardner/homelab/blob/main/docs/runbooks/node-io-saturation-recovery.md"
+
+        - alert: NodeHighDiskReadRate
+          expr: sum(rate(node_disk_read_bytes_total{device="vda"}[5m])) / 1024 / 1024 > 150
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Node OS disk (vda) read rate is high ({{ $value | printf \"%.0f\" }} MB/s)"
+            description: >-
+              The vda disk read throughput on {{ $labels.instance }} has exceeded 150 MB/s for 5 minutes.
+              During the 2026-03-18 incident this reached 192 MB/s and was still rising.
+              Likely cause: simultaneous pod startup or prometheus-config-reloader high read activity.
+            runbook_url: "https://github.com/HughLardner/homelab/blob/main/docs/runbooks/node-io-saturation-recovery.md"
+
+        - alert: NodeHighLoad
+          expr: node_load1 > count(node_cpu_seconds_total{mode="idle"}) without (cpu) * 2
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Node load average is high ({{ $value | printf \"%.2f\" }})"
+            description: >-
+              The 1-minute load average on {{ $labels.instance }} has been more than 2× the CPU count
+              for 10 minutes. During the 2026-03-18 incident load peaked at 22.43 on a 4-core VM.
+            runbook_url: "https://github.com/HughLardner/homelab/blob/main/docs/runbooks/node-io-saturation-recovery.md"
+
+        - alert: NodeCriticalLoad
+          expr: node_load1 > count(node_cpu_seconds_total{mode="idle"}) without (cpu) * 3
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Node load average is CRITICAL ({{ $value | printf \"%.2f\" }})"
+            description: >-
+              The 1-minute load average on {{ $labels.instance }} has been more than 3× the CPU count
+              for 5 minutes. The node is severely overloaded and the Kubernetes API may become
+              unresponsive. Consider a controlled reboot via Proxmox if SSH is also unresponsive.
+            runbook_url: "https://github.com/HughLardner/homelab/blob/main/docs/runbooks/node-io-saturation-recovery.md"
+
+    - name: node-memory
+      interval: 60s
+      rules:
+        - alert: NodeMemoryLow
+          expr: node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes < 0.25
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Node available memory is low ({{ $value | humanizePercentage }} free)"
+            description: >-
+              Available memory on {{ $labels.instance }} has been below 25% for 10 minutes.
+              Current available: {{ $value | humanize }}B. High memory pressure leads to increased
+              major page faults which in turn increases disk I/O and iowait.
+            runbook_url: "https://github.com/HughLardner/homelab/blob/main/docs/runbooks/node-io-saturation-recovery.md"
+
+        - alert: NodeMemoryCritical
+          expr: node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes < 0.15
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Node available memory is CRITICAL ({{ $value | humanizePercentage }} free)"
+            description: >-
+              Available memory on {{ $labels.instance }} has dropped below 15% for 5 minutes.
+              The kernel will begin aggressive page reclaim, causing a surge in disk I/O.
+              Scale down or evict non-critical pods immediately.
+            runbook_url: "https://github.com/HughLardner/homelab/blob/main/docs/runbooks/node-io-saturation-recovery.md"

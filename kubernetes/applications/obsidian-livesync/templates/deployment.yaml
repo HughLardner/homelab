@@ -21,6 +21,9 @@ spec:
         app.kubernetes.io/name: obsidian-livesync
         app.kubernetes.io/component: couchdb
     spec:
+      {{- if .Values.priorityClassName }}
+      priorityClassName: {{ .Values.priorityClassName }}
+      {{- end }}
       containers:
         - name: couchdb
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"

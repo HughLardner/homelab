@@ -1,5 +1,7 @@
 auth_enabled: true
 
+priorityClassName: homelab-standard
+
 image:
   repository: ghcr.io/koenkk/zigbee2mqtt
   tag: "2.1.1"

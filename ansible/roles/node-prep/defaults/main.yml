@@ -50,6 +50,7 @@ node_prep_update_hosts: true
 # Storage configuration
 node_prep_enable_iscsi: true # Enable iSCSI services (required for Longhorn)
 node_prep_configure_multipath: true # Configure multipath blacklist (prevents conflicts)
+node_prep_configure_journald_ratelimit: true # Limit journald I/O to reduce node I/O saturation risk (see docs/runbooks/node-io-saturation-recovery.md)
 
 # Persistent data disk configuration
 # This is where Longhorn will store volume data - survives cluster rebuilds

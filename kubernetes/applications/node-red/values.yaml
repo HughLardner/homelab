@@ -1,5 +1,7 @@
 auth_enabled: true
 
+priorityClassName: homelab-standard
+
 image:
   repository: nodered/node-red
   tag: "4.0"

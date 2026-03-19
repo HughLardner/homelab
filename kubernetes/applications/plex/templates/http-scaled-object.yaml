@@ -1,0 +1,27 @@
+---
+# HTTPScaledObject: scale Plex to zero when idle, wake on first HTTP request.
+# The KEDA HTTP interceptor buffers the request while the pod starts (~25s cold start).
+# Requires: keda + keda-http ArgoCD applications to be deployed first.
+#
+# Traffic flow when at 0 replicas:
+#   Traefik → keda-add-ons-http-interceptor-proxy:8080 → (wake) → plex:32400
+apiVersion: http.keda.sh/v1alpha1
+kind: HTTPScaledObject
+metadata:
+  name: plex
+  namespace: {{ .Release.Namespace }}
+spec:
+  hosts:
+    - {{ .Values.services.plex.domain }}
+  pathPrefixes:
+    - /
+  scaleTargetRef:
+    name: plex
+    kind: Deployment
+    apiVersion: apps/v1
+    port: 32400
+  replicas:
+    min: 0
+    max: 1
+  # Scale down after 20 minutes of no HTTP traffic
+  scaledownPeriod: 1200

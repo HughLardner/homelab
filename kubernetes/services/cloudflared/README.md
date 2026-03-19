@@ -21,19 +21,17 @@ Cloudflared provides secure external access to your homelab without requiring a 
 
 ### 2. Configure Tunnel Routes
 
-In Cloudflare Dashboard, add public hostnames:
+In Cloudflare Dashboard, configure **only** this public hostname:
 
 | Subdomain | Domain            | Service                       |
 | --------- | ----------------- | ----------------------------- |
-| \*        | silverseekers.org | http://traefik.traefik.svc:80 |
+| fallandrise | silverseekers.org | http://traefik.traefik.svc:80 |
 
-Or configure specific routes:
+> **Note:** Only `fallandrise.silverseekers.org` is intentionally exposed. All other services are internal-only.
+> The catch-all / default route should be set to `http_status:404` to block anything not explicitly listed.
 
-| Subdomain | Service                       |
-| --------- | ----------------------------- |
-| grafana   | http://traefik.traefik.svc:80 |
-| argocd    | http://traefik.traefik.svc:80 |
-| longhorn  | http://traefik.traefik.svc:80 |
+Previously allowed wildcard routes (now removed):
+- ~~`*` → `http://traefik.traefik.svc:80`~~ (removed — exposed all services publicly)
 
 ### 3. Add Token to Secrets
 
@@ -52,14 +50,18 @@ make seal-secrets
 
 ## Architecture
 
+Only `fallandrise.silverseekers.org` is routed through the tunnel. All other services are internal-only.
+
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                        Internet                              │
+│          (only fallandrise.silverseekers.org)                │
 └─────────────────────────────┬───────────────────────────────┘
                               │
                     ┌─────────▼─────────┐
                     │  Cloudflare Edge  │
                     │  (Zero Trust)     │
+                    │  404 catch-all    │
                     └─────────┬─────────┘
                               │ Encrypted Tunnel
                               │
@@ -75,20 +77,35 @@ make seal-secrets
 │                   │  (Ingress)      │                       │
 │                   └────────┬────────┘                       │
 │                            │                                 │
-│            ┌───────────────┼───────────────┐                │
-│            ▼               ▼               ▼                │
-│       ┌─────────┐    ┌─────────┐    ┌─────────┐            │
-│       │ Grafana │    │ ArgoCD  │    │Longhorn │            │
-│       └─────────┘    └─────────┘    └─────────┘            │
+│                            ▼                                 │
+│                    ┌──────────────┐                         │
+│                    │    Quartz    │  (fallandrise — public)  │
+│                    │ (read-only)  │                         │
+│                    └──────────────┘                         │
+│                                                             │
+│  All other services (Grafana, ArgoCD, Longhorn, etc.)       │
+│  are internal-only — no public DNS, no tunnel route.        │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## Cloudflare Access (Optional)
+## Cloudflare Dashboard Configuration
 
-Add additional security with Cloudflare Access policies:
+To configure the tunnel routes manually in the dashboard:
+
+1. Go to **Zero Trust** > **Networks** > **Tunnels** > `homelab-tunnel`
+2. Click **Edit** > **Public Hostnames**
+3. Ensure **only** this entry exists:
+   - Subdomain: `fallandrise` / Domain: `silverseekers.org`
+   - Service type: `HTTP` / URL: `traefik.traefik.svc:80`
+4. Set the **catch-all / default route** to `http_status:404`
+5. Remove any wildcard (`*`) or other hostname entries
+
+## Cloudflare Access (Optional but Recommended)
+
+If you later want to gate `fallandrise` behind email verification or SSO:
 
 1. Go to **Zero Trust** > **Access** > **Applications**
-2. Add an application for each service
-3. Configure authentication (email, SSO, etc.)
+2. Add application for `fallandrise.silverseekers.org`
+3. Configure policy (e.g. allow list of emails, or make fully public)
 
-This provides an additional layer before traffic reaches Authelia.
+For a fully public read-only site, no Access policy is needed.

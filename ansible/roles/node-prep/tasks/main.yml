@@ -115,6 +115,33 @@
     - br_netfilter
   when: node_prep_load_kernel_modules | bool
 
+# Limit journald I/O to avoid saturation (see docs/runbooks/node-io-saturation-recovery.md)
+- name: Ensure journald config drop-in directory exists
+  ansible.builtin.file:
+    path: /etc/systemd/journald.conf.d
+    state: directory
+    mode: '0755'
+  when: node_prep_configure_journald_ratelimit | default(true) | bool
+
+- name: Deploy journald rate limit config
+  ansible.builtin.copy:
+    dest: /etc/systemd/journald.conf.d/ratelimit.conf
+    content: |
+      [Journal]
+      RateLimitBurst=2000
+      RateLimitIntervalSec=30s
+    mode: '0644'
+  when: node_prep_configure_journald_ratelimit | default(true) | bool
+  register: journald_ratelimit
+
+- name: Restart journald after rate limit config change
+  ansible.builtin.systemd:
+    name: systemd-journald
+    state: restarted
+  when:
+    - node_prep_configure_journald_ratelimit | default(true) | bool
+    - journald_ratelimit is changed
+
 - name: Disable swap
   ansible.builtin.command: swapoff -a
   when:

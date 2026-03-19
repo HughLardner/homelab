@@ -25,8 +25,10 @@ spec:
       middlewares:
         - name: authelia-forward-auth
           namespace: authelia
+      # Traffic routed via KEDA HTTP interceptor to support scale-to-zero.
       services:
-        - name: headlamp
-          port: 4466
+        - name: keda-add-ons-http-interceptor-proxy
+          namespace: keda
+          port: 8080
   tls:
     secretName: headlamp-tls

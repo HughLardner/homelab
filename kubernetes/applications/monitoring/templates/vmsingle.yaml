@@ -7,8 +7,8 @@ metadata:
   name: vmsingle
   namespace: monitoring
 spec:
-  # Retention settings (1 day for homelab)
-  retentionPeriod: "1d"
+  # Retention: raised to 15d to match config/homelab.yaml and to have history across incidents
+  retentionPeriod: "15d"
 
   # Resource limits (much lower than Prometheus)
   resources:
@@ -19,14 +19,14 @@ spec:
       cpu: 500m
       memory: 512Mi
 
-  # Persistent storage (local-path for single-node cluster)
+  # Persistent storage: raised to 10Gi to match config/homelab.yaml prometheus_storage_size
   storage:
     storageClassName: local-path
     accessModes:
       - ReadWriteOnce
     resources:
       requests:
-        storage: 2Gi
+        storage: 10Gi
 
   # Extra args for optimization
   extraArgs:

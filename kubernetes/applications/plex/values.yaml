@@ -1,5 +1,7 @@
 auth_enabled: false
 
+priorityClassName: homelab-interactive
+
 image:
   repository: lscr.io/linuxserver/plex
   tag: "latest"

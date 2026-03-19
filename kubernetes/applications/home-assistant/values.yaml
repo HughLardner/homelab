@@ -33,6 +33,9 @@ owner:
   debug: false
 
 # Home Assistant subchart configuration
+# priorityClassName is set at the subchart level
+priorityClassName: homelab-standard
+
 homeassistant:
   # Override fullname to avoid ugly duplication in resource names
   # Without this, PVC becomes: home-assistant-homeassistant-home-assistant-homeassistant-0
@@ -68,13 +71,14 @@ homeassistant:
     accessMode: ReadWriteOnce
 
   # Resource limits
+  # Memory raised from 1Gi → 2Gi: HA was using ~1.4 GB working set, exceeding its own limit.
   resources:
     requests:
       cpu: 100m
       memory: 256Mi
     limits:
       cpu: "1"       # Use "1" not "1000m" to avoid ArgoCD out-of-sync due to k8s normalization
-      memory: 1Gi
+      memory: 2Gi
 
   # Environment variables for OIDC configuration
   # These are read by the hass-oidc-auth integration

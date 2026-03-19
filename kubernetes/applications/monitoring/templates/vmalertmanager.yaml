@@ -38,22 +38,36 @@ spec:
 
 ---
 # Default Alertmanager configuration
-# Can be customized to add Slack, Email, PagerDuty, etc.
+# Routes alerts to Home Assistant via webhook → persistent notification / mobile push
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAlertmanagerConfig
 metadata:
   name: default
   namespace: monitoring
 spec:
-  # Default route - catch all alerts
   route:
-    receiver: "default"
-    group_by: ["alertname", "namespace"]
+    receiver: "homeassistant"
+    group_by: ["alertname", "severity"]
     group_wait: "30s"
     group_interval: "5m"
     repeat_interval: "4h"
+    routes:
+      # Critical alerts repeat more frequently
+      - matchers:
+          - name: severity
+            value: critical
+        receiver: "homeassistant"
+        repeat_interval: "1h"
 
-  # Default receiver (logs alerts, no external notification)
   receivers:
-    - name: "default"
-      # Add webhook, slack, email configs here as needed
+    - name: "homeassistant"
+      webhook_configs:
+        - url_secret:
+            # Created via: kubernetes/applications/monitoring/secrets/alertmanager-ha-webhook-sealed.yaml
+            # Webhook ID: alertmanager-k8s (automation.kubernetes_alertmanager_notification in HA)
+            name: alertmanager-ha-webhook
+            key: webhookUrl
+          send_resolved: true
+          http_config:
+            tls_config:
+              insecure_skip_verify: true

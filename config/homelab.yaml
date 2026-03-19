@@ -136,11 +136,16 @@ services:
 
   # ---------------------------------------------------------------------------
   # Cloudflare Tunnel
+  # Only fallandrise.silverseekers.org is publicly exposed (read-only Quartz site).
+  # Configure matching public hostname in Cloudflare Zero Trust dashboard.
   # ---------------------------------------------------------------------------
   cloudflared:
     tunnel_name: homelab-tunnel
     replicas: 1
-    default_origin: http://traefik.traefik.svc:80
+    exposed_hostnames:
+      - hostname: fallandrise.silverseekers.org
+        service: http://traefik.traefik.svc:80
+    default_origin: "http_status:404"
 
   # ---------------------------------------------------------------------------
   # Homepage Dashboard

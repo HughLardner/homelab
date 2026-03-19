@@ -8,5 +8,13 @@ services:
   cloudflared:
     tunnel_name: homelab-tunnel
     replicas: 1
-    default_origin: http://traefik.traefik.svc:80
+    # Only fallandrise.silverseekers.org is publicly exposed via this tunnel.
+    # All other subdomains are internal-only (no wildcard DNS record exists).
+    # Tunnel public hostnames must be configured in the Cloudflare Zero Trust
+    # dashboard: Zero Trust > Networks > Tunnels > homelab-tunnel > Public Hostnames
+    exposed_hostnames:
+      - hostname: fallandrise.silverseekers.org
+        service: http://traefik.traefik.svc:80
+    # Catch-all: block everything else at the tunnel level
+    default_origin: http_status:404
 

@@ -11,6 +11,8 @@ services:
     couchdb_port: 5984
     database_name: obsidiannotes
 
+priorityClassName: homelab-interactive
+
 image:
   repository: docker.io/oleduc/docker-obsidian-livesync-couchdb
   tag: "master"

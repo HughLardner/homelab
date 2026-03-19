@@ -8,13 +8,15 @@ metadata:
   namespace: monitoring
 spec:
   # Resource limits
+  # 128Mi was too low — vmagent consistently grew to ~120-125MB RSS and was
+  # OOM-killed repeatedly (Mar 13-15 2026), causing cluster instability.
   resources:
     requests:
       cpu: 25m
-      memory: 64Mi
+      memory: 128Mi
     limits:
       cpu: 200m
-      memory: 128Mi
+      memory: 256Mi
 
   # Auto-discover all ServiceMonitors, PodMonitors, etc.
   selectAllByDefault: true

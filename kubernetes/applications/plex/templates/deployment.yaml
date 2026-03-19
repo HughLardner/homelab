@@ -18,6 +18,9 @@ spec:
       labels:
         app.kubernetes.io/name: plex
     spec:
+      {{- if .Values.priorityClassName }}
+      priorityClassName: {{ .Values.priorityClassName }}
+      {{- end }}
       # video + render groups required for /dev/dri access
       # GIDs are node-specific — configured in values.yaml
       # Check node render GID with: getent group render

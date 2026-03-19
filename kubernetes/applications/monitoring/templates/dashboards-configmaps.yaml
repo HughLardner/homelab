@@ -1217,3 +1217,241 @@ data:
       "uid": "promtail-homelab",
       "version": 1
     }
+
+---
+# Node I/O Health Dashboard
+# Tracks disk I/O saturation, iowait, load average, memory pressure and Longhorn volumes.
+# Created following the 2026-03-18 I/O saturation incident.
+# See: docs/runbooks/node-io-saturation-recovery.md
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-node-io
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+  annotations:
+    grafana_folder: "Infrastructure"
+data:
+  node-io.json: |
+    {
+      "description": "Node I/O saturation, disk throughput, load average, memory pressure and Longhorn volume health",
+      "editable": true,
+      "graphTooltip": 1,
+      "links": [
+        {"title": "I/O Saturation Runbook", "type": "link", "url": "https://github.com/HughLardner/homelab/blob/main/docs/runbooks/node-io-saturation-recovery.md", "targetBlank": true}
+      ],
+      "panels": [
+        {
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "fieldConfig": {
+            "defaults": {
+              "color": {"mode": "palette-classic"},
+              "custom": {"stacking": {"mode": "normal"}},
+              "max": 100, "min": 0,
+              "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 30}, {"color": "red", "value": 60}]},
+              "unit": "percent"
+            }
+          },
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+          "id": 1,
+          "options": {"legend": {"calcs": ["mean", "max"], "displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi"}},
+          "targets": [
+            {"expr": "rate(node_cpu_seconds_total{mode=\"iowait\"}[5m]) * 100", "legendFormat": "CPU {{ "{{cpu}}" }} iowait", "refId": "A"}
+          ],
+          "title": "CPU iowait % per core",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "fieldConfig": {
+            "defaults": {
+              "color": {"mode": "palette-classic"},
+              "max": 100, "min": 0,
+              "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 50}, {"color": "red", "value": 80}]},
+              "unit": "percent"
+            },
+            "overrides": [
+              {"matcher": {"id": "byName", "options": "vda"}, "properties": [{"id": "color", "value": {"fixedColor": "red", "mode": "fixed"}}]}
+            ]
+          },
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+          "id": 2,
+          "options": {"legend": {"calcs": ["mean", "max"], "displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi"}},
+          "targets": [
+            {"expr": "rate(node_disk_io_time_seconds_total[5m]) * 100", "legendFormat": "{{ "{{device}}" }}", "refId": "A"}
+          ],
+          "title": "Disk I/O Utilisation % (vda = OS disk, vdb = Longhorn data)",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "fieldConfig": {
+            "defaults": {
+              "color": {"mode": "palette-classic"},
+              "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 100}, {"color": "red", "value": 150}]},
+              "unit": "MBs"
+            },
+            "overrides": [
+              {"matcher": {"id": "byName", "options": "vda reads"}, "properties": [{"id": "color", "value": {"fixedColor": "red", "mode": "fixed"}}]},
+              {"matcher": {"id": "byName", "options": "vdb reads"}, "properties": [{"id": "color", "value": {"fixedColor": "orange", "mode": "fixed"}}]}
+            ]
+          },
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+          "id": 3,
+          "options": {"legend": {"calcs": ["mean", "max"], "displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi"}},
+          "targets": [
+            {"expr": "sum(rate(node_disk_read_bytes_total{device=\"vda\"}[5m])) / 1024 / 1024", "legendFormat": "vda reads", "refId": "A"},
+            {"expr": "sum(rate(node_disk_read_bytes_total{device=\"vdb\"}[5m])) / 1024 / 1024", "legendFormat": "vdb reads", "refId": "B"},
+            {"expr": "sum(rate(node_disk_written_bytes_total{device=\"vda\"}[5m])) / 1024 / 1024", "legendFormat": "vda writes", "refId": "C"}
+          ],
+          "title": "Disk Read/Write Throughput (MB/s)",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "fieldConfig": {
+            "defaults": {
+              "color": {"mode": "palette-classic"},
+              "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 8}, {"color": "red", "value": 12}]},
+              "unit": "short"
+            }
+          },
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+          "id": 4,
+          "options": {"legend": {"calcs": ["mean", "max"], "displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi"}},
+          "targets": [
+            {"expr": "node_load1", "legendFormat": "Load 1m", "refId": "A"},
+            {"expr": "node_load5", "legendFormat": "Load 5m", "refId": "B"},
+            {"expr": "node_load15", "legendFormat": "Load 15m", "refId": "C"},
+            {"expr": "count(node_cpu_seconds_total{mode=\"idle\"}) without (cpu)", "legendFormat": "CPU count (reference)", "refId": "D"}
+          ],
+          "title": "Load Average vs CPU Count",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "fieldConfig": {
+            "defaults": {
+              "color": {"mode": "palette-classic"},
+              "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 2147483648}, {"color": "red", "value": 1073741824}]},
+              "unit": "bytes"
+            }
+          },
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
+          "id": 5,
+          "options": {"legend": {"calcs": ["min", "mean"], "displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi"}},
+          "targets": [
+            {"expr": "node_memory_MemAvailable_bytes", "legendFormat": "Available RAM", "refId": "A"},
+            {"expr": "node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes", "legendFormat": "Used RAM", "refId": "B"}
+          ],
+          "title": "Memory Available vs Used",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "fieldConfig": {
+            "defaults": {
+              "color": {"mode": "palette-classic"},
+              "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 50}, {"color": "red", "value": 200}]},
+              "unit": "ops"
+            }
+          },
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16},
+          "id": 6,
+          "options": {"legend": {"calcs": ["mean", "max"], "displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi"}},
+          "targets": [
+            {"expr": "rate(node_vmstat_pgmajfault[5m])", "legendFormat": "Major page faults/s", "refId": "A"}
+          ],
+          "title": "Major Page Faults rate/s (disk-backed memory pressure)",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "fieldConfig": {
+            "defaults": {
+              "color": {"mode": "palette-classic"},
+              "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 12}, {"color": "red", "value": 16}]},
+              "unit": "short"
+            },
+            "mappings": []
+          },
+          "gridPos": {"h": 4, "w": 6, "x": 0, "y": 24},
+          "id": 7,
+          "options": {"colorMode": "background", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"]}},
+          "targets": [
+            {"expr": "count(node_disk_io_time_seconds_total{device=~\"nbd.*\"})", "legendFormat": "iSCSI volumes", "refId": "A"}
+          ],
+          "title": "Active Longhorn iSCSI Volumes (nbd devices)",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "fieldConfig": {
+            "defaults": {
+              "color": {"mode": "thresholds"},
+              "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 30}, {"color": "red", "value": 60}]},
+              "unit": "percent"
+            }
+          },
+          "gridPos": {"h": 4, "w": 6, "x": 6, "y": 24},
+          "id": 8,
+          "options": {"colorMode": "background", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"]}},
+          "targets": [
+            {"expr": "avg(rate(node_cpu_seconds_total{mode=\"iowait\"}[5m])) * 100", "legendFormat": "Avg iowait %", "refId": "A"}
+          ],
+          "title": "Current avg iowait %",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "fieldConfig": {
+            "defaults": {
+              "color": {"mode": "thresholds"},
+              "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 75}, {"color": "red", "value": 150}]},
+              "unit": "MBs"
+            }
+          },
+          "gridPos": {"h": 4, "w": 6, "x": 12, "y": 24},
+          "id": 9,
+          "options": {"colorMode": "background", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"]}},
+          "targets": [
+            {"expr": "sum(rate(node_disk_read_bytes_total{device=\"vda\"}[5m])) / 1024 / 1024", "legendFormat": "vda read MB/s", "refId": "A"}
+          ],
+          "title": "vda Read Rate (MB/s)",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "fieldConfig": {
+            "defaults": {
+              "color": {"mode": "thresholds"},
+              "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "yellow", "value": 2147483648}, {"color": "green", "value": 3221225472}]},
+              "unit": "bytes"
+            }
+          },
+          "gridPos": {"h": 4, "w": 6, "x": 18, "y": 24},
+          "id": 10,
+          "options": {"colorMode": "background", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"]}},
+          "targets": [
+            {"expr": "node_memory_MemAvailable_bytes", "legendFormat": "Available RAM", "refId": "A"}
+          ],
+          "title": "Available RAM",
+          "type": "stat"
+        }
+      ],
+      "schemaVersion": 38,
+      "style": "dark",
+      "tags": ["node", "io", "disk", "memory", "longhorn", "saturation"],
+      "templating": {
+        "list": [
+          {"current": {"selected": false, "text": "VictoriaMetrics", "value": "VictoriaMetrics"}, "hide": 0, "includeAll": false, "label": "Datasource", "multi": false, "name": "datasource", "options": [], "query": "prometheus", "refresh": 1, "regex": "", "skipUrlSync": false, "type": "datasource"}
+        ]
+      },
+      "time": {"from": "now-3h", "to": "now"},
+      "timepicker": {},
+      "timezone": "browser",
+      "title": "Node I/O Health",
+      "uid": "node-io-homelab",
+      "version": 1
+    }

@@ -1,0 +1,49 @@
+---
+# PriorityClass definitions for homelab workload triage
+#
+# When the node is under memory pressure Kubernetes evicts pods in this order:
+#   BestEffort → Burstable (lowest priority first) → Guaranteed
+# Within QoS tiers, PriorityClass determines eviction order — lower value = evicted first.
+#
+# Three tiers:
+#   homelab-critical    (2000) — storage/networking/auth — must survive
+#   homelab-standard    (1000) — core services and always-on automations
+#   homelab-interactive  (500) — user-facing apps that can restart without data loss
+#
+# Note: globalDefault is intentionally NOT set to avoid interference with system pods.
+# Note: preemptionPolicy is PreemptLowerPriority (default) — critical pods can evict interactive ones.
+
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: homelab-critical
+value: 2000
+preemptionPolicy: PreemptLowerPriority
+description: >-
+  Critical homelab infrastructure: Longhorn (storage), Traefik (ingress), MetalLB (LB),
+  Cert-Manager (TLS), Sealed Secrets, Authelia (auth), CoreDNS, Cloudflared (tunnel).
+  These pods must remain running during resource pressure.
+
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: homelab-standard
+value: 1000
+preemptionPolicy: PreemptLowerPriority
+description: >-
+  Core homelab services: ArgoCD, monitoring stack (VMAgent/VMSingle/VMAlert/Grafana/Loki),
+  Home Assistant, Node-RED, Zigbee2mqtt, Mosquitto, Promtail, Velero.
+  These are always-on services — evict only after interactive tier is cleared.
+
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: homelab-interactive
+value: 500
+preemptionPolicy: PreemptLowerPriority
+description: >-
+  User-facing interactive apps: Plex, Forgejo, Headlamp, Homepage, Obsidian Livesync,
+  Pi-hole, Quartz. These can restart without data loss and are candidates for KEDA
+  scale-to-zero. Evicted first under resource pressure.

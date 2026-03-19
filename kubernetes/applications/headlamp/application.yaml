@@ -54,6 +54,8 @@ spec:
               cpu: 500m
               memory: 128Mi
 
+          priorityClassName: homelab-interactive
+
           # Disable built-in ingress — Traefik IngressRoute handles this
           ingress:
             enabled: false
