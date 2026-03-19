@@ -16,7 +16,7 @@ Production-ready Kubernetes (K3s) platform on Proxmox VE with complete GitOps wo
 Essential foundation that must exist before ArgoCD can work:
 
 - **MetalLB** LoadBalancer (192.168.10.150-165)
-- **Longhorn** distributed block storage (1 replica for single node)
+- **Longhorn** distributed block storage (1 replica, 200GB persistent LV on Proxmox)
 - **Sealed Secrets** encrypted secrets for GitOps workflow
 - **ArgoCD** GitOps continuous delivery platform
 
@@ -24,27 +24,37 @@ Essential foundation that must exist before ArgoCD can work:
 
 Deployed automatically via ArgoCD sync waves:
 
-- **Cert-Manager** (Wave 1) - Automated TLS certificates via Let's Encrypt
+- **Cert-Manager** (Wave 1) - Automated TLS certificates via Let's Encrypt + Cloudflare DNS
 - **Traefik** (Wave 2) - Ingress controller with HTTPS
 - **Authelia** (Wave 3) - SSO/2FA authentication portal
 - **NetworkPolicies** (Wave 3) - Namespace network isolation
 - **ResourcePolicies** (Wave 3) - LimitRange and ResourceQuota
-- **Loki + Promtail** (Wave 4) - Centralized logging
-- **Garage** (Wave 4) - S3-compatible object storage (lightweight, homelab-focused)
-- **Velero** (Wave 4) - Kubernetes backup and restore
-- **Cloudflared** (Wave 4) - Cloudflare Tunnel for external access
-- **External-DNS** (Wave 4) - Automatic DNS record management
+- **Loki + Promtail** (Wave 4) - Centralized log aggregation and collection
+- **Garage** (Wave 4) - S3-compatible object storage (lightweight MinIO replacement)
+- **Velero** (Wave 4) - Kubernetes backup and restore (to Garage S3)
+- **Cloudflared** (Wave 4) - Cloudflare Tunnel (only `fallandrise.silverseekers.org` is public)
+- **External-DNS** (Wave 4) - Automatic Cloudflare DNS record management
+- **Intel Device Plugins** (Wave 4) - GPU passthrough for media transcoding
 
 ### Applications (ArgoCD GitOps)
 
-- **Monitoring Stack** (Wave 5)
-  - Grafana metrics visualization (https://grafana.silverseekers.org)
+- **Monitoring Stack** (Wave 5) - Victoria Metrics + Grafana
   - VMSingle time-series database (lightweight Prometheus alternative)
-  - VMAgent metrics scraper
-  - VMAlert + VMAlertmanager for alerting
-  - Loki datasource for log querying
-  - Node exporters on all cluster nodes
-  - Kube-state-metrics for cluster state monitoring
+  - VMAgent metrics scraper, VMAlert + VMAlertmanager for alerting
+  - Grafana with Loki datasource for logs + dashboards
+- **Home Assistant** - Home automation (with OIDC, HACS auto-setup)
+- **Homepage** - Homelab dashboard with Proxmox/cluster integration
+- **KEDA + KEDA HTTP** - Kubernetes Event-Driven Autoscaler (scales Forgejo, Plex, Headlamp to zero)
+- **Node-RED** - IoT flow automation (OIDC protected)
+- **Zigbee2MQTT** - Zigbee coordinator via SMLIGHT SLZB TCP adapter
+- **Mosquitto** - MQTT broker for IoT devices
+- **Pi-hole** - DNS ad-blocker (dedicated IP: 192.168.10.152)
+- **Plex** - Media server with Intel GPU transcoding (KEDA scaled)
+- **Filebrowser** - Web file manager for Plex media uploads
+- **Forgejo** - Self-hosted Git server (KEDA scaled)
+- **Quartz** - Digital garden at `fallandrise.silverseekers.org` (publicly accessible via Cloudflare Tunnel)
+- **Obsidian LiveSync** - CouchDB backend for Obsidian sync across devices
+- **Headlamp** - Kubernetes web UI (KEDA scaled)
 
 ## Configuration Architecture
 
@@ -245,16 +255,22 @@ make help              # Show all commands
 - [ArgoCD README](kubernetes/services/argocd/README.md) - GitOps platform
 - [Sealed Secrets README](kubernetes/services/sealed-secrets/README.md) - Secret encryption
 - [Authelia README](kubernetes/services/authelia/README.md) - SSO/2FA authentication
-- [Garage README](kubernetes/services/garage/README.md) - S3-compatible object storage
+- [Garage README](kubernetes/services/garage/README.md) - S3-compatible object storage (replaces MinIO)
 - [Velero README](kubernetes/services/velero/README.md) - Kubernetes backup and restore
+- [External-DNS README](kubernetes/services/external-dns/README.md) - Cloudflare DNS automation
+- [Loki README](kubernetes/services/loki/README.md) - Log aggregation
+- [Cloudflared README](kubernetes/services/cloudflared/README.md) - Cloudflare tunnel
 
-### Monitoring
+### Monitoring & Observability
 
-- [Monitoring README](kubernetes/applications/monitoring/README.md) - Prometheus + Grafana stack
-
-### AI Integration
-
+- [Monitoring README](kubernetes/applications/monitoring/README.md) - Victoria Metrics + Grafana stack
 - [Grafana MCP](docs/GRAFANA_MCP.md) - AI assistant integration with Grafana
+
+### Operations
+
+- [Persistent Storage](docs/PERSISTENT_STORAGE.md) - Proxmox LV architecture for Longhorn
+- [Pre-Proxmox 9 Backup](docs/PRE_PROXMOX9_BACKUP.md) - Backup checklist (upgrade reference)
+- [Runbooks](docs/runbooks/) - Incident recovery procedures
 
 ## Architecture
 
@@ -283,20 +299,27 @@ make help              # Show all commands
 └─────────────────────────────────────────────────────────┘
                            ↓
 ┌─────────────────────────────────────────────────────────┐
-│ Core Platform Services                                  │
-│  • Longhorn (Storage)                                   │
-│  • Cert-Manager (TLS)                                   │
-│  • Traefik (Ingress @ 192.168.10.150)                   │
-│  • ArgoCD (GitOps)                                      │
+│ Bootstrap Services (Ansible)                            │
+│  • MetalLB (LoadBalancer: 192.168.10.150-165)           │
+│  • Longhorn (Storage: 200GB persistent LV)              │
 │  • Sealed Secrets (Secret Encryption)                   │
-│  • Authelia (SSO/2FA)                                   │
+│  • ArgoCD (GitOps)                                      │
 └─────────────────────────────────────────────────────────┘
                            ↓
 ┌─────────────────────────────────────────────────────────┐
-│ Applications (ArgoCD/GitOps via Helm Charts)            │
-│  • Each service is a Helm chart in kubernetes/services/ │
-│  • ArgoCD deploys with config/homelab.yaml as values    │
-│  • Monitoring Stack (Victoria Metrics + Grafana)        │
+│ Platform Services (ArgoCD Wave 1–4)                     │
+│  • Cert-Manager · Traefik · Authelia                    │
+│  • Loki · Promtail · Garage (S3) · Velero               │
+│  • Cloudflared · External-DNS · Intel Device Plugins    │
+└─────────────────────────────────────────────────────────┘
+                           ↓
+┌─────────────────────────────────────────────────────────┐
+│ Applications (ArgoCD Wave 5+)                           │
+│  • Monitoring (Victoria Metrics + Grafana)              │
+│  • Home Assistant · Node-RED · Zigbee2MQTT · Mosquitto  │
+│  • Plex · Filebrowser · Pi-hole                         │
+│  • Forgejo · Quartz · Obsidian LiveSync · Headlamp      │
+│  • KEDA (scales Forgejo, Plex, Headlamp to zero)        │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -333,13 +356,32 @@ ansible-playbook ansible/playbooks/authelia.yml
 
 ## Access Points
 
-| Service               | URL                                | Credentials           |
-| --------------------- | ---------------------------------- | --------------------- |
-| **Traefik Dashboard** | https://traefik.silverseekers.org  | admin / (from config) |
-| **ArgoCD**            | https://argocd.silverseekers.org   | admin / (via secrets) |
-| **Grafana**           | https://grafana.silverseekers.org  | admin / (from config) |
-| **Authelia**          | https://auth.silverseekers.org     | (configured users)    |
-| **Longhorn UI**       | https://longhorn.silverseekers.org | N/A                   |
+### Infrastructure & Platform
+
+| Service               | URL                                    | Auth                  |
+| --------------------- | -------------------------------------- | --------------------- |
+| **Traefik Dashboard** | https://traefik.silverseekers.org      | Authelia SSO          |
+| **ArgoCD**            | https://argocd.silverseekers.org       | Authelia OIDC         |
+| **Authelia**          | https://auth.silverseekers.org         | (configured users)    |
+| **Grafana**           | https://grafana.silverseekers.org      | admin / (from config) |
+| **Longhorn UI**       | https://longhorn.silverseekers.org     | Authelia SSO          |
+| **Headlamp**          | https://headlamp.silverseekers.org     | Authelia SSO          |
+
+### Applications
+
+| Service               | URL                                    | Auth                  |
+| --------------------- | -------------------------------------- | --------------------- |
+| **Homepage**          | https://home.silverseekers.org         | Authelia SSO          |
+| **Home Assistant**    | https://hass.silverseekers.org         | Authelia OIDC         |
+| **Node-RED**          | https://node-red.silverseekers.org     | Authelia OIDC         |
+| **Zigbee2MQTT**       | https://zigbee2mqtt.silverseekers.org  | Authelia SSO          |
+| **Pi-hole**           | https://pihole.silverseekers.org       | Authelia SSO          |
+| **Plex**              | https://plex.silverseekers.org         | Plex account          |
+| **Filebrowser**       | https://files.silverseekers.org        | Authelia SSO          |
+| **Forgejo**           | https://forgejo.silverseekers.org      | Forgejo accounts      |
+| **Quartz**            | https://fallandrise.silverseekers.org  | Public (via Tunnel)   |
+| **Obsidian LiveSync** | https://obsidian.silverseekers.org     | CouchDB auth          |
+| **Garage S3**         | https://s3.silverseekers.org           | S3 credentials        |
 
 ## Network Configuration
 
@@ -349,11 +391,15 @@ ansible-playbook ansible/playbooks/authelia.yml
 - **MetalLB Pool**: 192.168.10.150-165 (/28 range)
 - **Traefik LoadBalancer**: 192.168.10.150
 
-### DNS Configuration (UniFi Gateway)
+### DNS Configuration
 
-All services are accessed through Traefik at `192.168.10.150`. Configure your UniFi Gateway with a wildcard DNS entry:
+All internal services are accessed through Traefik at `192.168.10.150`.
 
-**UniFi Network → Settings → DNS:**
+**Automatic DNS (External-DNS + Cloudflare):**  
+External-DNS manages Cloudflare DNS records automatically. When a service is deployed with the correct annotations, DNS records are created/updated automatically.
+
+**Local DNS (UniFi Gateway fallback):**  
+For local resolution without hitting Cloudflare, configure your UniFi Gateway with a wildcard DNS entry:
 
 ```
 Type: A Record
@@ -361,13 +407,11 @@ Name: *.silverseekers.org
 IP: 192.168.10.150
 ```
 
-If your UniFi version doesn't support wildcard DNS, add individual entries:
+**Pi-hole:**  
+Pi-hole runs at a dedicated MetalLB IP (`192.168.10.152`) and can serve as a local DNS/ad-blocker for the network.
 
-- `argocd.silverseekers.org` → `192.168.10.150`
-- `traefik.silverseekers.org` → `192.168.10.150`
-- `grafana.silverseekers.org` → `192.168.10.150`
-- `longhorn.silverseekers.org` → `192.168.10.150`
-- `auth.silverseekers.org` → `192.168.10.150`
+**Public Access:**  
+Only `fallandrise.silverseekers.org` (Quartz digital garden) is publicly accessible, via Cloudflare Tunnel (`cloudflared`). All other services are internal-only.
 
 **Architecture:**
 

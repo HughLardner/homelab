@@ -159,27 +159,32 @@ K3s needs to download from `get.k3s.io`. Ensure:
 
 ## Next Steps
 
-After successful installation:
+After successful K3s installation:
 
-1. **Core Services**: Deploy all platform services
+1. **Bootstrap Services** (Ansible — must run before ArgoCD):
    ```bash
    make metallb-install
    make longhorn-install
+   make sealed-secrets-install
+   make argocd-install
+   ```
+
+2. **Platform Services** (Ansible):
+   ```bash
    make cert-manager-install
    make traefik-install
-   make argocd-install
-   make sealed-secrets-install
+   make authelia-install    # Authelia is the active SSO (not Authentik)
    ```
 
-2. **Authentication**: Deploy Authelia for SSO
+3. **Seal secrets** and deploy everything else via GitOps:
    ```bash
-   make authelia-install
+   make seal-secrets        # Encrypt config/secrets.yml → sealed yaml files
+   make root-app-deploy     # ArgoCD App-of-Apps deploys all remaining services
    ```
 
-3. **Monitoring**: Install Victoria Metrics + Grafana
+4. **Verify**: ArgoCD will sync all 16+ services and 15 applications automatically.
    ```bash
-   make monitoring-secrets
-   make monitoring-install
+   make apps-status         # Check ArgoCD application sync status
    ```
 
 See the main project docs for detailed guides.

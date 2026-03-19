@@ -62,10 +62,11 @@ make seal-secrets
 ### 3. Apply Secrets to Cluster
 
 ```bash
-# Via ArgoCD (automatic sync)
-kubectl apply -f kubernetes/applications/monitoring/application.yaml
+# Via ArgoCD (automatic sync — recommended)
+# ArgoCD picks up sealed secrets automatically when root-app syncs
+kubectl apply -f kubernetes/applications/root-app.yaml
 
-# Or manually
+# Or apply a specific sealed secret manually
 kubectl apply -f kubernetes/applications/monitoring/secrets/grafana-admin-sealed.yaml
 ```
 
@@ -244,14 +245,29 @@ homelab/
 ├── SECRETS.md                    # This file
 ├── kubernetes/
 │   ├── services/
-│   │   └── authelia/
-│   │       └── secrets/
-│   │           └── authelia-secrets-sealed.yaml  # Encrypted, safe for git
+│   │   ├── argocd/secrets/
+│   │   │   └── argocd-secrets-sealed.yaml        # OIDC/GitHub credentials
+│   │   ├── authelia/secrets/
+│   │   │   ├── authelia-secrets-sealed.yaml      # Authelia config secrets
+│   │   │   └── authelia-oidc-sealed.yaml         # OIDC client secrets
+│   │   ├── cert-manager/secrets/
+│   │   │   └── cloudflare-api-token-sealed.yaml  # Cloudflare API token
+│   │   ├── cloudflared/secrets/
+│   │   │   └── cloudflared-credentials-sealed.yaml
+│   │   ├── external-dns/secrets/
+│   │   │   └── cloudflare-api-token-sealed.yaml
+│   │   ├── garage/secrets/
+│   │   │   └── garage-credentials-sealed.yaml    # S3 access/secret keys
+│   │   └── velero/secrets/
+│   │       └── velero-credentials-sealed.yaml    # Garage S3 credentials
 │   └── applications/
-│       └── monitoring/
-│           └── secrets/
-│               ├── README.md
-│               └── grafana-admin-sealed.yaml     # Encrypted, safe for git
+│       ├── monitoring/secrets/
+│       │   ├── README.md
+│       │   └── grafana-admin-sealed.yaml         # Grafana admin password
+│       ├── home-assistant/secrets/
+│       │   └── home-assistant-oidc-sealed.yaml   # Authelia OIDC client
+│       └── node-red/secrets/
+│           └── node-red-oidc-sealed.yaml         # Authelia OIDC client
 └── ansible/
     └── playbooks/
         ├── seal-secrets.yml       # Main playbook

@@ -92,21 +92,30 @@ make k3s-install       # Install K3s cluster
 make k3s-status        # Check K3s service status
 make k3s-destroy       # Uninstall K3s from all nodes
 
-# Core Services (deployed as Helm charts)
+# Bootstrap Services (Ansible — required before ArgoCD)
 make metallb-install         # Install MetalLB LoadBalancer
-make longhorn-install        # Install Longhorn storage
+make longhorn-install        # Install Longhorn storage (200GB persistent LV)
+make sealed-secrets-install  # Install Sealed Secrets controller
+make argocd-install          # Install ArgoCD GitOps platform
+
+# Core Services (Ansible)
 make cert-manager-install    # Install cert-manager for TLS
 make traefik-install         # Install Traefik ingress controller
-make argocd-install          # Install ArgoCD GitOps platform
-make sealed-secrets-install  # Install Sealed Secrets controller
-make seal-secrets            # Encrypt secrets from config/secrets.yml
+make authelia-install        # Install Authelia SSO (active; not Authentik)
 
-# Full Stack Deployment
-make deploy-all        # Deploy everything (infra + platform + services + apps)
-make deploy-services   # Deploy infrastructure + K3s + all core services
-make deploy-platform   # Deploy infrastructure + K3s cluster
-make deploy-infra      # Deploy infrastructure only (Terraform VMs)
-make deploy            # Alias for deploy-services
+# Secrets
+make seal-secrets            # Encrypt secrets from config/secrets.yml
+make monitoring-secrets      # Create monitoring secrets (if not using seal-secrets)
+
+# GitOps — deploy everything else via ArgoCD after bootstrap
+make root-app-deploy         # Apply App-of-Apps (deploys all remaining services)
+
+# Full Stack Deployment (combines all layers)
+make deploy-all        # Deploy everything (infra + platform + bootstrap + ArgoCD sync)
+make deploy-bootstrap  # Bootstrap layer only (MetalLB, Longhorn, Sealed Secrets, ArgoCD)
+make deploy-services   # Infrastructure + K3s + core services
+make deploy-platform   # Infrastructure + K3s cluster
+make deploy-infra      # Infrastructure only (Terraform VMs)
 
 # Utilities
 make ping              # Test connectivity to all nodes
@@ -120,23 +129,31 @@ ansible/
 ├── ansible.cfg                      # Ansible configuration
 ├── inventory/
 │   ├── generate_inventory.py       # Generates hosts.yml from Terraform output
-│   └── hosts.yml                   # Generated inventory (node IPs only)
+│   └── hosts.yml                   # Generated inventory (empty placeholder, node IPs only)
 ├── playbooks/
 │   ├── k3s-cluster-setup.yml       # Main K3s installation playbook
 │   ├── node-prep.yml               # Node preparation tasks
 │   ├── metallb.yml                 # MetalLB LoadBalancer setup
 │   ├── longhorn.yml                # Longhorn storage (via Helm)
+│   ├── longhorn-upgrade.yml        # Longhorn upgrade orchestration
+│   ├── longhorn-upgrade-step.yml   # Longhorn upgrade step helper
 │   ├── cert-manager.yml            # Cert-manager for TLS
 │   ├── traefik.yml                 # Traefik ingress (via Helm)
 │   ├── argocd.yml                  # ArgoCD GitOps (via Helm)
-│   ├── authelia.yml                # Authelia SSO (via Helm)
+│   ├── authelia.yml                # Authelia SSO (via Helm) — ACTIVE
+│   ├── authelia-secrets.yml        # Create/update Authelia secrets
 │   ├── sealed-secrets.yml          # Sealed Secrets controller
+│   ├── sealed-secrets-key.yml      # Backup/restore sealed-secrets key
 │   ├── seal-secrets.yml            # Encrypt secrets for GitOps
+│   ├── seal-secret-task.yml        # Secret processing task helper
 │   ├── monitoring.yml              # Victoria Metrics + Grafana (via Helm)
-│   └── monitoring-secrets.yml      # Create monitoring secrets
+│   ├── monitoring-secrets.yml      # Create monitoring secrets
+│   ├── letsencrypt-certs.yml       # Let's Encrypt certificate management
+│   └── kured.yml                   # Kured (node reboot daemon)
+│   # NOTE: authentik*.yml playbooks exist but Authelia is the active SSO solution
 └── roles/
     ├── k3s/
-    │   ├── defaults/main.yml       # Default variables
+    │   ├── defaults/main.yml       # Default variables (k3s_version, etc.)
     │   ├── vars/main.yml           # Internal variables
     │   ├── handlers/main.yml       # Service handlers
     │   └── tasks/

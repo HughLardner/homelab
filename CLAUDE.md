@@ -8,9 +8,17 @@ This homelab infrastructure deploys a **single-node Kubernetes (K3s) cluster** o
 
 ### Current Deployment
 - **Single node**: 192.168.10.20 (12GB RAM, 100GB disk)
-- **Services**: MetalLB, Longhorn, Cert-Manager, Traefik, ArgoCD, Sealed Secrets, Authelia
-- **Monitoring**: Victoria Metrics + Grafana (lightweight Prometheus alternative)
 - **Domain**: *.silverseekers.org → 192.168.10.150 (Traefik LoadBalancer)
+- **Proxmox**: Upgraded to Proxmox VE 9 (March 2026)
+
+**Bootstrap Services** (Ansible — must exist before ArgoCD):
+MetalLB, Longhorn, Sealed Secrets, ArgoCD
+
+**Platform Services** (ArgoCD Wave 1–4):
+Cert-Manager, Traefik, Authelia, Network Policies, Resource Policies, Loki, Promtail, Garage (S3), Velero, Cloudflared, External-DNS, Intel Device Plugins
+
+**Applications** (ArgoCD Wave 5+):
+Monitoring (Victoria Metrics + Grafana), Homepage, Home Assistant, Node-RED, Zigbee2MQTT, Mosquitto, Pi-hole, Plex, Filebrowser, Forgejo, Quartz, Obsidian LiveSync, Headlamp, KEDA, KEDA HTTP Add-on
 
 ## Unified Configuration Architecture
 
@@ -70,6 +78,17 @@ services:
     domain: grafana.silverseekers.org
   longhorn:
     domain: longhorn.silverseekers.org
+    data_path: /mnt/longhorn-data    # 200GB standalone Proxmox LV
+  garage:
+    domain: s3.silverseekers.org     # S3-compatible storage (replaces MinIO)
+  velero:
+    backup_schedule: "0 2 * * *"
+  external_dns:
+    domain: silverseekers.org
+    provider: cloudflare
+  cloudflared:
+    tunnel_name: homelab-tunnel      # Only fallandrise.silverseekers.org exposed publicly
+  # ... and more — see config/homelab.yaml for the full list of 25+ services
 ```
 
 ### Benefits
@@ -218,17 +237,22 @@ make inventory
 # Install K3s
 make k3s-install
 
-# Deploy services
+# Bootstrap services (Ansible — must run before ArgoCD)
 make metallb-install
 make longhorn-install
+make sealed-secrets-install
+make argocd-install
+
+# Platform services (Ansible or ArgoCD via root-app)
 make cert-manager-install
 make traefik-install
-make argocd-install
-make sealed-secrets-install
 make authelia-install
 
-# Deploy applications
-make monitoring-install
+# After ArgoCD is running — deploy everything else via GitOps
+kubectl apply -f kubernetes/applications/root-app.yaml
+
+# Secrets management
+make seal-secrets      # Encrypt config/secrets.yml → sealed yaml files
 ```
 
 ## Secrets Management
@@ -236,15 +260,21 @@ make monitoring-install
 ### Plain Secrets
 - Location: `config/secrets.yml` (gitignored)
 - Used by: Ansible playbooks via `vars_files`
+- Template: `secrets.example.yml`
 
 ### Sealed Secrets
 - Encrypted secrets safe for Git
 - Location: `kubernetes/*/secrets/*-sealed.yaml`
 - Decrypted by sealed-secrets controller in cluster
+- Services with sealed secrets: argocd, authelia, cert-manager, cloudflared, external-dns, garage, velero, monitoring (Grafana admin), home-assistant (OIDC), node-red (OIDC)
 
 ### Terraform Secrets
 - Location: `terraform/secrets.tf` (gitignored)
 - Contains: Proxmox API credentials, SSH keys
+
+### Backup of Sealed Secrets Key
+- **Critical**: Export and back up the sealed-secrets encryption key before any cluster rebuild
+- See `docs/PRE_PROXMOX9_BACKUP.md` for the backup checklist pattern
 
 ## Directory Structure
 
@@ -252,33 +282,69 @@ make monitoring-install
 homelab/
 ├── config/
 │   ├── homelab.yaml          # Single source of truth for all configuration
+│   ├── homelab.yaml.example  # Template for new users
 │   └── secrets.yml           # Plain secrets (gitignored)
 ├── terraform/
 │   ├── clusters.tf           # Reads config/homelab.yaml
 │   ├── locals.tf
 │   ├── nodes.tf
-│   └── secrets.tf
+│   ├── secrets.tf            # Proxmox API credentials (gitignored)
+│   ├── ha.tf.disabled        # HA Terraform config (disabled)
+│   └── unifi.tf.disabled     # UniFi VLAN creation (disabled)
 ├── ansible/
 │   ├── inventory/
-│   │   ├── hosts.yml         # Node IPs only (generated)
+│   │   ├── hosts.yml         # Node IPs only (generated, empty placeholder)
 │   │   └── generate_inventory.py
 │   └── playbooks/
-│       └── *.yml             # Load config via vars_files
+│       └── *.yml             # Load config via vars_files (22 playbooks)
 ├── kubernetes/
-│   ├── services/             # Helm charts (co-located)
-│   │   ├── authelia/
-│   │   │   ├── Chart.yaml
-│   │   │   ├── values.yaml
-│   │   │   └── templates/
-│   │   ├── argocd/
-│   │   ├── traefik/
-│   │   └── longhorn/
-│   └── applications/
-│       ├── monitoring/       # Helm chart
-│       └── root-app.yaml     # App-of-apps
+│   ├── services/             # Platform services (Helm charts, co-located)
+│   │   ├── argocd/           # GitOps platform
+│   │   ├── authelia/         # SSO/2FA
+│   │   ├── cert-manager/     # TLS automation
+│   │   ├── cloudflared/      # Cloudflare tunnel
+│   │   ├── coredns/          # CoreDNS custom config
+│   │   ├── external-dns/     # DNS automation (Cloudflare)
+│   │   ├── garage/           # S3-compatible object storage
+│   │   ├── intel-device-plugins/ # Intel GPU passthrough
+│   │   ├── loki/             # Log aggregation
+│   │   ├── longhorn/         # Distributed block storage
+│   │   ├── metallb/          # LoadBalancer (Kustomize)
+│   │   ├── network-policies/ # Namespace isolation
+│   │   ├── promtail/         # Log collection
+│   │   ├── resource-policies/# LimitRange/ResourceQuota
+│   │   ├── sealed-secrets/   # Secret encryption controller
+│   │   ├── traefik/          # Ingress controller
+│   │   └── velero/           # Backup/restore
+│   └── applications/         # Workloads (Helm charts, co-located)
+│       ├── root-app.yaml     # App-of-apps (manages all application.yaml files)
+│       ├── monitoring/       # Victoria Metrics + Grafana
+│       ├── home-assistant/   # Home automation
+│       ├── homepage/         # Dashboard
+│       ├── headlamp/         # Kubernetes UI (KEDA scaled)
+│       ├── forgejo/          # Self-hosted Git (KEDA scaled)
+│       ├── plex/             # Media server (KEDA scaled)
+│       ├── mosquitto/        # MQTT broker
+│       ├── node-red/         # IoT automation (OIDC)
+│       ├── zigbee2mqtt/      # Zigbee coordinator (SMLIGHT SLZB TCP)
+│       ├── pihole/           # DNS ad-blocker (192.168.10.152)
+│       ├── quartz/           # Digital garden (fallandrise.silverseekers.org)
+│       ├── obsidian-livesync/# CouchDB for Obsidian sync
+│       ├── keda/             # Kubernetes Event-Driven Autoscaler
+│       └── keda-http/        # KEDA HTTP add-on
+├── docs/
+│   ├── ADDING_APPLICATIONS.md
+│   ├── GRAFANA_MCP.md
+│   ├── PERSISTENT_STORAGE.md
+│   ├── CURSOR_REMOTE_SSH.md
+│   ├── PRE_PROXMOX9_BACKUP.md
+│   ├── CLUSTER_STATE_SNAPSHOT_*.md
+│   └── runbooks/
+│       └── node-io-saturation-recovery.md
 ├── Makefile
 ├── README.md
 ├── SECRETS.md
+├── HA_CONFIGURATION.md
 └── CLAUDE.md
 ```
 

@@ -4,9 +4,9 @@
 
 **Strategy**: Layered bootstrap approach - critical services via Ansible, additional services via ArgoCD.
 
-**Status**: ✅ **ALL PHASES COMPLETE** - Single-node cluster fully operational
+**Status**: ✅ **ALL PHASES COMPLETE** - Single-node cluster fully operational with 15+ applications
 
-**Last Updated**: 2025-12-13
+**Last Updated**: 2026-03-19
 
 ---
 
@@ -14,12 +14,14 @@
 
 | Phase | Service | Status | Notes |
 |-------|---------|--------|-------|
-| 1 | **Longhorn** | ✅ Complete | Storage layer operational (1 replica for single node) |
+| 1 | **Longhorn** | ✅ Complete | Storage layer (1 replica, 200GB persistent LV on Proxmox) |
 | 2 | **Cert-Manager** | ✅ Complete | TLS certificates via Let's Encrypt + Cloudflare DNS |
 | 3 | **Traefik** | ✅ Complete | Ingress controller with LoadBalancer at 192.168.10.150 |
-| 4 | **ArgoCD** | ✅ Complete | GitOps platform accessible at https://argocd.silverseekers.org |
-| 5 | **Monitoring** | ✅ Complete | Victoria Metrics + Grafana (https://grafana.silverseekers.org) |
+| 4 | **ArgoCD** | ✅ Complete | GitOps platform at https://argocd.silverseekers.org |
+| 5 | **Monitoring** | ✅ Complete | Victoria Metrics + Grafana at https://grafana.silverseekers.org |
 | 6 | **Authelia** | ✅ Complete | SSO/2FA portal at https://auth.silverseekers.org |
+| 7 | **Platform Services** | ✅ Complete | Garage, Velero, Loki, Promtail, External-DNS, Cloudflared, Intel GPU |
+| 8 | **Applications** | ✅ Complete | 15 applications deployed (see Layer 4 below) |
 
 ### Current Configuration
 
@@ -79,8 +81,29 @@
 └─────────────────────────────────────────────────────────────────┘
                               ↓
 ┌─────────────────────────────────────────────────────────────────┐
+│ Layer 3: Platform Services (ArgoCD/GitOps)                      │
+│  ✅ Victoria Metrics + VMAgent + VMAlert + VMAlertmanager       │
+│  ✅ Grafana (@ grafana.silverseekers.org)                       │
+│  ✅ Garage S3 + Velero (backups) + Loki + Promtail (logging)   │
+│  ✅ External-DNS (Cloudflare) + Cloudflared Tunnel              │
+│  ✅ Intel Device Plugins (GPU passthrough for Plex)             │
+└─────────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────────┐
 │ Layer 4: Applications (ArgoCD)                                  │
-│  🔲 Your Applications                                           │
+│  ✅ Homepage (homelab dashboard)                                │
+│  ✅ KEDA + KEDA HTTP (auto-scaling to zero)                     │
+│  ✅ Home Assistant (home automation, OIDC)                      │
+│  ✅ Node-RED (IoT automation, OIDC)                             │
+│  ✅ Zigbee2MQTT (Zigbee via SMLIGHT SLZB TCP)                  │
+│  ✅ Mosquitto (MQTT broker)                                     │
+│  ✅ Plex (media server, Intel GPU transcoding, KEDA)            │
+│  ✅ Filebrowser (media upload UI)                               │
+│  ✅ Pi-hole (DNS ad-blocker @ 192.168.10.152)                   │
+│  ✅ Forgejo (self-hosted Git, KEDA)                             │
+│  ✅ Quartz (digital garden, public via Cloudflare Tunnel)       │
+│  ✅ Obsidian LiveSync (CouchDB)                                 │
+│  ✅ Headlamp (Kubernetes UI, KEDA)                              │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -1892,12 +1915,11 @@ kubectl delete namespace argocd
 ## Next Steps
 
 ### Future Enhancements
-1. **Configure Additional Grafana Dashboards** - Import Kubernetes monitoring dashboards
-2. **Set up Alert Routing** - Configure VMAlertmanager for Slack/Email notifications
-3. **Implement Backup Strategy** - Configure Longhorn backups to S3/NFS
-4. **Deploy Applications** - Use GitOps workflow to deploy your apps
-5. **Scale to HA** - Add 2 more nodes for high availability (optional)
-6. **Document Runbooks** - Operations procedures for common tasks
+1. **HA Scaling** - Scale to 3-node cluster (see `HA_CONFIGURATION.md`)
+2. **Alert Routing** - Configure VMAlertmanager for Slack/email notifications
+3. **NAS Integration** - Move Plex media PVC to NAS when hardware arrives
+4. **Additional Runbooks** - Expand `docs/runbooks/` with common operational procedures
+5. **Pihole as Primary DNS** - Route all LAN DNS through Pi-hole for ad-blocking
 
 ### Scaling to Multi-Node (Optional)
 
@@ -1944,6 +1966,6 @@ See individual service READMEs in `kubernetes/services/<service>/`
 
 ---
 
-**Plan Version**: 2.0
-**Last Updated**: 2025-12-13
-**Status**: ✅ Implementation Complete (Single-Node Deployment)
+**Plan Version**: 3.0
+**Last Updated**: 2026-03-19
+**Status**: ✅ Implementation Complete — Single-node cluster running 15+ applications (Proxmox VE 9)

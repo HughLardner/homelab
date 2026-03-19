@@ -49,7 +49,7 @@ argocd_appset_replicas: 2             # ApplicationSet controller replicas (was:
 
 **Note**: The application controller remains at 1 replica as it manages cluster state and uses leader election internally.
 
-### 2. Monitoring Stack (Prometheus, Grafana, Alertmanager)
+### 2. Monitoring Stack (Victoria Metrics, Grafana, Alertmanager)
 
 **File**: `kubernetes/applications/monitoring/values.yaml`
 
@@ -66,17 +66,16 @@ grafana:
   replicas: 2  # Was: unset (default 1)
 ```
 
-#### Prometheus
+#### Victoria Metrics (VMSingle)
 ```yaml
-prometheus:
-  prometheusSpec:
-    replicas: 2  # Was: unset (default 1)
+vmsingle:
+  replicaCount: 1  # VMSingle is not horizontally scalable; use VMCluster for HA
 ```
 
 **Impact**:
 - Alert processing continues during node failures
 - Grafana dashboards remain accessible
-- Prometheus scraping and querying distributed across replicas
+- Note: VMSingle is single-replica by design; use VMCluster for full metrics HA
 
 ### 3. Cert-Manager (TLS Certificate Management)
 
@@ -318,9 +317,8 @@ helm upgrade sealed-secrets sealed-secrets/sealed-secrets \
 
 # 4. Update monitoring stack
 cd ../../applications/monitoring
-helm upgrade kube-prometheus-stack prometheus-community/kube-prometheus-stack \
-  --namespace monitoring \
-  --values values.yaml
+# Monitoring is managed by ArgoCD (GitOps) — update via git push
+# Or manually sync in ArgoCD UI
 
 # 5. Update ArgoCD (requires Ansible run)
 cd ../../../../ansible
@@ -347,7 +345,7 @@ After applying changes, verify HA is working:
 
 ```bash
 # Check replica counts
-kubectl get deployment -A | grep -E 'READY|argocd|cert-manager|metallb|sealed-secrets|grafana|prometheus|alertmanager'
+kubectl get deployment -A | grep -E 'READY|argocd|cert-manager|metallb|sealed-secrets|grafana|vmsingle|alertmanager'
 
 # Expected output (example):
 # NAMESPACE         NAME                      READY   UP-TO-DATE   AVAILABLE
@@ -358,15 +356,15 @@ kubectl get deployment -A | grep -E 'READY|argocd|cert-manager|metallb|sealed-se
 # cert-manager      cert-manager-cainjector   2/2     2            2
 # kube-system       sealed-secrets-controller 2/2     2            2
 # metallb-system    controller                2/2     2            2
-# monitoring        monitoring-grafana        2/2     2            2
+# monitoring        monitoring-grafana           2/2     2            2
 # traefik           traefik                   2/2     2            2
 
 # Check StatefulSets
 kubectl get statefulset -A
 
 # Expected:
-# monitoring        alertmanager-kube-prometheus-alertmanager   3/3
-# monitoring        prometheus-kube-prometheus-prometheus       2/2
+# monitoring        alertmanager-monitoring-alertmanager   3/3
+# monitoring        vmsingle-monitoring                    1/1
 ```
 
 ## Testing Failover
@@ -464,11 +462,11 @@ With HA properly configured, you can now:
 
 - [Kubernetes Pod Disruption Budgets](https://kubernetes.io/docs/tasks/run-application/configure-pdb/)
 - [ArgoCD High Availability](https://argo-cd.readthedocs.io/en/stable/operator-manual/high_availability/)
-- [Prometheus High Availability](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#alertmanager_config)
+- [Victoria Metrics High Availability](https://docs.victoriametrics.com/cluster-victoriametrics/)
 - [MetalLB Configuration](https://metallb.universe.tf/configuration/)
 
 ---
 
-**Last Updated**: 2025-12-13
+**Last Updated**: 2026-03-19
 **Author**: Claude Code
 **Cluster**: homelab (single-node, scalable to HA)
