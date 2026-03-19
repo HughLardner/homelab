@@ -40,5 +40,3 @@ spec:
     # Limit concurrent queries to reduce burst I/O
     search.maxConcurrentRequests: "2"
     search.maxQueueDuration: "30s"
-    # Cap how far back queries can look to reduce I/O per query
-    search.maxLookback: "3d"
