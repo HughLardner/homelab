@@ -96,10 +96,10 @@ configMap:
     level: info
     format: text
   
-  # Disable telemetry
+  # Prometheus metrics on :9959/metrics — scraped by VMServiceScrape for Grafana Platform Health
   telemetry:
     metrics:
-      enabled: false
+      enabled: true
   
   # TOTP (2FA) configuration
   totp:

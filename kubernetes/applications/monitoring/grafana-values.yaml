@@ -224,11 +224,8 @@ dashboardProviders:
 # CoreDNS and Pi-hole merged into the custom DNS Health dashboard (ConfigMap).
 dashboards:
   kubernetes:
-    # At-a-glance cluster health: pod counts, CPU, memory, load, top pods
-    kubernetes-cluster:
-      gnetId: 7249
-      revision: 1
-      datasource: VictoriaMetrics
+    # Kubernetes Cluster (7249) is provisioned from ConfigMap kubernetes-cluster-homelab.json
+    # (patched pod/container cAdvisor labels). Do not re-add gnetId 7249 — it duplicates and breaks top pods/CPU.
 
     # Drill-down by namespace / pod / container for CPU, memory, and network.
     # Revision 1 uses deprecated cAdvisor labels (pod_name, container_name) — no data on K8s 1.16+.
@@ -245,7 +242,8 @@ dashboards:
       datasource: VictoriaMetrics
 
   apps:
-    # Intel GPU utilisation — used by Plex for hardware video transcoding
+    # Intel GPU (onedr0p exporter): expects metrics igpu_* with job=intel-gpu.
+    # The Intel Device Plugin does NOT export Prometheus metrics — deploy intel-gpu-exporter or this stays empty.
     intel-gpu:
       gnetId: 23251
       revision: 1

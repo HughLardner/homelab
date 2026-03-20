@@ -272,6 +272,18 @@ kubectl port-forward -n monitoring svc/vmagent-vmagent 8429:8429
 # Open http://localhost:8429/targets
 ```
 
+### Grafana panels show “No data” (dashboard-specific)
+
+| Dashboard / area | Typical cause |
+| ---------------- | ------------- |
+| **Resource Quotas** | PromQL must use `ignoring(type)` when dividing `kube_resourcequota{type="used"}` by `type="hard"` (labels differ only on `type`). |
+| **Platform Health — Authelia** | `configMap.telemetry.metrics.enabled` must be `true` in Authelia values (metrics on `:9959`). |
+| **Platform Health — Cert-Manager** | `prometheus.enabled: true` on the Jetstack chart (controller exposes `:9402/metrics`). |
+| **Platform Health — Velero** | Velero must be scraped (`VMServiceScrape` on `http-monitoring` / `:8085`). |
+| **Garage** | Dashboard filters `job="garage"`; scrape config must set that `job` (relabel), not `jobLabel: garage` without a matching Service label. |
+| **Intel GPU (gnet 23251)** | Expects **intel-gpu-exporter** (`igpu_*`, `job=intel-gpu`). The Intel **device plugin** does not expose these metrics. |
+| **Kubernetes Cluster (7249)** | Upstream uses `pod_name` / `container_name`; homelab ships a patched JSON (`kubernetes-cluster-homelab.json`) via ConfigMap. “Current connections” / “Request time” expect **nginx** / generic HTTP metrics — use **Traefik** dashboard for ingress. |
+
 ### Grafana Dashboard Not Loading
 
 1. Check datasource connection:

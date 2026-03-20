@@ -27,8 +27,10 @@ Single-node standalone deployment:
 
 ## Monitoring
 
-Garage exposes Prometheus metrics on the admin port (3903). These are scraped by
-VictoriaMetrics via ServiceMonitor and displayed in the official Grafana dashboard.
+Garage exposes Prometheus metrics on the admin port (3903). VictoriaMetrics scrapes
+them via `VMServiceScrape`; relabeling sets `job="garage"` so the official Grafana
+dashboard queries (`job="garage"`) match. Without that, panels show **No data** even
+when metrics exist.
 
 Dashboard panels include:
 - Disk I/O (read/write bytes)

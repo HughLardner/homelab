@@ -23,5 +23,9 @@ spec:
       path: /metrics
       interval: 30s
       scrapeTimeout: 10s
-  # Add job label for dashboard queries
-  jobLabel: garage
+      relabelConfigs:
+        # Official dashboard filters on job="garage". jobLabel expects a *Service* label key named "garage",
+        # which this Service does not define — set job explicitly.
+        - targetLabel: job
+          replacement: garage
+          action: replace

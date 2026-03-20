@@ -66,9 +66,9 @@ cainjector:
       cpu: 10m
       memory: 32Mi
 
-# Prometheus metrics
+# Prometheus metrics (controller /metrics :9402). Required for Grafana Platform Health + cert alerts.
 prometheus:
-  enabled: false  # Enable when Prometheus is deployed
+  enabled: true
   servicemonitor:
     enabled: false
 

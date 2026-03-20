@@ -479,7 +479,7 @@ metadata:
 data:
   platform-health.json: |
     {
-      "description": "Combined health view: Authelia SSO login events, Cert-Manager TLS certificate expiry, and Velero backup status",
+      "description": "Authelia (telemetry.metrics), cert-manager (prometheus.enabled), and Velero (:8085) must be scraped into VictoriaMetrics. Authelia was previously metrics-disabled; cert-manager had prometheus.enabled=false.",
       "editable": true,
       "graphTooltip": 1,
       "links": [],
@@ -1262,7 +1262,7 @@ data:
   resourcequota.json: |
     {
       "annotations": {"list": []},
-      "description": "Namespace resource quota usage and limits",
+      "description": "Namespace resource quota usage and limits. PromQL divides used/hard with ignoring(type) because kube_resourcequota distinguishes them only via the type label.",
       "editable": true,
       "fiscalYearStartMonth": 0,
       "graphTooltip": 0,
@@ -1295,7 +1295,7 @@ data:
           "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
           "id": 3,
           "options": {"colorMode": "value", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto"},
-          "targets": [{"expr": "count(kube_resourcequota{type=\"used\"} / kube_resourcequota{type=\"hard\"} > 0.9) or vector(0)", "refId": "A"}],
+          "targets": [{"expr": "count((kube_resourcequota{type=\"used\"} / ignoring(type) kube_resourcequota{type=\"hard\"}) > 0.9) or vector(0)", "refId": "A"}],
           "title": "Quotas > 90% Used",
           "type": "stat"
         },
@@ -1305,7 +1305,7 @@ data:
           "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
           "id": 4,
           "options": {"colorMode": "value", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto"},
-          "targets": [{"expr": "count(kube_resourcequota{type=\"used\"} / kube_resourcequota{type=\"hard\"} > 0.7 < 0.9) or vector(0)", "refId": "A"}],
+          "targets": [{"expr": "count((kube_resourcequota{type=\"used\"} / ignoring(type) kube_resourcequota{type=\"hard\"}) > 0.7 and (kube_resourcequota{type=\"used\"} / ignoring(type) kube_resourcequota{type=\"hard\"}) < 0.9) or vector(0)", "refId": "A"}],
           "title": "Quotas 70-90% Used",
           "type": "stat"
         },
@@ -1315,7 +1315,7 @@ data:
           "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
           "id": 5,
           "options": {"legend": {"calcs": ["lastNotNull"], "displayMode": "table", "placement": "right", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
-          "targets": [{"expr": "kube_resourcequota{resource=\"requests.cpu\", type=\"used\"} / kube_resourcequota{resource=\"requests.cpu\", type=\"hard\"}", "legendFormat": "{{ "{{" }}namespace{{ "}}" }}", "refId": "A"}],
+          "targets": [{"expr": "kube_resourcequota{resource=\"requests.cpu\", type=\"used\"} / ignoring(type) kube_resourcequota{resource=\"requests.cpu\", type=\"hard\"}", "legendFormat": "{{ "{{" }}namespace{{ "}}" }}", "refId": "A"}],
           "title": "CPU Requests Usage %",
           "type": "timeseries"
         },
@@ -1325,7 +1325,7 @@ data:
           "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
           "id": 6,
           "options": {"legend": {"calcs": ["lastNotNull"], "displayMode": "table", "placement": "right", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
-          "targets": [{"expr": "kube_resourcequota{resource=\"requests.memory\", type=\"used\"} / kube_resourcequota{resource=\"requests.memory\", type=\"hard\"}", "legendFormat": "{{ "{{" }}namespace{{ "}}" }}", "refId": "A"}],
+          "targets": [{"expr": "kube_resourcequota{resource=\"requests.memory\", type=\"used\"} / ignoring(type) kube_resourcequota{resource=\"requests.memory\", type=\"hard\"}", "legendFormat": "{{ "{{" }}namespace{{ "}}" }}", "refId": "A"}],
           "title": "Memory Requests Usage %",
           "type": "timeseries"
         },
@@ -1335,7 +1335,7 @@ data:
           "gridPos": {"h": 8, "w": 12, "x": 0, "y": 12},
           "id": 7,
           "options": {"legend": {"calcs": ["lastNotNull"], "displayMode": "table", "placement": "right", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
-          "targets": [{"expr": "kube_resourcequota{resource=\"limits.cpu\", type=\"used\"} / kube_resourcequota{resource=\"limits.cpu\", type=\"hard\"}", "legendFormat": "{{ "{{" }}namespace{{ "}}" }}", "refId": "A"}],
+          "targets": [{"expr": "kube_resourcequota{resource=\"limits.cpu\", type=\"used\"} / ignoring(type) kube_resourcequota{resource=\"limits.cpu\", type=\"hard\"}", "legendFormat": "{{ "{{" }}namespace{{ "}}" }}", "refId": "A"}],
           "title": "CPU Limits Usage %",
           "type": "timeseries"
         },
@@ -1345,7 +1345,7 @@ data:
           "gridPos": {"h": 8, "w": 12, "x": 12, "y": 12},
           "id": 8,
           "options": {"legend": {"calcs": ["lastNotNull"], "displayMode": "table", "placement": "right", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
-          "targets": [{"expr": "kube_resourcequota{resource=\"limits.memory\", type=\"used\"} / kube_resourcequota{resource=\"limits.memory\", type=\"hard\"}", "legendFormat": "{{ "{{" }}namespace{{ "}}" }}", "refId": "A"}],
+          "targets": [{"expr": "kube_resourcequota{resource=\"limits.memory\", type=\"used\"} / ignoring(type) kube_resourcequota{resource=\"limits.memory\", type=\"hard\"}", "legendFormat": "{{ "{{" }}namespace{{ "}}" }}", "refId": "A"}],
           "title": "Memory Limits Usage %",
           "type": "timeseries"
         },
@@ -1355,7 +1355,7 @@ data:
           "gridPos": {"h": 8, "w": 12, "x": 0, "y": 20},
           "id": 9,
           "options": {"legend": {"calcs": ["lastNotNull"], "displayMode": "table", "placement": "right", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
-          "targets": [{"expr": "kube_resourcequota{resource=\"pods\", type=\"used\"} / kube_resourcequota{resource=\"pods\", type=\"hard\"}", "legendFormat": "{{ "{{" }}namespace{{ "}}" }}", "refId": "A"}],
+          "targets": [{"expr": "kube_resourcequota{resource=\"pods\", type=\"used\"} / ignoring(type) kube_resourcequota{resource=\"pods\", type=\"hard\"}", "legendFormat": "{{ "{{" }}namespace{{ "}}" }}", "refId": "A"}],
           "title": "Pod Count Usage %",
           "type": "timeseries"
         },
@@ -1365,7 +1365,7 @@ data:
           "gridPos": {"h": 8, "w": 12, "x": 12, "y": 20},
           "id": 10,
           "options": {"legend": {"calcs": ["lastNotNull"], "displayMode": "table", "placement": "right", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
-          "targets": [{"expr": "kube_resourcequota{resource=\"persistentvolumeclaims\", type=\"used\"} / kube_resourcequota{resource=\"persistentvolumeclaims\", type=\"hard\"}", "legendFormat": "{{ "{{" }}namespace{{ "}}" }}", "refId": "A"}],
+          "targets": [{"expr": "kube_resourcequota{resource=\"persistentvolumeclaims\", type=\"used\"} / ignoring(type) kube_resourcequota{resource=\"persistentvolumeclaims\", type=\"hard\"}", "legendFormat": "{{ "{{" }}namespace{{ "}}" }}", "refId": "A"}],
           "title": "PVC Count Usage %",
           "type": "timeseries"
         },
@@ -1375,7 +1375,7 @@ data:
           "gridPos": {"h": 10, "w": 24, "x": 0, "y": 28},
           "id": 11,
           "options": {"footer": {"fields": "", "reducer": ["sum"], "show": false}, "showHeader": true, "sortBy": [{"desc": true, "displayName": "Usage %"}]},
-          "targets": [{"expr": "kube_resourcequota{type=\"used\"} / kube_resourcequota{type=\"hard\"}", "format": "table", "instant": true, "refId": "A"}],
+          "targets": [{"expr": "kube_resourcequota{type=\"used\"} / ignoring(type) kube_resourcequota{type=\"hard\"}", "format": "table", "instant": true, "refId": "A"}],
           "title": "All Resource Quotas - Current Usage",
           "transformations": [{"id": "organize", "options": {"excludeByName": {"Time": true, "__name__": true, "instance": true, "job": true, "type": true, "uid": true}, "indexByName": {}, "renameByName": {"Value": "Usage %", "namespace": "Namespace", "resource": "Resource", "resourcequota": "Quota Name"}}}],
           "type": "table"
