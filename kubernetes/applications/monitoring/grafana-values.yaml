@@ -230,10 +230,12 @@ dashboards:
       revision: 1
       datasource: VictoriaMetrics
 
-    # Drill-down by namespace / pod / container for CPU, memory, and network
+    # Drill-down by namespace / pod / container for CPU, memory, and network.
+    # Revision 1 uses deprecated cAdvisor labels (pod_name, container_name) — no data on K8s 1.16+.
+    # Revision 5+ uses pod/container; keep synced with grafana.com/dashboards/6781 revisions.
     k8s-resources-pod:
       gnetId: 6781
-      revision: 1
+      revision: 5
       datasource: VictoriaMetrics
 
     # PVC fill predictions, storage class usage, volumes nearing capacity
