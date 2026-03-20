@@ -97,7 +97,12 @@ homeassistant:
   # Home Assistant configuration
   configuration:
     enabled: true
-    forceInit: false
+    # forceInit: true rewrites configuration.yaml on every pod start.
+    # Required to inject the `homeassistant: packages:` include that loads
+    # /config/packages/*.yaml (where plex.yaml provides shell_command,
+    # input_button, and the wake automation).
+    # Safe to revert to false after the packages line is in the file.
+    forceInit: true
     # Trust Traefik proxy and cluster network
     trusted_proxies:
       - 10.42.0.0/16    # K3s pod CIDR
@@ -122,49 +127,25 @@ homeassistant:
       script: !include scripts.yaml
       scene: !include scenes.yaml
 
-      # =========================================================================
-      # Kubernetes Service Control
-      # =========================================================================
-      # Shell commands that call the Kubernetes API directly using the pod's
-      # auto-mounted ServiceAccount token. No external credentials needed —
-      # the kubelet rotates the token automatically.
-      #
-      # The `plex-scaler` Role in the `media` namespace grants the
-      # home-assistant SA permission to PATCH the plex deployment's scale
-      # subresource. The RoleBinding is managed in the Plex Helm chart.
-      #
-      # Usage: call shell_command.wake_plex from any automation, script, or
-      # dashboard button. Plex will start and KEDA's Prometheus trigger will
-      # keep it alive while streams are active, then scale it back to 0 after
-      # 30 min of inactivity.
-      shell_command:
-        wake_plex: >-
-          curl -sf
-          --cacert /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
-          -H "Authorization: Bearer $(cat /var/run/secrets/kubernetes.io/serviceaccount/token)"
-          -H "Content-Type: application/strategic-merge-patch+json"
-          -X PATCH
-          https://kubernetes.default.svc/apis/apps/v1/namespaces/media/deployments/plex/scale
-          -d '{"spec":{"replicas":1}}'
+      homeassistant:
+        # Load all YAML files in /config/packages/ as configuration packages.
+        # This lets us add shell_command, input_button, automations etc. via
+        # ConfigMaps without touching this file again.
+        packages: !include_dir_merge_named packages
 
-      # input_button exposes a pressable button entity in the HA UI.
-      # Add it to any dashboard card using entity: input_button.wake_plex.
-      # The automation below handles the button press → shell_command trigger.
-      input_button:
-        wake_plex:
-          name: "Wake Plex"
-          icon: mdi:plex
+  # Mount the plex package ConfigMap into the HA pod.
+  # The ha-package-plex ConfigMap is defined in templates/plex-package-configmap.yaml.
+  # pajikos chart exposes additionalVolumes / additionalMounts (not extraVolumes).
+  additionalVolumes:
+    - name: ha-package-plex
+      configMap:
+        name: ha-package-plex
 
-      # Automation: pressing the Wake Plex button calls the shell command.
-      # Using a named list so it merges cleanly with automations.yaml entries.
-      automation wake_plex:
-        - alias: "Wake Plex on button press"
-          id: wake_plex_button
-          trigger:
-            - platform: state
-              entity_id: input_button.wake_plex
-          action:
-            - service: shell_command.wake_plex
+  additionalMounts:
+    - name: ha-package-plex
+      mountPath: /config/packages/plex.yaml
+      subPath: plex.yaml
+      readOnly: true
 
   # Liveness/Readiness probes
   probes:

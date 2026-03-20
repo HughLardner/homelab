@@ -1,0 +1,53 @@
+---
+# HA package for Plex wake-on-demand.
+#
+# HA packages (https://www.home-assistant.io/docs/configuration/packages/) let
+# us add configuration without touching configuration.yaml. The file is mounted
+# into the HA pod at /config/packages/plex.yaml and loaded automatically if
+# configuration.yaml contains:
+#   homeassistant:
+#     packages: !include_dir_merge_named packages
+#
+# NOTE: This ConfigMap is mounted by the plex-packages-volume / volumeMount
+# defined in homeassistant.extraVolumes / extraVolumeMounts in values.yaml.
+# If those mount keys are absent (chart version doesn't support extraVolumes),
+# apply the content manually via the HA File Editor addon:
+#   /config/packages/plex.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ha-package-plex
+  namespace: {{ .Release.Namespace }}
+data:
+  plex.yaml: |
+    # Plex wake-on-demand — called by the Wake Plex dashboard button.
+    #
+    # Uses the pod's auto-mounted ServiceAccount token to call the Kubernetes
+    # scale API. The plex-scaler Role in the media namespace grants permission
+    # to PATCH deployments/scale for the plex deployment only.
+    #
+    # KEDA's Prometheus trigger keeps Plex running while streams are active
+    # and scales it back to 0 after 30 min of zero sessions.
+    shell_command:
+      wake_plex: >-
+        curl -sf
+        --cacert /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        -H "Authorization: Bearer $(cat /var/run/secrets/kubernetes.io/serviceaccount/token)"
+        -H "Content-Type: application/strategic-merge-patch+json"
+        -X PATCH
+        https://kubernetes.default.svc/apis/apps/v1/namespaces/media/deployments/plex/scale
+        -d '{"spec":{"replicas":1}}'
+
+    input_button:
+      wake_plex:
+        name: "Wake Plex"
+        icon: mdi:plex
+
+    automation:
+      - alias: "Wake Plex on button press"
+        id: wake_plex_button
+        trigger:
+          - platform: state
+            entity_id: input_button.wake_plex
+        action:
+          - service: shell_command.wake_plex
