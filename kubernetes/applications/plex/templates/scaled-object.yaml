@@ -56,7 +56,7 @@ spec:
     - type: prometheus
       metadata:
         serverAddress: http://vmsingle-vmsingle.monitoring.svc:8429
-        query: plex_active_sessions
+        query: sum(plex_active_sessions{namespace="media"})
         # Scale to 1 when at least 1 session is active.
         threshold: "1"
         # activationThreshold=0: when sessions==0 this trigger is inactive
