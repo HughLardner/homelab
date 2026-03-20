@@ -1,27 +1,20 @@
 ---
-# KEDA ScaledObject for Plex — two complementary triggers:
+# KEDA ScaledObject for Plex — Prometheus session-aware idle detection.
 #
-# 1. Cron trigger: guarantees Plex is available during expected viewing hours.
-#    Between 09:00 and 01:00 (Europe/Dublin) the cron trigger keeps desiredReplicas=1,
-#    overriding the prometheus trigger regardless of session count. Plex is always
-#    available during these hours without needing a manual wake.
+# Plex is woken manually via the Home Assistant "Wake Plex" button, which
+# calls the Kubernetes API to set replicas=1. KEDA then takes over:
 #
-# 2. Prometheus trigger: session-aware idle detection. When Plex is running with
-#    zero active streams for cooldownPeriod (30 min), KEDA scales to 0.
-#    This activates outside the cron window — e.g. if Plex is manually started
-#    at 03:00 and no one is watching, it scales back down after 30 min.
-#    It also provides the plex_active_sessions metric for Grafana dashboards.
+#   - While a stream is active (sessions > 0): Prometheus trigger keeps Plex at 1.
+#   - 30 min after the last stream ends: KEDA scales Plex back to 0.
+#   - While at 0: exporter sidecar is gone → no metrics → fallback keeps at 0.
 #
-# KEDA uses MAX across triggers, so:
-#   - Inside cron window (09:00–01:00): cron wins, Plex stays at 1.
-#   - Outside cron window (01:00–09:00): prometheus wins, Plex sleeps after idle.
+# Why no cron trigger:
+#   A cron trigger would keep Plex running all day (09:00–01:00) even when
+#   no one is watching, wasting 1 GB RAM. The HA button provides on-demand
+#   wake with no background resource cost.
 #
-# To get true 24/7 idle detection (no scheduled wake), remove the cron trigger
-# and use a Home Assistant automation or CronJob to manually start Plex.
-#
-# Fallback: when Plex is at 0, the exporter sidecar is gone and VictoriaMetrics
-# has no plex_active_sessions data. After fallback.failureThreshold consecutive
-# failures, KEDA uses fallback.replicas=0 — Plex stays down until woken.
+# Wake Plex: press the "Wake Plex" button in Home Assistant.
+# The button triggers shell_command.wake_plex which PATCHes the K8s scale API.
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
@@ -34,32 +27,26 @@ spec:
     name: plex
   minReplicaCount: 0
   maxReplicaCount: 1
-  # Check triggers every 60s — fine-grained enough for session detection.
+  # Check triggers every 60s — sufficient for session detection.
   pollingInterval: 60
-  # Wait 30 minutes of zero sessions before scaling down.
-  # Prevents scale-down mid-stream if a client briefly disconnects.
+  # Wait 30 minutes after the last stream ends before scaling down.
+  # Prevents churn if a client briefly disconnects mid-stream.
   cooldownPeriod: 1800
-  # When Plex is at 0, the sidecar is gone and metrics are unavailable.
-  # Stay at 0 replicas rather than thrashing on metric failures.
+  # When Plex is at 0, the exporter sidecar is gone and VictoriaMetrics has
+  # no plex_active_sessions data. After 3 consecutive metric failures KEDA
+  # falls back to 0 replicas — Plex stays down until the HA button is pressed.
   fallback:
     failureThreshold: 3
     replicas: 0
   triggers:
-    # --- Scheduled availability window ---
-    - type: cron
-      metadata:
-        timezone: Europe/Dublin
-        start: "0 9 * * *"   # Scale UP at 09:00
-        end: "0 1 * * *"     # Scale DOWN at 01:00
-        desiredReplicas: "1"
-    # --- Session-aware idle detection ---
     - type: prometheus
       metadata:
         serverAddress: http://vmsingle-vmsingle.monitoring.svc:8429
+        # sum() collapses the 3 series VMAgent creates (one per container label).
         query: sum(plex_active_sessions{namespace="media"})
         # Scale to 1 when at least 1 session is active.
         threshold: "1"
-        # activationThreshold=0: when sessions==0 this trigger is inactive
-        # (contributes 0 to desired replicas). Combined with cooldownPeriod,
-        # Plex won't scale down until 30 min after the last stream ends.
+        # When sessions==0 this trigger is inactive (contributes 0 to desired
+        # replicas). Combined with cooldownPeriod, Plex won't scale down until
+        # 30 min after the last stream ends.
         activationThreshold: "0"

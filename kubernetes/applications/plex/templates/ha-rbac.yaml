@@ -1,0 +1,43 @@
+---
+# Grants the Home Assistant pod permission to scale the Plex Deployment.
+#
+# HA uses its auto-mounted ServiceAccount token (at
+# /var/run/secrets/kubernetes.io/serviceaccount/token) to authenticate
+# against the Kubernetes API. No separate secret is needed — the token
+# is rotated automatically by the kubelet.
+#
+# The shell_command.wake_plex in HA's configuration.yaml calls:
+#   PATCH /apis/apps/v1/namespaces/media/deployments/plex/scale
+# which requires `update` on the `deployments/scale` subresource.
+#
+# Scope is intentionally narrow: only the `plex` deployment, only the
+# `scale` subresource, in the `media` namespace.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: plex-scaler
+  namespace: {{ .Release.Namespace }}
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments/scale"]
+    resourceNames: ["plex"]
+    verbs: ["get", "update", "patch"]
+
+---
+# Bind the Role to the `default` ServiceAccount in the home-assistant
+# namespace. A RoleBinding in the `media` namespace can reference a
+# Subject (SA) from another namespace — this is a standard cross-namespace
+# RBAC pattern.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: plex-scaler-home-assistant
+  namespace: {{ .Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: plex-scaler
+subjects:
+  - kind: ServiceAccount
+    name: default
+    namespace: home-assistant
