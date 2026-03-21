@@ -97,12 +97,12 @@ homeassistant:
   # Home Assistant configuration
   configuration:
     enabled: true
-    # forceInit: true rewrites configuration.yaml on every pod start.
-    # Required to inject the `homeassistant: packages:` include that loads
-    # /config/packages/*.yaml (where plex.yaml provides shell_command,
-    # input_button, and the wake automation).
-    # Safe to revert to false after the packages line is in the file.
-    forceInit: true
+    # forceInit: false — configuration.yaml already contains the required
+    # `homeassistant: packages: !include_dir_merge_named packages` line.
+    # Setting true causes the expensive yq merge to run on EVERY pod restart,
+    # which amplifies cluster load during crash-loops. Keep false unless you
+    # need to reset configuration.yaml to the template (e.g. fresh install).
+    forceInit: false
     # Trust Traefik proxy and cluster network
     trusted_proxies:
       - 10.42.0.0/16    # K3s pod CIDR
