@@ -49,5 +49,5 @@ spec:
     - group: apps
       kind: Deployment
       name: plex
-      jsonPointers:
-        - /spec/template/metadata/annotations/kubectl.kubernetes.io~1restartedAt
+      jqPathExpressions:
+        - .spec.template.metadata.annotations["kubectl.kubernetes.io/restartedAt"]
