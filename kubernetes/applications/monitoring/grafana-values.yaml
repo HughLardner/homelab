@@ -89,6 +89,22 @@ initChownData:
       cpu: 100m
       memory: 64Mi
 
+# Wipe stale gnet dashboard files before the download-dashboards init container
+# re-populates /var/lib/grafana/dashboards/. This prevents "duplicate title"
+# conflicts that block the provisioner when a dashboard is removed from the
+# dashboards: section in values.yaml but its JSON file persists on the PVC.
+extraInitContainers:
+  - name: cleanup-stale-dashboards
+    image: busybox:1.36
+    imagePullPolicy: IfNotPresent
+    command:
+      - sh
+      - -c
+      - "rm -rf /var/lib/grafana/dashboards && echo 'stale dashboard files cleared'"
+    volumeMounts:
+      - name: storage
+        mountPath: /var/lib/grafana
+
 # Download dashboards init container
 downloadDashboards:
   resources:
