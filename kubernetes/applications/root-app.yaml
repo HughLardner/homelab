@@ -52,3 +52,12 @@ spec:
         duration: 5s
         factor: 2
         maxDuration: 3m
+
+  # ArgoCD injects tracking-id and kubectl adds last-applied-configuration
+  # onto child Application objects after each sync, causing constant drift.
+  ignoreDifferences:
+    - group: argoproj.io
+      kind: Application
+      jsonPointers:
+        - /metadata/annotations/argocd.argoproj.io~1tracking-id
+        - /metadata/annotations/kubectl.kubernetes.io~1last-applied-configuration
