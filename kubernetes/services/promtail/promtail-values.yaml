@@ -7,6 +7,19 @@ config:
   clients:
     - url: http://loki.loki.svc:3100/loki/api/v1/push
 
+  # Scan for new/deleted log targets every 60s (default: 10s).
+  # On a single-node cluster with many restarting pods, the default 10s scan
+  # caused 1,200+ open file descriptors and continuous "skipping update of
+  # position for a file which does not currently exist" spam that blocked the
+  # internal Kubernetes watch queue for minutes at a time.
+  target_config:
+    sync_period: 60s
+
+  positions:
+    # How often the positions file is flushed to disk. Lowering this reduces
+    # the I/O footprint of maintaining the (potentially large) positions file.
+    sync_period: 30s
+
   snippets:
     # Add kubernetes labels to logs
     pipelineStages:
@@ -20,13 +33,14 @@ config:
       - output:
           source: msg
 
-# Resources
+# Raised CPU limit: 200m was insufficient for scanning 1,200+ file descriptors
+# under cluster load, causing CPU throttling which worsened the watch queue backlog.
 resources:
   requests:
     cpu: 50m
     memory: 64Mi
   limits:
-    cpu: 200m
+    cpu: 500m
     memory: 128Mi
 
 # Tolerations for running on all nodes
