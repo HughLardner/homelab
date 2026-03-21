@@ -148,19 +148,21 @@ homeassistant:
       readOnly: true
 
   # Liveness/Readiness probes
+  # Generous timeouts: under high load HA can take 3-4 min to fully start.
+  # InitialDelaySeconds=300 prevents crash-loops on resource-constrained reboots.
   probes:
     liveness:
       enabled: true
-      initialDelaySeconds: 60
-      periodSeconds: 10
-      timeoutSeconds: 5
+      initialDelaySeconds: 300
+      periodSeconds: 30
+      timeoutSeconds: 10
       failureThreshold: 5
     readiness:
       enabled: true
-      initialDelaySeconds: 30
-      periodSeconds: 10
-      timeoutSeconds: 5
-      failureThreshold: 3
+      initialDelaySeconds: 180
+      periodSeconds: 30
+      timeoutSeconds: 10
+      failureThreshold: 5
 
   # Host network disabled - not needed when using ingress
   hostNetwork: false
