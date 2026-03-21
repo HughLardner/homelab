@@ -160,13 +160,21 @@
     dest: /etc/rancher/k3s/config.yaml
     content: |
       # Throttle concurrent API requests to prevent the server from being overwhelmed
-      # by a burst from ArgoCD/KEDA/vm-operator all reconciling simultaneously.
+      # by a burst from ArgoCD/vm-operator all reconciling simultaneously.
       # Defaults are 400 (readonly) and 200 (mutating) — too high for a single-node
       # homelab where the API server shares CPU/disk with all workloads.
       kube-apiserver-arg:
         - "max-requests-inflight=150"
         - "max-mutating-requests-inflight=50"
         - "watch-cache-sizes=nodes#100,pods#500"
+
+      # Kubelet eviction thresholds — gracefully evict low-priority pods before the
+      # OOM killer fires and takes down random processes (including the API server).
+      kubelet-arg:
+        - "eviction-hard=memory.available<200Mi,nodefs.available<10%"
+        - "eviction-soft=memory.available<500Mi,nodefs.available<15%"
+        - "eviction-soft-grace-period=memory.available=30s,nodefs.available=1m"
+        - "fail-swap-on=false"
     mode: '0644'
   when: node_prep_configure_k3s_api_throttle | default(true) | bool
   register: k3s_config_result
@@ -200,19 +208,86 @@
     - k3s_cpu_priority_result is defined
     - k3s_cpu_priority_result.changed
 
-- name: Disable swap
+- name: Disable swap (legacy — only when explicitly requested)
   ansible.builtin.command: swapoff -a
   when:
     - node_prep_disable_swap | bool
     - ansible_swaptotal_mb > 0
   changed_when: true
 
-- name: Remove swap from /etc/fstab
+- name: Remove swap from /etc/fstab (legacy)
   ansible.builtin.lineinfile:
     path: /etc/fstab
     regexp: '\sswap\s'
     state: absent
   when: node_prep_disable_swap | bool
+
+# Swap as a safety net — prevents hard OOM kills when memory briefly spikes.
+# vm.swappiness=10 means the kernel only swaps under real pressure.
+- name: Create swap file
+  ansible.builtin.command: >
+    dd if=/dev/zero of=/swapfile bs=1M count={{ node_prep_swap_size_mb }}
+  args:
+    creates: /swapfile
+  when: not (node_prep_disable_swap | bool)
+  register: swap_created
+
+- name: Set swap file permissions
+  ansible.builtin.file:
+    path: /swapfile
+    mode: '0600'
+  when: not (node_prep_disable_swap | bool)
+
+- name: Format swap file
+  ansible.builtin.command: mkswap /swapfile
+  when:
+    - not (node_prep_disable_swap | bool)
+    - swap_created is changed
+  changed_when: true
+
+- name: Enable swap file
+  ansible.builtin.command: swapon /swapfile
+  when:
+    - not (node_prep_disable_swap | bool)
+    - swap_created is changed
+  changed_when: true
+
+- name: Add swap file to /etc/fstab
+  ansible.builtin.lineinfile:
+    path: /etc/fstab
+    line: "/swapfile none swap sw 0 0"
+    state: present
+  when: not (node_prep_disable_swap | bool)
+
+- name: Set vm.swappiness
+  ansible.builtin.sysctl:
+    name: vm.swappiness
+    value: "{{ node_prep_swappiness }}"
+    state: present
+    reload: true
+  when: not (node_prep_disable_swap | bool)
+
+# Reduce disk I/O by disabling access time updates on every read.
+- name: Check if root filesystem has noatime
+  ansible.builtin.shell: |
+    grep -E '^\S+\s+/\s+' /etc/fstab | grep -q noatime
+  register: noatime_check
+  changed_when: false
+  failed_when: false
+
+- name: Add noatime to root filesystem mount options
+  ansible.builtin.shell: |
+    sed -i 's|\(\S\+\s\+/\s\+\S\+\s\+\)\(defaults\)|\1defaults,noatime|' /etc/fstab
+  when: noatime_check.rc != 0
+  register: fstab_noatime
+  changed_when: true
+
+- name: Remount root with noatime
+  ansible.builtin.command: mount -o remount /
+  when:
+    - fstab_noatime is defined
+    - fstab_noatime is changed
+  changed_when: true
 
 - name: Set timezone
   community.general.timezone:

@@ -65,13 +65,13 @@ spec:
                 - -c
                 - |
                   set -e
-                  echo "[$(date)] Triggering hard refresh for all ArgoCD Applications..."
-                  kubectl annotate applications.argoproj.io \
-                    --all \
-                    --namespace argocd \
-                    --overwrite \
-                    argocd.argoproj.io/refresh=hard
-                  echo "[$(date)] Refresh annotations applied. ArgoCD will sync any detected drift."
+                  echo "[$(date)] Triggering staggered hard refresh for ArgoCD Applications..."
+                  for app in $(kubectl get applications.argoproj.io -n argocd -o name); do
+                    echo "[$(date)] Refreshing $app"
+                    kubectl annotate "$app" -n argocd --overwrite argocd.argoproj.io/refresh=hard
+                    sleep 10
+                  done
+                  echo "[$(date)] All applications refreshed. ArgoCD will sync any detected drift."
               resources:
                 requests:
                   cpu: 10m

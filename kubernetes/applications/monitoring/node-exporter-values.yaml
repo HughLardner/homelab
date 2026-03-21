@@ -2,6 +2,8 @@
 # Prometheus Node Exporter Helm Values
 # Exports host-level metrics from each node
 
+priorityClassName: homelab-standard
+
 # Resource limits (node exporter is lightweight)
 resources:
   requests:

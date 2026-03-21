@@ -13,6 +13,9 @@
 # Install CRDs with this chart
 installCRDs: true
 
+global:
+  priorityClassName: homelab-critical
+
 # Replicas (reduced from 2 - HA not needed for homelab)
 replicaCount: 1
 

@@ -1003,9 +1003,7 @@ data:
 
 ---
 # Workload Status Dashboard
-# Answers: what is running, how long has it been up, which services are scaled to zero,
-# and what HTTP traffic is keeping services alive (preventing KEDA scale-down).
-# Services with scaledownPeriod=1800s scale to zero 30 min after their last Traefik request.
+# Answers: what is running, how long has it been up, and what HTTP traffic each service sees.
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -1018,7 +1016,7 @@ metadata:
 data:
   workload-status.json: |
     {
-      "description": "Deployment health, pod uptime, KEDA scale-to-zero state, and the HTTP traffic that keeps services alive",
+      "description": "Deployment health, pod uptime, and HTTP traffic per service",
       "editable": true,
       "graphTooltip": 1,
       "links": [],
@@ -1043,7 +1041,7 @@ data:
         },
         {
           "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "description": "Deployments currently scaled to zero — these are KEDA idle services waiting for the next request to wake them. They will be unavailable for ~10–20s after the first request.",
+          "description": "Deployments currently scaled to zero replicas.",
           "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 1}]}, "unit": "short"}},
           "gridPos": {"h": 4, "w": 6, "x": 6, "y": 1},
           "id": 2,
@@ -1083,7 +1081,7 @@ data:
         },
         {
           "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "description": "All deployments across application namespaces. Ready = pods currently serving traffic. Desired = configured replica count (0 means KEDA has scaled it down). A deployment with Ready=0 and Desired=0 is idle and scaled to zero — it will start automatically on the next HTTP request.",
+          "description": "All deployments across application namespaces. Ready = pods currently serving traffic. Desired = configured replica count.",
           "fieldConfig": {
             "defaults": {"color": {"mode": "thresholds"}, "custom": {"align": "auto", "displayMode": "auto"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}},
             "overrides": [
@@ -1140,7 +1138,7 @@ data:
         },
         {
           "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "description": "How long each running pod has been up. Short uptime on an otherwise stable service means it recently restarted or was woken from KEDA scale-to-zero. Sorted by uptime ascending so recently-started pods appear at the top.",
+          "description": "How long each running pod has been up. Sorted by uptime ascending so recently-started pods appear at the top.",
           "fieldConfig": {
             "defaults": {"color": {"mode": "thresholds"}, "custom": {"align": "auto", "displayMode": "auto"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "s"},
             "overrides": [
@@ -1182,7 +1180,7 @@ data:
         },
         {
           "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "description": "HTTP request rate per service through Traefik (requests/second, 5-minute average). This is the signal KEDA HTTP uses to decide whether to keep a service running. A service with zero traffic for 30 minutes will be scaled to zero. Hover over a gap in the graph to see exactly when traffic stopped.",
+          "description": "HTTP request rate per service through Traefik (requests/second, 5-minute average).",
           "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"drawStyle": "line", "fillOpacity": 5, "lineWidth": 1, "showPoints": "never", "spanNulls": false}, "unit": "reqps"}},
           "gridPos": {"h": 10, "w": 24, "x": 0, "y": 32},
           "id": 7,
@@ -1198,7 +1196,7 @@ data:
         },
         {
           "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "description": "Which services received any HTTP traffic in the last 30 minutes (the KEDA scale-down window). A service showing here will NOT scale down yet. A service absent from this list may scale down shortly if it has already been idle for 30 minutes.",
+          "description": "Which services received HTTP traffic in the last 30 minutes.",
           "fieldConfig": {
             "defaults": {"color": {"mode": "thresholds"}, "custom": {"align": "auto", "displayMode": "auto"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "reqps"},
             "overrides": [
@@ -1232,7 +1230,7 @@ data:
       ],
       "schemaVersion": 38,
       "style": "dark",
-      "tags": ["kubernetes", "keda", "workloads", "uptime", "scaling"],
+      "tags": ["kubernetes", "workloads", "uptime"],
       "templating": {
         "list": [
           {"current": {"selected": false, "text": "VictoriaMetrics", "value": "VictoriaMetrics"}, "hide": 0, "includeAll": false, "label": "Datasource", "multi": false, "name": "datasource", "options": [], "query": "prometheus", "refresh": 1, "regex": "", "skipUrlSync": false, "type": "datasource"}

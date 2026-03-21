@@ -38,23 +38,9 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
-      # RespectIgnoreDifferences ensures ArgoCD does not overwrite the replicas
-      # field even during an explicit sync (webhook, manual UI, daily CronJob).
-      # Without this, ignoreDifferences only stops OutOfSync detection — syncs
-      # would still reset replicas to 1, fighting KEDA's scale-to-zero.
-      - RespectIgnoreDifferences=true
     retry:
       limit: 5
       backoff:
         duration: 5s
         factor: 2
         maxDuration: 3m
-
-  # KEDA's HTTPScaledObject manages replicas — ignore divergence to prevent
-  # ArgoCD from fighting the autoscaler when it scales the deployment to 0.
-  ignoreDifferences:
-    - group: apps
-      kind: Deployment
-      name: forgejo
-      jsonPointers:
-        - /spec/replicas

@@ -18,7 +18,7 @@ MetalLB, Longhorn, Sealed Secrets, ArgoCD
 Cert-Manager, Traefik, Authelia, Network Policies, Resource Policies, Loki, Promtail, Garage (S3), Velero, Cloudflared, External-DNS, Intel Device Plugins
 
 **Applications** (ArgoCD Wave 5+):
-Monitoring (Victoria Metrics + Grafana), Homepage, Home Assistant, Node-RED, Zigbee2MQTT, Mosquitto, Pi-hole, Plex, Filebrowser, Forgejo, Quartz, Obsidian LiveSync, Headlamp, KEDA, KEDA HTTP Add-on
+Monitoring (Victoria Metrics + Grafana), Homepage, Home Assistant, Node-RED, Zigbee2MQTT, Mosquitto, Pi-hole, Plex, Filebrowser, Forgejo, Quartz, Obsidian LiveSync, Headlamp
 
 ## Unified Configuration Architecture
 
@@ -321,17 +321,16 @@ homelab/
 │       ├── monitoring/       # Victoria Metrics + Grafana
 │       ├── home-assistant/   # Home automation
 │       ├── homepage/         # Dashboard
-│       ├── headlamp/         # Kubernetes UI (KEDA scaled)
-│       ├── forgejo/          # Self-hosted Git (KEDA scaled)
-│       ├── plex/             # Media server (KEDA scaled)
+│       ├── headlamp/         # Kubernetes UI
+│       ├── forgejo/          # Self-hosted Git
+│       ├── plex/             # Media server (on-demand via HA toggle)
 │       ├── mosquitto/        # MQTT broker
 │       ├── node-red/         # IoT automation (OIDC)
 │       ├── zigbee2mqtt/      # Zigbee coordinator (SMLIGHT SLZB TCP)
 │       ├── pihole/           # DNS ad-blocker (192.168.10.152)
 │       ├── quartz/           # Digital garden (fallandrise.silverseekers.org)
 │       ├── obsidian-livesync/# CouchDB for Obsidian sync
-│       ├── keda/             # Kubernetes Event-Driven Autoscaler
-│       └── keda-http/        # KEDA HTTP add-on
+│       └── root-app.yaml     # App-of-apps pattern
 ├── docs/
 │   ├── ADDING_APPLICATIONS.md
 │   ├── GRAFANA_MCP.md

@@ -86,8 +86,6 @@ spec:
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true
-      # Allow sync waves for proper ordering
-      - RespectIgnoreDifferences=true
     retry:
       limit: 5
       backoff:
@@ -105,11 +103,3 @@ spec:
       kind: MutatingWebhookConfiguration
       jqPathExpressions:
         - .webhooks[].clientConfig.caBundle
-    # KEDA's HTTPScaledObject manages Grafana's replicas — ignore divergence
-    # to prevent ArgoCD from fighting the autoscaler when scaled to 0.
-    - group: apps
-      kind: Deployment
-      name: grafana
-      namespace: monitoring
-      jsonPointers:
-        - /spec/replicas

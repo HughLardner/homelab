@@ -139,6 +139,7 @@
           --set csi.provisionerReplicaCount=1 \
           --set csi.resizerReplicaCount=1 \
           --set csi.snapshotterReplicaCount=0 \
+          --set longhornUI.replicas=1 \
           --version 1.11.0 \
           --wait \
           --timeout 10m
@@ -197,6 +198,46 @@
           --type=merge -p '{"value":"true"}'
       register: labeled_nodes_config
       changed_when: "'patched' in labeled_nodes_config.stdout"
+      failed_when: false
+
+    - name: Reduce guaranteed-instance-manager-cpu (v1=5%, v2=0% — v2 engine is disabled)
+      ansible.builtin.shell: |
+        /usr/local/bin/k3s kubectl patch settings.longhorn.io -n {{ longhorn_namespace }} guaranteed-instance-manager-cpu \
+          --type=merge -p '{"value":"{\"v1\":\"5\",\"v2\":\"0\"}"}'
+      register: instance_mgr_cpu
+      changed_when: "'patched' in instance_mgr_cpu.stdout"
+      failed_when: false
+
+    - name: Reduce concurrent-replica-rebuild-per-node-limit to 1 (single disk)
+      ansible.builtin.shell: |
+        /usr/local/bin/k3s kubectl patch settings.longhorn.io -n {{ longhorn_namespace }} concurrent-replica-rebuild-per-node-limit \
+          --type=merge -p '{"value":"1"}'
+      register: rebuild_limit
+      changed_when: "'patched' in rebuild_limit.stdout"
+      failed_when: false
+
+    - name: Reduce concurrent-volume-backup-restore-per-node-limit to 1 (single disk)
+      ansible.builtin.shell: |
+        /usr/local/bin/k3s kubectl patch settings.longhorn.io -n {{ longhorn_namespace }} concurrent-volume-backup-restore-per-node-limit \
+          --type=merge -p '{"value":"1"}'
+      register: backup_limit
+      changed_when: "'patched' in backup_limit.stdout"
+      failed_when: false
+
+    - name: Set storage-over-provisioning-percentage to 100 (prevent disk overfill)
+      ansible.builtin.shell: |
+        /usr/local/bin/k3s kubectl patch settings.longhorn.io -n {{ longhorn_namespace }} storage-over-provisioning-percentage \
+          --type=merge -p '{"value":"100"}'
+      register: overprov
+      changed_when: "'patched' in overprov.stdout"
+      failed_when: false
+
+    - name: Set storage-minimal-available-percentage to 15
+      ansible.builtin.shell: |
+        /usr/local/bin/k3s kubectl patch settings.longhorn.io -n {{ longhorn_namespace }} storage-minimal-available-percentage \
+          --type=merge -p '{"value":"15"}'
+      register: min_avail
+      changed_when: "'patched' in min_avail.stdout"
       failed_when: false
 
     - name: Configure Longhorn default data path

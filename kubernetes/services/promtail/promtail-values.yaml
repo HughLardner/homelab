@@ -43,6 +43,8 @@ resources:
     cpu: 500m
     memory: 128Mi
 
+priorityClassName: homelab-standard
+
 # Tolerations for running on all nodes
 tolerations:
   - effect: NoSchedule

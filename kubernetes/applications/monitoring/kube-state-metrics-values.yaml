@@ -2,6 +2,8 @@
 # Kube State Metrics Helm Values
 # Exports Kubernetes object state as metrics
 
+priorityClassName: homelab-standard
+
 # Resource limits
 resources:
   requests:

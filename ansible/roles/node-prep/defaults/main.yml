@@ -35,7 +35,9 @@ node_prep_optional_packages:
 # Kubernetes preparation
 node_prep_configure_sysctl: true
 node_prep_load_kernel_modules: true
-node_prep_disable_swap: true
+node_prep_disable_swap: false
+node_prep_swap_size_mb: 2048
+node_prep_swappiness: 10
 
 # Timezone and locale
 node_prep_configure_timezone: true

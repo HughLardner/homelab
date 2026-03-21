@@ -59,4 +59,4 @@ ingress:
   enabled: false
 
 # Priority class
-priorityClassName: ""
+priorityClassName: "homelab-critical"

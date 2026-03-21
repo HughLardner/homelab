@@ -25,7 +25,7 @@ All other services are deployed via ArgoCD with sync waves:
 | 2    | Traefik                                                               | Ingress controller    |
 | 3    | Authelia, NetworkPolicies, ResourcePolicies                           | Security layer        |
 | 4    | Loki, Promtail, Garage, Velero, Cloudflared, External-DNS, Intel GPU | Infrastructure        |
-| 5    | Monitoring, Homepage, KEDA, KEDA HTTP                                 | Observability & UI    |
+| 5    | Monitoring, Homepage                                                  | Observability & UI    |
 | 6    | Home Assistant, Node-RED, Zigbee2MQTT, Mosquitto                     | Home automation       |
 | 7    | Plex, Filebrowser, Pi-hole, Forgejo, Quartz, Obsidian LiveSync, Headlamp | Applications      |
 
@@ -82,19 +82,17 @@ kubernetes/
     ├── root-app.yaml            # App-of-Apps — manages all */application.yaml
     ├── monitoring/              # Victoria Metrics + Grafana (Wave 5)
     ├── homepage/                # Homelab dashboard (Wave 5)
-    ├── keda/                    # Kubernetes Event-Driven Autoscaler (Wave 5)
-    ├── keda-http/               # KEDA HTTP add-on (Wave 5)
     ├── home-assistant/          # Home automation (Wave 6)
     ├── node-red/                # IoT flow automation (Wave 6, OIDC)
     ├── zigbee2mqtt/             # Zigbee coordinator via TCP (Wave 6)
     ├── mosquitto/               # MQTT broker (Wave 6)
-    ├── plex/                    # Media server, Intel GPU, KEDA scaled (Wave 7)
+    ├── plex/                    # Media server, Intel GPU (Wave 7)
     ├── filebrowser/             # Media upload UI (Wave 7)
     ├── pihole/                  # DNS ad-blocker @ 192.168.10.152 (Wave 7)
-    ├── forgejo/                 # Self-hosted Git, KEDA scaled (Wave 7)
+    ├── forgejo/                 # Self-hosted Git (Wave 7)
     ├── quartz/                  # Digital garden (Wave 7, public via Cloudflare Tunnel)
     ├── obsidian-livesync/       # CouchDB for Obsidian sync (Wave 7)
-    └── headlamp/                # Kubernetes UI, KEDA scaled (Wave 7)
+    └── headlamp/                # Kubernetes UI (Wave 7)
 ```
 
 ## Deployment Commands
@@ -167,19 +165,17 @@ kubectl get applications -n argocd
 | ---------------- | ---- | ------------------ | ------------------------------------ |
 | Monitoring       | 5    | monitoring         | Victoria Metrics + Grafana           |
 | Homepage         | 5    | homepage           | Homelab dashboard                    |
-| KEDA             | 5    | keda               | Event-driven autoscaler              |
-| KEDA HTTP        | 5    | keda               | HTTP-based scaling add-on            |
 | Home Assistant   | 6    | home-assistant     | Home automation (OIDC via Authelia)  |
 | Node-RED         | 6    | node-red           | IoT flow automation (OIDC)          |
 | Zigbee2MQTT      | 6    | zigbee2mqtt        | Zigbee bridge via SMLIGHT TCP        |
 | Mosquitto        | 6    | mosquitto          | MQTT broker                          |
-| Plex             | 7    | plex               | Media server (Intel GPU, KEDA)       |
+| Plex             | 7    | plex               | Media server (Intel GPU)             |
 | Filebrowser      | 7    | plex               | Media upload UI (shares Plex PVC)    |
 | Pi-hole          | 7    | pihole             | DNS ad-blocker (192.168.10.152)      |
-| Forgejo          | 7    | forgejo            | Self-hosted Git (KEDA scaled)        |
+| Forgejo          | 7    | forgejo            | Self-hosted Git                      |
 | Quartz           | 7    | quartz             | Digital garden (public)              |
 | Obsidian LiveSync | 7   | obsidian-livesync  | CouchDB for Obsidian sync            |
-| Headlamp         | 7    | headlamp           | Kubernetes web UI (KEDA scaled)      |
+| Headlamp         | 7    | headlamp           | Kubernetes web UI                    |
 
 ## Access Points
 

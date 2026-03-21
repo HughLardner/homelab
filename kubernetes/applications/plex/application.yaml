@@ -38,21 +38,9 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
-      # RespectIgnoreDifferences prevents ArgoCD from overwriting KEDA's replica
-      # count even during an explicit sync (webhook, manual UI, daily CronJob).
-      - RespectIgnoreDifferences=true
     retry:
       limit: 5
       backoff:
         duration: 5s
         factor: 2
         maxDuration: 3m
-
-  # KEDA's cron ScaledObject manages Plex replicas. Ignore divergence so
-  # ArgoCD doesn't reset replicas to 1 and fight the autoscaler.
-  ignoreDifferences:
-    - group: apps
-      kind: Deployment
-      name: plex
-      jsonPointers:
-        - /spec/replicas

@@ -44,17 +44,16 @@ Deployed automatically via ArgoCD sync waves:
   - Grafana with Loki datasource for logs + dashboards
 - **Home Assistant** - Home automation (with OIDC, HACS auto-setup)
 - **Homepage** - Homelab dashboard with Proxmox/cluster integration
-- **KEDA + KEDA HTTP** - Kubernetes Event-Driven Autoscaler (scales Forgejo, Plex, Headlamp to zero)
 - **Node-RED** - IoT flow automation (OIDC protected)
 - **Zigbee2MQTT** - Zigbee coordinator via SMLIGHT SLZB TCP adapter
 - **Mosquitto** - MQTT broker for IoT devices
 - **Pi-hole** - DNS ad-blocker (dedicated IP: 192.168.10.152)
-- **Plex** - Media server with Intel GPU transcoding (KEDA scaled)
+- **Plex** - Media server with Intel GPU transcoding (on-demand via HA toggle)
 - **Filebrowser** - Web file manager for Plex media uploads
-- **Forgejo** - Self-hosted Git server (KEDA scaled)
+- **Forgejo** - Self-hosted Git server
 - **Quartz** - Digital garden at `fallandrise.silverseekers.org` (publicly accessible via Cloudflare Tunnel)
 - **Obsidian LiveSync** - CouchDB backend for Obsidian sync across devices
-- **Headlamp** - Kubernetes web UI (KEDA scaled)
+- **Headlamp** - Kubernetes web UI
 
 ## Configuration Architecture
 
@@ -319,7 +318,7 @@ make help              # Show all commands
 │  • Home Assistant · Node-RED · Zigbee2MQTT · Mosquitto  │
 │  • Plex · Filebrowser · Pi-hole                         │
 │  • Forgejo · Quartz · Obsidian LiveSync · Headlamp      │
-│  • KEDA (scales Forgejo, Plex, Headlamp to zero)        │
+│  • Homepage                                              │
 └─────────────────────────────────────────────────────────┘
 ```
 

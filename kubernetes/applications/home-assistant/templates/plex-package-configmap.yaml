@@ -1,18 +1,14 @@
 ---
-# HA package for Plex wake-on-demand.
+# HA package for Plex power toggle.
 #
-# HA packages (https://www.home-assistant.io/docs/configuration/packages/) let
-# us add configuration without touching configuration.yaml. The file is mounted
-# into the HA pod at /config/packages/plex.yaml and loaded automatically if
-# configuration.yaml contains:
+# Provides an input_boolean toggle on the HA dashboard to start/stop the Plex
+# Kubernetes Deployment (scale between 0 and 1 replicas). Plex defaults to
+# replicas: 0 (off) and is started on demand via this toggle.
+#
+# Mounted into the HA pod at /config/packages/plex.yaml via additionalVolumes
+# in values.yaml. Loaded automatically by:
 #   homeassistant:
 #     packages: !include_dir_merge_named packages
-#
-# NOTE: This ConfigMap is mounted by the plex-packages-volume / volumeMount
-# defined in homeassistant.extraVolumes / extraVolumeMounts in values.yaml.
-# If those mount keys are absent (chart version doesn't support extraVolumes),
-# apply the content manually via the HA File Editor addon:
-#   /config/packages/plex.yaml
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -20,22 +16,13 @@ metadata:
   namespace: {{ .Release.Namespace }}
 data:
   plex.yaml: |
-    # Plex wake-on-demand — called by the Wake Plex dashboard button.
-    #
-    # Prerequisites (one-time, via HA UI):
-    #   Settings → Helpers → Add Helper → Button
-    #   Name: "Wake Plex"  Icon: mdi:plex  → entity: input_button.wake_plex
-    #
-    # This package provides:
-    #   shell_command.wake_plex  — scales the Plex deployment to 1 replica
-    #   automation.wake_plex_button — pressing the button calls the command
-    #
-    # Notes:
-    #   - input_button must be created via UI in HA 2024.8+ (YAML config removed)
-    #   - shell_command uses | (literal block) so the script runs in /bin/sh
-    #   - automation must be a dict (not list) inside packages
+    input_boolean:
+      plex_server:
+        name: "Plex Server"
+        icon: mdi:plex
+
     shell_command:
-      wake_plex: |
+      plex_start: |
         TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
         curl -sf \
           --cacert /var/run/secrets/kubernetes.io/serviceaccount/ca.crt \
@@ -44,13 +31,32 @@ data:
           -X PATCH \
           https://kubernetes.default.svc/apis/apps/v1/namespaces/media/deployments/plex/scale \
           -d '{"spec":{"replicas":1}}'
+      plex_stop: |
+        TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
+        curl -sf \
+          --cacert /var/run/secrets/kubernetes.io/serviceaccount/ca.crt \
+          -H "Authorization: Bearer $TOKEN" \
+          -H "Content-Type: application/strategic-merge-patch+json" \
+          -X PATCH \
+          https://kubernetes.default.svc/apis/apps/v1/namespaces/media/deployments/plex/scale \
+          -d '{"spec":{"replicas":0}}'
 
     automation:
-      wake_plex_button:
-        alias: "Wake Plex on button press"
-        id: wake_plex_button
+      plex_start_on_toggle:
+        alias: "Start Plex when toggled on"
+        id: plex_start_on_toggle
         trigger:
           - platform: state
-            entity_id: input_button.wake_plex
+            entity_id: input_boolean.plex_server
+            to: "on"
         action:
-          - service: shell_command.wake_plex
+          - service: shell_command.plex_start
+      plex_stop_on_toggle:
+        alias: "Stop Plex when toggled off"
+        id: plex_stop_on_toggle
+        trigger:
+          - platform: state
+            entity_id: input_boolean.plex_server
+            to: "off"
+        action:
+          - service: shell_command.plex_stop

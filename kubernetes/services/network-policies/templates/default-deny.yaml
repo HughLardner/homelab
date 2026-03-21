@@ -19,11 +19,6 @@ spec:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: traefik
-    # Allow from KEDA HTTP add-on interceptor (scale-to-zero routing to Grafana, etc.)
-    - from:
-        - namespaceSelector:
-            matchLabels:
-              kubernetes.io/metadata.name: keda
     # Allow from Prometheus/VMAgent scraping
     - from:
         - namespaceSelector:

@@ -25,6 +25,23 @@ operator:
     periodSeconds: 30
     timeoutSeconds: 10
 
+# Config-reloader sidecar resource overrides.
+# Three sidecars (vmagent, vmalert, vmalertmanager) each default to 100m CPU
+# request — far too high for a homelab where they typically use 0-32m actual.
+env:
+  - name: VM_VMAGENTDEFAULT_CONFIGRELOADERCPU
+    value: "25m"
+  - name: VM_VMALERTDEFAULT_CONFIGRELOADERCPU
+    value: "25m"
+  - name: VM_VMALERTMANAGERDEFAULT_CONFIGRELOADERCPU
+    value: "25m"
+  - name: VM_VMAGENTDEFAULT_CONFIGRELOADERMEMORY
+    value: "25Mi"
+  - name: VM_VMALERTDEFAULT_CONFIGRELOADERMEMORY
+    value: "25Mi"
+  - name: VM_VMALERTMANAGERDEFAULT_CONFIGRELOADERMEMORY
+    value: "25Mi"
+
 # Enable CRD installation
 crds:
   enabled: true

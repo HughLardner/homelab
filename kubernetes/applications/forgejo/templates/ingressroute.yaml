@@ -28,10 +28,8 @@ spec:
         - name: authelia-forward-auth
           namespace: authelia
       {{- end }}
-      # Traffic routed via KEDA HTTP interceptor to support scale-to-zero.
       services:
-        - name: keda-add-ons-http-interceptor-proxy
-          namespace: keda
-          port: 8080
+        - name: forgejo
+          port: 3000
   tls:
     secretName: forgejo-tls

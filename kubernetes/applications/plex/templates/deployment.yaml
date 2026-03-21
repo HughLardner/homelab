@@ -7,7 +7,7 @@ metadata:
   labels:
     app.kubernetes.io/name: plex
 spec:
-  replicas: 1
+  replicas: 0
   strategy:
     type: Recreate
   selector:
@@ -17,12 +17,7 @@ spec:
     metadata:
       labels:
         app.kubernetes.io/name: plex
-      annotations:
-        # Auto-discovered by the pods-with-annotations VMPodScrape in monitoring.
-        # VMAgent scrapes :9877/metrics on the plex-exporter sidecar every 60s.
-        prometheus.io/scrape: "true"
-        prometheus.io/port: "9877"
-        prometheus.io/path: "/metrics"
+      annotations: {}
     spec:
       {{- if .Values.priorityClassName }}
       priorityClassName: {{ .Values.priorityClassName }}
@@ -110,35 +105,6 @@ spec:
             limits:
               cpu: 500m
               memory: 256Mi
-        # Plex session exporter sidecar.
-        # Reads the Plex token from Preferences.xml (config volume), polls
-        # /status/sessions on localhost, and exposes plex_active_sessions on
-        # port 9877 for VMAgent and KEDA's Prometheus scaler.
-        - name: plex-exporter
-          image: python:3.12-alpine
-          command: ["python", "/scripts/exporter.py"]
-          ports:
-            - name: metrics
-              containerPort: 9877
-          volumeMounts:
-            - name: config
-              mountPath: /config
-            - name: exporter-script
-              mountPath: /scripts
-          resources:
-            requests:
-              cpu: 5m
-              memory: 20Mi
-            limits:
-              cpu: 50m
-              memory: 40Mi
-          readinessProbe:
-            httpGet:
-              path: /metrics
-              port: 9877
-            initialDelaySeconds: 10
-            periodSeconds: 30
-            failureThreshold: 3
       volumes:
         - name: config
           persistentVolumeClaim:
@@ -146,7 +112,3 @@ spec:
         - name: media
           persistentVolumeClaim:
             claimName: plex-media
-        - name: exporter-script
-          configMap:
-            name: plex-exporter-script
-            defaultMode: 0755

@@ -165,6 +165,8 @@ readinessProbe:
   timeoutSeconds: 2
   failureThreshold: 1
 
+priorityClassName: homelab-critical
+
 # Pod disruption budget
 podDisruptionBudget:
   enabled: true

@@ -6,6 +6,7 @@
 global:
   # Domain for the ArgoCD server
   domain: "{{ argocd_domain }}"
+  priorityClassName: homelab-standard
 
 # Server configuration
 server:

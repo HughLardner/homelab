@@ -5,6 +5,8 @@
 # Single replica for homelab
 replicas: 1
 
+priorityClassName: homelab-standard
+
 # Admin credentials from existing secret
 admin:
   existingSecret: grafana-admin-secret

@@ -29,6 +29,14 @@ spec:
         values: |
           nodeFeatureDiscovery:
             enabled: false
+          manager:
+            resources:
+              requests:
+                cpu: 50m
+                memory: 64Mi
+              limits:
+                cpu: 200m
+                memory: 128Mi
 
     # 2. Local chart — GpuDevicePlugin CR + node label job
     - repoURL: https://github.com/HughLardner/homelab.git

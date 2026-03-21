@@ -45,5 +45,5 @@ value: 500
 preemptionPolicy: PreemptLowerPriority
 description: >-
   User-facing interactive apps: Plex, Forgejo, Headlamp, Homepage, Obsidian Livesync,
-  Pi-hole, Quartz. These can restart without data loss and are candidates for KEDA
-  scale-to-zero. Evicted first under resource pressure.
+  Pi-hole, Quartz. These can restart without data loss and are evicted first under
+  resource pressure.

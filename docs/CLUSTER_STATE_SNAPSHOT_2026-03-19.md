@@ -31,7 +31,7 @@ Point-in-time snapshot of the homelab cluster state. Use this as a reference for
 | `home-assistant` | Home automation |
 | `homelab` (or `homepage`) | Homepage dashboard |
 | `intel-device-plugins` | Intel GPU device plugin |
-| `keda` | KEDA autoscaler + HTTP add-on |
+| ~~`keda`~~ | ~~KEDA autoscaler + HTTP add-on (REMOVED)~~ |
 | `kube-system` | Sealed Secrets, CoreDNS, kube-vip |
 | `longhorn-system` | Longhorn storage controller |
 | `loki` | Loki log aggregation + Promtail |
@@ -81,18 +81,18 @@ Point-in-time snapshot of the homelab cluster state. Use this as a reference for
 |---------|-----------|------|-------|
 | monitoring | monitoring | 5 | VMSingle, VMAgent, VMAlert, Grafana |
 | homepage | homepage | 5 | Proxmox + cluster dashboard |
-| keda | keda | 5 | Event-driven autoscaler |
-| keda-http | keda | 5 | HTTP scaling add-on |
+| ~~keda~~ | ~~keda~~ | ~~5~~ | ~~Event-driven autoscaler (REMOVED)~~ |
+| ~~keda-http~~ | ~~keda~~ | ~~5~~ | ~~HTTP scaling add-on (REMOVED)~~ |
 | home-assistant | home-assistant | 6 | OIDC via Authelia, HACS |
 | node-red | node-red | 6 | OIDC via Authelia |
 | zigbee2mqtt | zigbee2mqtt | 6 | SMLIGHT SLZB TCP (192.168.40.185:7638) |
 | mosquitto | mosquitto | 6 | MQTT broker (no public ingress) |
-| plex | plex | 7 | Intel GPU, KEDA HTTP scaled |
+| plex | plex | 7 | Intel GPU, on-demand via HA toggle |
 | pihole | pihole | 7 | 192.168.10.152, upstream: 1.1.1.1 |
-| forgejo | forgejo | 7 | KEDA HTTP scaled |
+| forgejo | forgejo | 7 | Self-hosted Git |
 | quartz | quartz | 7 | Public at fallandrise.silverseekers.org |
 | obsidian-livesync | obsidian-livesync | 7 | CouchDB for Obsidian plugin |
-| headlamp | headlamp | 7 | KEDA HTTP scaled |
+| headlamp | headlamp | 7 | Kubernetes web UI |
 
 ## ArgoCD Applications
 
@@ -106,16 +106,10 @@ kubernetes/applications/root-app.yaml
 
 Auto-prune and self-heal are enabled. ArgoCD syncs from `https://github.com/HughLardner/homelab.git`.
 
-## KEDA-Scaled Applications
+## On-Demand Applications
 
-The following applications scale to zero replicas when idle (KEDA HTTP Add-on):
-
-| Application | Idle Replicas | Scale Trigger |
-|-------------|:-------------:|---------------|
-| Forgejo | 0 | HTTP traffic |
-| Plex | 0 | HTTP traffic |
-| Headlamp | 0 | HTTP traffic |
-| Grafana | 0 | HTTP traffic |
+Plex defaults to `replicas: 0` and is toggled on/off via Home Assistant (`input_boolean.plex_server`).
+All other applications (Forgejo, Headlamp, Grafana) run permanently with `replicas: 1`.
 
 ## Access Points
 

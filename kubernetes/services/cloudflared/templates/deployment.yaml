@@ -18,6 +18,7 @@ spec:
         app.kubernetes.io/name: cloudflared
         app.kubernetes.io/component: tunnel
     spec:
+      priorityClassName: homelab-critical
       containers:
         - name: cloudflared
           image: cloudflare/cloudflared:latest
