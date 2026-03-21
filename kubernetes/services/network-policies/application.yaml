@@ -19,8 +19,6 @@ spec:
     repoURL: https://github.com/HughLardner/homelab.git
     targetRevision: HEAD
     path: kubernetes/services/network-policies/templates
-    directory:
-      recurse: false
 
   destination:
     server: https://kubernetes.default.svc
