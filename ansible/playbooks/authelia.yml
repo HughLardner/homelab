@@ -85,8 +85,9 @@
         prefix: authelia_
       register: temp_dir
 
-    - name: Template Helm values locally
-      ansible.builtin.template:
+    # Copy values verbatim (do not use Ansible "template"): values must match Git for ArgoCD; Jinja2 is not used here.
+    - name: Copy Helm values locally
+      ansible.builtin.copy:
         src: "{{ authelia_values_path }}"
         dest: "{{ local_temp_dir.path }}/values.yaml"
         mode: '0600'
