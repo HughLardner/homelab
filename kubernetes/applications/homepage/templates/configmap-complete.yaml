@@ -51,10 +51,13 @@ data:
         apiKey: {{`{{HOMEPAGE_VAR_OPENWEATHER_API_KEY}}`}}
     {{- end }}
 
-  # Services - auto-discovered via Kubernetes annotations (gethomepage.dev/*)
-  # Leave empty to enable Kubernetes service discovery
-  # Services with gethomepage.dev/* annotations will appear automatically
-  services.yaml: ""
+  # Services — static groups below; Traefik IngressRoutes are still discovered via kubernetes.yaml
+  services.yaml: |
+    - Matter:
+        - Matter Hub:
+            href: https://{{ .Values.services.home_assistant_matter_hub.domain }}
+            icon: home-assistant
+            description: Home Assistant Matter bridge (HAMH dashboard)
 
   # Bookmarks - quick links
   bookmarks.yaml: |

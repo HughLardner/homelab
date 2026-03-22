@@ -8,6 +8,14 @@
 #     --dry-run=client -o yaml | kubeseal -o yaml \
 #     > kubernetes/applications/home-assistant/secrets/home-assistant-matter-hub-auth-sealed.yaml
 # That path is synced by the home-assistant ArgoCD Application (wave 6) before this chart (wave 7).
+#
+# Dashboard HTTPS via Traefik (Matter pairing still uses LAN / hostNetwork).
+
+global:
+  domain: silverseekers.org
+  cert_issuer: letsencrypt-prod
+
+auth_enabled: true
 
 priorityClassName: homelab-standard
 

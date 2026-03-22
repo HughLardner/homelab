@@ -1,0 +1,18 @@
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ .Release.Name }}-tls
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: home-assistant-matter-hub
+spec:
+  secretName: {{ .Release.Name }}-tls
+  issuerRef:
+    name: {{ .Values.global.cert_issuer | default "letsencrypt-prod" }}
+    kind: ClusterIssuer
+  dnsNames:
+    - {{ .Values.services.home_assistant_matter_hub.domain }}
+  privateKey:
+    algorithm: ECDSA
+    size: 256
