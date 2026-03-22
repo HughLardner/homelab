@@ -248,6 +248,15 @@ services:
     database_name: obsidiannotes
 
   # ---------------------------------------------------------------------------
+  # Home Assistant Matter Hub (HAMH) — RiDDiX fork
+  # Deployed to home-assistant namespace; uses hostNetwork for Matter/mDNS.
+  # Web UI: http://<node-ip>:8482 (see kubernetes/applications/home-assistant-matter-hub)
+  # ---------------------------------------------------------------------------
+  home_assistant_matter_hub:
+    storage_size: 1Gi
+    storage_class: longhorn
+
+  # ---------------------------------------------------------------------------
   # Plex Media Server
   # ---------------------------------------------------------------------------
   plex:
