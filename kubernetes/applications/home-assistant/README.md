@@ -74,18 +74,18 @@ Both **HACS** and the **initial owner user** are created automatically via post-
 
 ### Default Credentials
 
-The initial admin credentials are stored in `config/secrets.yml`:
+The initial admin credentials are read from `config/secrets.yml`:
 
 ```yaml
 - name: home-assistant-owner-credentials
   data:
-    ADMIN_NAME: "Admin"
-    ADMIN_USERNAME: "admin"
+    ADMIN_NAME: "<set-in-secrets-file>"
+    ADMIN_USERNAME: "<set-in-secrets-file>"
     ADMIN_PASSWORD: "<set-in-secrets-file>"
     ADMIN_LANGUAGE: "en"
 ```
 
-**⚠️ Change the password after first login!**
+**⚠️ Never commit real credentials to Git. Change the password after first login.**
 
 ## Post-Deploy: Complete HACS Setup in UI
 

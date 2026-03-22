@@ -186,10 +186,10 @@ configMap:
       # OIDC Clients
       clients:
         # Grafana OIDC Client
-        # Secret must match grafana-oidc-secret in config/secrets.yml
+        # Secret is injected from config/secrets.yml at deploy time (never hardcode in Git)
         - client_id: grafana
           client_name: Grafana
-          client_secret: '$plaintext$<rotated-secret>'
+          client_secret: '$plaintext${{ (secrets | selectattr(''name'', ''eq'', ''grafana-oidc-secret'') | first).data[''client-secret''] }}'
           public: false
           authorization_policy: one_factor
           consent_mode: implicit
@@ -203,10 +203,10 @@ configMap:
           token_endpoint_auth_method: client_secret_post
         
         # ArgoCD OIDC Client
-        # Secret must match argocd-oidc-secret in config/secrets.yml
+        # Secret is injected from config/secrets.yml at deploy time (never hardcode in Git)
         - client_id: argocd
           client_name: ArgoCD
-          client_secret: '$plaintext$<rotated-secret>'
+          client_secret: '$plaintext${{ (secrets | selectattr(''name'', ''eq'', ''argocd-oidc-secret'') | first).data[''oidc.authelia.clientSecret''] }}'
           public: false
           authorization_policy: one_factor
           consent_mode: implicit
@@ -222,10 +222,10 @@ configMap:
         
         # Home Assistant OIDC Client
         # Requires hass-oidc-auth HACS integration
-        # Secret must match home-assistant-oidc-secret in config/secrets.yml
+        # Secret is injected from config/secrets.yml at deploy time (never hardcode in Git)
         - client_id: home-assistant
           client_name: Home Assistant
-          client_secret: '$plaintext$<rotated-secret>'
+          client_secret: '$plaintext${{ (secrets | selectattr(''name'', ''eq'', ''home-assistant-oidc-secret'') | first).data[''client-secret''] }}'
           public: false
           authorization_policy: one_factor
           consent_mode: implicit
@@ -239,11 +239,11 @@ configMap:
           token_endpoint_auth_method: client_secret_post
 
         # Node-RED MCP Client (machine-to-machine Bearer token)
-        # Secret must match node-red-mcp-oidc-client-secret in config/secrets.yml
+        # Secret is injected from config/secrets.yml at deploy time (never hardcode in Git)
         # Use client_credentials grant to obtain a Bearer token for NODE_RED_TOKEN
         - client_id: node-red-mcp
           client_name: Node-RED MCP
-          client_secret: '$plaintext$<rotated-secret>'
+          client_secret: '$plaintext${{ (secrets | selectattr(''name'', ''eq'', ''node-red-mcp-oidc-secret'') | first).data[''client-secret''] }}'
           public: false
           authorization_policy: one_factor
           scopes:

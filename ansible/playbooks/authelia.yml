@@ -19,6 +19,7 @@
 
   vars_files:
     - "{{ playbook_dir }}/../../config/homelab.yaml"
+    - "{{ playbook_dir }}/../../config/secrets.yml"
 
   vars:
     authelia_namespace: authelia

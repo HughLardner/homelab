@@ -171,16 +171,20 @@ docker run --rm authelia/authelia:latest authelia crypto hash generate argon2 --
 # Output format: $argon2id$v=19$m=65536,t=3,p=4$...
 ```
 
-## OIDC Client Secret Hashes
+## OIDC Client Secrets
 
-For OIDC client secrets:
+OIDC client secrets are sourced from `config/secrets.yml` and injected during `make authelia-install`.
+Do not hardcode client secrets in `authelia-values.yaml`.
 
 ```bash
 # Generate a random secret
 openssl rand -hex 32
 
-# Hash it for Authelia config
-docker run --rm authelia/authelia:latest authelia crypto hash generate pbkdf2 --password 'your-client-secret'
+# Store it in config/secrets.yml under the relevant OIDC secret:
+# - grafana-oidc-secret.data.client-secret
+# - argocd-oidc-secret.data.oidc.authelia.clientSecret
+# - home-assistant-oidc-secret.data.client-secret
+# - node-red-mcp-oidc-secret.data.client-secret
 ```
 
 ## Troubleshooting

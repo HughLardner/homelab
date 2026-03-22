@@ -39,7 +39,7 @@ Add the tunnel token to `config/secrets.yml`:
 
 ```yaml
 cloudflared:
-  tunnel_token: "<set-in-secrets-file>="
+  tunnel_token: "<set-in-secrets-file>"
 ```
 
 Then seal the secret:
