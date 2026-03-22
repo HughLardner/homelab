@@ -72,6 +72,15 @@ secret:
           path: 'oidc.jwks.RS256.pem'
         - key: 'oidc-hmac-secret'
           path: 'oidc-hmac-secret'
+        # OIDC client secrets (same values as grafana/argocd/home-assistant/node-red sealed secrets)
+        - key: 'oidc-client-secret-grafana'
+          path: 'oidc-client-secret-grafana'
+        - key: 'oidc-client-secret-argocd'
+          path: 'oidc-client-secret-argocd'
+        - key: 'oidc-client-secret-home-assistant'
+          path: 'oidc-client-secret-home-assistant'
+        - key: 'oidc-client-secret-node-red-mcp'
+          path: 'oidc-client-secret-node-red-mcp'
 
 # Authelia configuration
 configMap:
@@ -183,13 +192,12 @@ configMap:
           key:
             path: '/secrets/authelia-secrets/oidc.jwks.RS256.pem'
       
-      # OIDC Clients
+      # OIDC Clients (client_secret via Authelia Go template + files from authelia-secrets — GitOps-safe)
       clients:
         # Grafana OIDC Client
-        # Secret is injected from config/secrets.yml at deploy time (never hardcode in Git)
         - client_id: grafana
           client_name: Grafana
-          client_secret: '$plaintext${{ (secrets | selectattr(''name'', ''eq'', ''grafana-oidc-secret'') | first).data[''client-secret''] }}'
+          client_secret: '{{ secret "/secrets/authelia-secrets/oidc-client-secret-grafana" }}'
           public: false
           authorization_policy: one_factor
           consent_mode: implicit
@@ -203,10 +211,9 @@ configMap:
           token_endpoint_auth_method: client_secret_post
         
         # ArgoCD OIDC Client
-        # Secret is injected from config/secrets.yml at deploy time (never hardcode in Git)
         - client_id: argocd
           client_name: ArgoCD
-          client_secret: '$plaintext${{ (secrets | selectattr(''name'', ''eq'', ''argocd-oidc-secret'') | first).data[''oidc.authelia.clientSecret''] }}'
+          client_secret: '{{ secret "/secrets/authelia-secrets/oidc-client-secret-argocd" }}'
           public: false
           authorization_policy: one_factor
           consent_mode: implicit
@@ -220,12 +227,10 @@ configMap:
           # ArgoCD actually uses client_secret_basic (not post)
           token_endpoint_auth_method: client_secret_basic
         
-        # Home Assistant OIDC Client
-        # Requires hass-oidc-auth HACS integration
-        # Secret is injected from config/secrets.yml at deploy time (never hardcode in Git)
+        # Home Assistant OIDC Client (requires hass-oidc-auth HACS integration)
         - client_id: home-assistant
           client_name: Home Assistant
-          client_secret: '$plaintext${{ (secrets | selectattr(''name'', ''eq'', ''home-assistant-oidc-secret'') | first).data[''client-secret''] }}'
+          client_secret: '{{ secret "/secrets/authelia-secrets/oidc-client-secret-home-assistant" }}'
           public: false
           authorization_policy: one_factor
           consent_mode: implicit
@@ -238,12 +243,10 @@ configMap:
             - groups
           token_endpoint_auth_method: client_secret_post
 
-        # Node-RED MCP Client (machine-to-machine Bearer token)
-        # Secret is injected from config/secrets.yml at deploy time (never hardcode in Git)
-        # Use client_credentials grant to obtain a Bearer token for NODE_RED_TOKEN
+        # Node-RED MCP Client (machine-to-machine Bearer token; client_credentials grant)
         - client_id: node-red-mcp
           client_name: Node-RED MCP
-          client_secret: '$plaintext${{ (secrets | selectattr(''name'', ''eq'', ''node-red-mcp-oidc-secret'') | first).data[''client-secret''] }}'
+          client_secret: '{{ secret "/secrets/authelia-secrets/oidc-client-secret-node-red-mcp" }}'
           public: false
           authorization_policy: one_factor
           scopes:

@@ -173,8 +173,10 @@ docker run --rm authelia/authelia:latest authelia crypto hash generate argon2 --
 
 ## OIDC Client Secrets
 
-OIDC client secrets are sourced from `config/secrets.yml` and injected during `make authelia-install`.
-Do not hardcode client secrets in `authelia-values.yaml`.
+OIDC client secrets live in `config/secrets.yml` under `authelia-secrets` (keys `oidc-client-secret-*`) and in each
+app’s sealed secret (`grafana-oidc-secret`, etc.). **Keep those values identical.** Authelia reads them at runtime via
+`secret()` in `authelia-values.yaml` (GitOps / ArgoCD safe). After changing them, run `make seal-secrets` and sync
+Authelia.
 
 ```bash
 # Generate a random secret
