@@ -3,7 +3,7 @@ name: home-assistant
 description: Home Assistant - Open source home automation
 type: application
 version: 1.0.0
-appVersion: "2026.03"
+appVersion: "2026.3.3"
 
 dependencies:
   - name: home-assistant
