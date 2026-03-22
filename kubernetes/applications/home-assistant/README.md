@@ -206,6 +206,42 @@ To update the Helm chart version:
 2. Run `helm dependency update` locally to test
 3. Commit and push
 
+### Auto-updates with Renovate
+
+Home Assistant image updates are also tracked automatically via the repository
+`renovate.json` config. Renovate watches
+`kubernetes/applications/home-assistant/values.yaml` and opens a PR when a new
+stable `ghcr.io/home-assistant/home-assistant` tag is published.
+
+Current policy:
+
+- Match only `homeassistant.image.tag`
+- Track `ghcr.io/home-assistant/home-assistant`
+- Allow stable tags only in `x.y.z` format
+- Exclude floating aliases and pre-releases such as `latest`, `beta`, `rc`, and `dev`
+- Require manual merge (`automerge: false`)
+- Run on the weekly schedule defined in `renovate.json`
+
+Merge and deploy flow:
+
+1. Renovate opens a PR with only the Home Assistant image tag change
+2. Review the upstream release and merge the PR
+3. ArgoCD detects the Git change and syncs the updated StatefulSet
+4. Verify the deployed image tag after sync
+
+Rollback:
+
+1. Revert the Renovate PR, or manually pin the previous known-good tag in `values.yaml`
+2. Commit and push the rollback change
+3. Re-sync ArgoCD if needed
+
+Useful verification command:
+
+```bash
+kubectl -n home-assistant get sts home-assistant-homeassistant \
+  -o jsonpath='{.spec.template.spec.containers[0].image}{"\n"}'
+```
+
 ## Troubleshooting
 
 ### Check pod status

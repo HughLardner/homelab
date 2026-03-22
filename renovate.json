@@ -1,0 +1,42 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended"
+  ],
+  "dependencyDashboard": true,
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Track Home Assistant image tag in Helm values",
+      "managerFilePatterns": [
+        "/^kubernetes/applications/home-assistant/values\\.yaml$/"
+      ],
+      "matchStrings": [
+        "repository:\\s*(?<depName>ghcr\\.io/home-assistant/home-assistant)\\s*\\n\\s*tag:\\s*\"?(?<currentValue>[^\"\\s]+)\"?"
+      ],
+      "datasourceTemplate": "docker",
+      "versioningTemplate": "semver"
+    }
+  ],
+  "packageRules": [
+    {
+      "description": "Keep Home Assistant updates on stable releases with manual review",
+      "matchManagers": [
+        "custom.regex"
+      ],
+      "matchPackageNames": [
+        "ghcr.io/home-assistant/home-assistant"
+      ],
+      "allowedVersions": "/^\\d+\\.\\d+\\.\\d+$/",
+      "automerge": false,
+      "labels": [
+        "dependencies",
+        "home-assistant"
+      ],
+      "commitMessageTopic": "Home Assistant image",
+      "schedule": [
+        "after 2am on sunday"
+      ]
+    }
+  ]
+}
