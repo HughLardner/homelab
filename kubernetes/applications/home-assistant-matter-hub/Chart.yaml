@@ -1,0 +1,6 @@
+apiVersion: v2
+name: home-assistant-matter-hub
+description: RiDDiX Home Assistant Matter Hub — exposes HA entities to Matter controllers
+type: application
+version: 1.0.0
+appVersion: "2.0.35"

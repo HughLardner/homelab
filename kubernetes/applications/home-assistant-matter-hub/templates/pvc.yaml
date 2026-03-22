@@ -1,0 +1,15 @@
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: home-assistant-matter-hub-data
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: home-assistant-matter-hub
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: {{ .Values.services.home_assistant_matter_hub.storage_class | default "longhorn" }}
+  resources:
+    requests:
+      storage: {{ .Values.services.home_assistant_matter_hub.storage_size | default "1Gi" }}

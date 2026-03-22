@@ -1,0 +1,41 @@
+# Home Assistant Matter Hub (HAMH)
+# https://github.com/RiDDiX/home-assistant-matter-hub
+#
+# Requires: SealedSecret → Secret `home-assistant-matter-hub-auth` (key: access-token).
+# Create a long-lived token in HA (Profile → Security), then:
+#   kubectl create secret generic home-assistant-matter-hub-auth \
+#     --namespace home-assistant --from-literal=access-token='YOUR_TOKEN' \
+#     --dry-run=client -o yaml | kubeseal -o yaml \
+#     > kubernetes/applications/home-assistant/secrets/home-assistant-matter-hub-auth-sealed.yaml
+# That path is synced by the home-assistant ArgoCD Application (wave 6) before this chart (wave 7).
+
+priorityClassName: homelab-standard
+
+image:
+  repository: ghcr.io/riddix/home-assistant-matter-hub
+  # Pin a stable release; see https://github.com/RiDDiX/home-assistant-matter-hub/releases
+  tag: "2.0.35"
+  pullPolicy: IfNotPresent
+
+# In-cluster URL to Home Assistant (HAMH pod uses hostNetwork + Cluster DNS).
+homeAssistant:
+  url: http://home-assistant.home-assistant.svc.cluster.local:8123
+
+# Secret name (created via kubeseal in secrets/*.yaml)
+authSecretName: home-assistant-matter-hub-auth
+authSecretKey: access-token
+
+hamh:
+  logLevel: info
+  httpPort: 8482
+  # If Apple Home shows "No Response" but the bridge is up, set the node NIC
+  # (e.g. ens18, eth0). See HAMH network troubleshooting.
+  mdnsNetworkInterface: ""
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 256Mi
+  limits:
+    cpu: "1"
+    memory: 512Mi

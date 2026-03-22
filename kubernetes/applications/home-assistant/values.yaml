@@ -127,7 +127,20 @@ homeassistant:
       script: !include scripts.yaml
       scene: !include scenes.yaml
 
+      auth_oidc:
+        client_id: home-assistant
+        client_secret: !env_var OIDC_CLIENT_SECRET
+        discovery_url: https://auth.silverseekers.org/.well-known/openid-configuration
+        display_name: "Authelia"
+        features:
+          force_https: true
+          automatic_user_linking: true
+
       homeassistant:
+        # Set the real home coordinates so companion-app GPS presence resolves
+        # against the actual house instead of a broken default Home zone.
+        latitude: 53.3937271
+        longitude: -6.4469057
         # Load all YAML files in /config/packages/ as configuration packages.
         # This lets us add shell_command, input_button, automations etc. via
         # ConfigMaps without touching this file again.
