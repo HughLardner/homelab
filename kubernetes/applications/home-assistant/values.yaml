@@ -49,7 +49,7 @@ homeassistant:
   # Image configuration
   image:
     repository: ghcr.io/home-assistant/home-assistant
-    tag: "2026.03"  # Updated from 2024.12 (was over a year old)
+    tag: "2026.3.3"  # Updated from 2024.12 (was over a year old)
     pullPolicy: IfNotPresent
 
   # Service configuration
