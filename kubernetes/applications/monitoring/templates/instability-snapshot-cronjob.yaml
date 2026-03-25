@@ -1,0 +1,101 @@
+{{- if .Values.services.monitoring.instability_snapshot_enabled }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: instability-snapshot
+  namespace: monitoring
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: instability-snapshot
+rules:
+  - apiGroups: [""]
+    resources:
+      - events
+      - nodes
+      - pods
+    verbs: ["get", "list"]
+  - apiGroups: ["longhorn.io"]
+    resources:
+      - volumes
+    verbs: ["get", "list"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: instability-snapshot
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: instability-snapshot
+subjects:
+  - kind: ServiceAccount
+    name: instability-snapshot
+    namespace: monitoring
+
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: instability-snapshot
+  namespace: monitoring
+spec:
+  schedule: {{ .Values.services.monitoring.instability_snapshot_schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: {{ .Values.services.monitoring.instability_snapshot_success_history }}
+  failedJobsHistoryLimit: {{ .Values.services.monitoring.instability_snapshot_failed_history }}
+  jobTemplate:
+    spec:
+      ttlSecondsAfterFinished: 3600
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: instability-snapshot
+            app.kubernetes.io/component: diagnostics
+        spec:
+          serviceAccountName: instability-snapshot
+          restartPolicy: OnFailure
+          containers:
+            - name: kubectl
+              image: rancher/kubectl:v1.33.5
+              imagePullPolicy: IfNotPresent
+              command:
+                - /bin/sh
+                - -ec
+                - |
+                  echo "=== instability-snapshot $(date -Iseconds) ==="
+                  echo "--- nodes ---"
+                  kubectl get nodes -o wide
+
+                  echo "--- node conditions ---"
+                  for node in $(kubectl get nodes -o jsonpath='{.items[*].metadata.name}'); do
+                    echo "### ${node}"
+                    kubectl describe node "${node}" | sed -n '/Conditions:/,/Addresses:/p'
+                  done
+
+                  echo "--- infrastructure pod restarts ---"
+                  kubectl get pods -A \
+                    -o "custom-columns=NAMESPACE:.metadata.namespace,POD:.metadata.name,PHASE:.status.phase,RESTARTS:.status.containerStatuses[*].restartCount" \
+                    --no-headers | sort -k4 -nr | head -n 30
+
+                  echo "--- recent warning events ---"
+                  kubectl get events -A --field-selector type=Warning --sort-by=.lastTimestamp | tail -n 80 || true
+
+                  echo "--- longhorn non-healthy volumes ---"
+                  kubectl -n longhorn-system get volumes.longhorn.io \
+                    -o "custom-columns=VOLUME:.metadata.name,STATE:.status.state,ROBUSTNESS:.status.robustness,NODE:.status.currentNode,AGE:.metadata.creationTimestamp" \
+                    --no-headers | awk '$3 != "healthy" { print }' || true
+
+                  echo "--- end instability-snapshot ---"
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  cpu: 100m
+                  memory: 128Mi
+{{- end }}

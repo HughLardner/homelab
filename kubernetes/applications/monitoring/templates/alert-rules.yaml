@@ -1,5 +1,5 @@
 ---
-# VMRule - Node I/O and Memory alert rules
+# VMRule - Node, control-plane, and storage stability alert rules
 # Auto-selected by VMAlert via selectAllByDefault: true
 # See docs/runbooks/node-io-saturation-recovery.md for response procedures
 apiVersion: operator.victoriametrics.com/v1beta1
@@ -116,4 +116,161 @@ spec:
               Available memory on {{ "{{" }} $labels.instance {{ "}}" }} has dropped below 15% for 5 minutes.
               The kernel will begin aggressive page reclaim, causing a surge in disk I/O.
               Scale down or evict non-critical pods immediately.
+            runbook_url: "https://github.com/HughLardner/homelab/blob/main/docs/runbooks/node-io-saturation-recovery.md"
+
+    - name: node-filesystem
+      interval: 60s
+      rules:
+        - alert: NodeRootFilesystemLow
+          expr: node_filesystem_avail_bytes{mountpoint="/", fstype!=""} / node_filesystem_size_bytes{mountpoint="/", fstype!=""} < 0.15
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Node root filesystem is low on free space ({{ "{{" }} $value | humanizePercentage {{ "}}" }} free)"
+            description: >-
+              Root filesystem free space on {{ "{{" }} $labels.instance {{ "}}" }} has been below 15% for 10 minutes.
+              The cluster has previously shown image filesystem anomalies before control-plane instability.
+              Investigate container runtime storage and disk consumption before kubelet degrades.
+            runbook_url: "https://github.com/HughLardner/homelab/blob/main/docs/runbooks/node-io-saturation-recovery.md"
+
+        - alert: NodeRootFilesystemInodesLow
+          expr: node_filesystem_files_free{mountpoint="/", fstype!=""} / node_filesystem_files{mountpoint="/", fstype!=""} < 0.10
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Node root filesystem is low on inodes ({{ "{{" }} $value | humanizePercentage {{ "}}" }} free)"
+            description: >-
+              Root filesystem free inodes on {{ "{{" }} $labels.instance {{ "}}" }} have been below 10% for 10 minutes.
+              This can surface as kubelet image filesystem errors and container runtime instability.
+            runbook_url: "https://github.com/HughLardner/homelab/blob/main/docs/runbooks/node-io-saturation-recovery.md"
+
+    - name: control-plane-health
+      interval: 60s
+      rules:
+        - alert: KubeAPIServerUnavailable
+          expr: max(up{job="kubernetes", service="kubernetes"}) < 1
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Kubernetes API server scrape is unavailable"
+            description: >-
+              The API server metrics endpoint has been unavailable for 2 minutes.
+              This matches the failure mode seen during the March 2026 instability, where clients saw resets and timeouts on port 6443.
+            runbook_url: "https://github.com/HughLardner/homelab/blob/main/docs/runbooks/node-io-saturation-recovery.md"
+
+        - alert: KubeAPIServerHigh5xxRate
+          expr: 100 * sum(rate(apiserver_request_total{code=~"5..", verb!~"WATCH|CONNECT"}[5m])) / clamp_min(sum(rate(apiserver_request_total{verb!~"WATCH|CONNECT"}[5m])), 0.001) > 3
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Kubernetes API server 5xx rate is elevated ({{ "{{" }} $value | printf \"%.1f\" {{ "}}" }}%)"
+            description: >-
+              More than 3% of non-watch API requests have returned 5xx responses for 5 minutes.
+              This is an early sign of control-plane overload or backend storage stalls.
+            runbook_url: "https://github.com/HughLardner/homelab/blob/main/docs/runbooks/node-io-saturation-recovery.md"
+
+        - alert: KubeAPIServerCritical5xxRate
+          expr: 100 * sum(rate(apiserver_request_total{code=~"5..", verb!~"WATCH|CONNECT"}[5m])) / clamp_min(sum(rate(apiserver_request_total{verb!~"WATCH|CONNECT"}[5m])), 0.001) > 10
+          for: 3m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Kubernetes API server 5xx rate is critical ({{ "{{" }} $value | printf \"%.1f\" {{ "}}" }}%)"
+            description: >-
+              More than 10% of non-watch API requests have returned 5xx responses for 3 minutes.
+              Expect workload reconciliation, volume management, and pod startup to fail or stall.
+            runbook_url: "https://github.com/HughLardner/homelab/blob/main/docs/runbooks/node-io-saturation-recovery.md"
+
+        - alert: KubeAPIServerP99LatencyHigh
+          expr: histogram_quantile(0.99, sum by (le) (rate(apiserver_request_duration_seconds_bucket{verb!~"WATCH|CONNECT"}[5m]))) > 1
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Kubernetes API server p99 latency is high ({{ "{{" }} $value | printf \"%.2f\" {{ "}}" }}s)"
+            description: >-
+              API server p99 latency for non-watch requests has exceeded 1 second for 10 minutes.
+              This is a leading indicator that control-plane responsiveness is degrading before hard failures.
+            runbook_url: "https://github.com/HughLardner/homelab/blob/main/docs/runbooks/node-io-saturation-recovery.md"
+
+        - alert: KubeAPIServerP99LatencyCritical
+          expr: histogram_quantile(0.99, sum by (le) (rate(apiserver_request_duration_seconds_bucket{verb!~"WATCH|CONNECT"}[5m]))) > 3
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Kubernetes API server p99 latency is critical ({{ "{{" }} $value | printf \"%.2f\" {{ "}}" }}s)"
+            description: >-
+              API server p99 latency for non-watch requests has exceeded 3 seconds for 5 minutes.
+              This is consistent with the cluster heading toward timeouts, resets, and broad controller failures.
+            runbook_url: "https://github.com/HughLardner/homelab/blob/main/docs/runbooks/node-io-saturation-recovery.md"
+
+    - name: storage-health
+      interval: 60s
+      rules:
+        - alert: LonghornVolumeFaulted
+          expr: sum(longhorn_volume_robustness{state="faulted"}) > 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Longhorn has one or more faulted volumes ({{ "{{" }} $value | printf \"%.0f\" {{ "}}" }})"
+            description: >-
+              At least one Longhorn volume is in a faulted state.
+              This is the clearest storage-side signal that the node may be heading toward control-plane instability.
+            runbook_url: "https://github.com/HughLardner/homelab/blob/main/docs/runbooks/node-io-saturation-recovery.md"
+
+        - alert: LonghornVolumeUnexpectedUnknown
+          expr: sum(longhorn_volume_robustness{state="unknown", pvc_namespace!="media"}) > 0
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Longhorn has non-media volumes in unknown state ({{ "{{" }} $value | printf \"%.0f\" {{ "}}" }})"
+            description: >-
+              One or more Longhorn volumes outside the intentionally detached media workloads are in an unknown state.
+              Investigate instance-manager health, volume attachment, and node storage pressure.
+            runbook_url: "https://github.com/HughLardner/homelab/blob/main/docs/runbooks/node-io-saturation-recovery.md"
+
+        - alert: LonghornInstanceManagerMemoryHigh
+          expr: max(longhorn_instance_manager_memory_usage_bytes) > 3221225472
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Longhorn instance-manager memory use is high ({{ "{{" }} $value | humanize {{ "}}" }}B)"
+            description: >-
+              The Longhorn instance-manager is using more than 3 GiB of memory for 10 minutes.
+              On a single-node 12 GiB cluster this can materially reduce headroom for k3s and monitoring components.
+            runbook_url: "https://github.com/HughLardner/homelab/blob/main/docs/runbooks/node-io-saturation-recovery.md"
+
+    - name: cluster-churn
+      interval: 60s
+      rules:
+        - alert: ClusterPodRestartSpike
+          expr: sum(increase(kube_pod_container_status_restarts_total[15m])) > 6
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Cluster pod restarts are spiking ({{ "{{" }} $value | printf \"%.0f\" {{ "}}" }} restarts in 15m)"
+            description: >-
+              Container restarts across the cluster have increased sharply in the last 15 minutes.
+              This often coincides with degraded storage, failing probes, or broad control-plane churn.
+            runbook_url: "https://github.com/HughLardner/homelab/blob/main/docs/runbooks/node-io-saturation-recovery.md"
+
+        - alert: InfrastructurePodRestartSpike
+          expr: sum(increase(kube_pod_container_status_restarts_total{namespace=~"argocd|cert-manager|kube-system|loki|longhorn-system|metallb-system|monitoring|traefik"}[15m])) > 3
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Infrastructure pod restarts are spiking ({{ "{{" }} $value | printf \"%.0f\" {{ "}}" }} restarts in 15m)"
+            description: >-
+              Core infrastructure namespaces are experiencing repeated container restarts.
+              This is a strong indicator that the cluster is in or near an instability event rather than a single workload issue.
             runbook_url: "https://github.com/HughLardner/homelab/blob/main/docs/runbooks/node-io-saturation-recovery.md"

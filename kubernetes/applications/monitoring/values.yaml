@@ -16,4 +16,8 @@ services:
     prometheus_storage_size: 10Gi
     prometheus_retention: 15d
     alertmanager_storage_size: 2Gi
+    instability_snapshot_enabled: true
+    instability_snapshot_schedule: "*/5 * * * *"
+    instability_snapshot_success_history: 2
+    instability_snapshot_failed_history: 2
 

@@ -72,17 +72,47 @@ sudo systemctl restart systemd-journald
 
 ### 4. Early warning (alerting / dashboards)
 
-- **Grafana**: Add alerts (e.g. VMAlert or Grafana alerts) on:
-  - **Node iowait** (e.g. `rate(node_cpu_seconds_total{mode="iowait"}[5m])` high for >5–10 min)
-  - **Node load** (e.g. load average > 2× number of cores for sustained period)
-- So you can scale down heavy workloads or investigate before the node becomes unreachable.
+- **Dashboard**: Use `Node Saturation & Control Plane Health` in Grafana for a single-incident view of:
+  - node pressure (`iowait`, disk util, throughput, memory, rootfs free space/inodes)
+  - control-plane health (API `up`, 5xx rate, p95/p99 latency)
+  - storage health (Longhorn robustness counts, instance-manager memory)
+  - cluster churn (restart spikes by namespace and by pod)
+- **VMAlert rules** now watch the recurrence pattern directly:
+  - `NodeHighIOWait`, `NodeCriticalIOWait`, `NodeDiskIOSaturated`, `NodeHighDiskReadRate`
+  - `KubeAPIServerUnavailable`, `KubeAPIServerHigh5xxRate`, `KubeAPIServerP99LatencyHigh`
+  - `LonghornVolumeFaulted`, `LonghornVolumeUnexpectedUnknown`
+  - `ClusterPodRestartSpike`, `InfrastructurePodRestartSpike`
+- These alerts provide early warning so you can scale down noisy workloads or investigate before the node becomes unreachable.
 
-### 5. Resource and workload balance
+### 5. Preserve short-lived evidence
+
+- A lightweight `instability-snapshot` CronJob in `monitoring` logs a periodic snapshot of:
+  - node conditions
+  - recent warning events
+  - top restarting pods
+  - Longhorn non-healthy volumes
+- Those logs are scraped by Promtail and retained in Loki, so transient failures are still reviewable after the cluster recovers.
+
+### 6. Rollout and threshold tuning
+
+- **Initial validation after deploy**:
+  - confirm the `Node Saturation & Control Plane Health` dashboard loads and shows data for all panels
+  - confirm VMAlert loads the new rules without evaluation errors
+  - verify the `instability-snapshot` CronJob runs and logs appear in Loki
+- **Burn-in review (first week)**:
+  - review all firings of `KubeAPIServerHigh5xxRate`, `KubeAPIServerP99LatencyHigh`, `ClusterPodRestartSpike`, and `LonghornVolumeUnexpectedUnknown`
+  - tighten thresholds if the alerts are too chatty during normal operation
+  - relax thresholds only if they are clearly firing on known-safe, steady-state behaviour
+- **Monthly review**:
+  - compare alert firings to actual incidents or near-misses
+  - adjust thresholds only with a short note explaining why the old threshold was wrong
+
+### 7. Resource and workload balance
 
 - **Resource requests/limits**: Ensure noisy workloads (Plex, Home Assistant, CouchDB, monitoring) have limits so one pod can’t monopolise CPU/IO.
 - **Consider moving heaviest apps off the cluster**: Running Plex or Home Assistant on a separate host (or a dedicated VM) would reduce I/O and CPU contention on the single K3s node.
 
-### 6. If you increase capacity
+### 8. If you increase capacity
 
 - **More RAM** for the VM (e.g. 16 GB) gives more buffer for cache and reduces pressure that can indirectly increase I/O.
 - **Second node** would spread workloads and Longhorn traffic and avoid control-plane and data plane sharing one saturated machine.
@@ -100,6 +130,11 @@ sudo systemctl restart systemd-journald
    - If journald is in D state and iowait is high: journald rate limit should already be in place; consider temporarily scaling down vmagent:  
      `kubectl -n monitoring scale deployment vmagent-vmagent --replicas=0`  
    - Restart journald only if the shell is responsive: `sudo systemctl restart systemd-journald`
+   - Capture the first 10 minutes of evidence:
+     - Grafana dashboard: `Node Saturation & Control Plane Health`
+     - recent warnings: `kubectl get events -A --field-selector type=Warning --sort-by=.lastTimestamp | tail -n 80`
+     - Longhorn state: `kubectl -n longhorn-system get volumes.longhorn.io -o wide`
+     - restart spike: `kubectl get pods -A -o "custom-columns=NS:.metadata.namespace,NAME:.metadata.name,RESTARTS:.status.containerStatuses[*].restartCount" --no-headers | sort -k3 -nr | head -n 30`
 
 3. **If you cannot SSH and the API is unreachable**  
    - From Proxmox: try **Reboot** on the VM. If it doesn’t respond, use **Stop** then **Start**.  
@@ -108,7 +143,14 @@ sudo systemctl restart systemd-journald
 4. **After recovery**  
    - Check Longhorn: `kubectl -n longhorn-system get nodes,pods -o wide`  
    - Restore vmagent if scaled down: `kubectl -n monitoring scale deployment vmagent-vmagent --replicas=1`  
-   - Review Grafana for iowait/load over the incident window and add alerts if not already present.
+   - Review the incident window in Grafana and Loki:
+     - dashboard: `Node Saturation & Control Plane Health`
+     - snapshot logs: `kubectl -n monitoring logs job/<instability-snapshot-job-name>`
+   - Correlate:
+     - node pressure rising first
+     - API 5xx/latency deterioration next
+     - Longhorn robustness changes or faulted volumes
+     - restart spikes and probe failures last
 
 ---
 

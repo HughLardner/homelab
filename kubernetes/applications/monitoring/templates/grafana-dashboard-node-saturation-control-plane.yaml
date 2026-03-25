@@ -1,0 +1,15 @@
+---
+# Custom dashboard focused on the March 2026 instability pattern:
+# node saturation -> Longhorn degradation -> control-plane failure.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-node-saturation-control-plane
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+  annotations:
+    grafana_folder: "Kubernetes"
+data:
+  node-saturation-control-plane-health.json: |-
+{{ .Files.Get "dashboards/node-saturation-control-plane-health.json" | nindent 4 }}
