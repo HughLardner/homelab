@@ -209,6 +209,19 @@ spec:
               This is consistent with the cluster heading toward timeouts, resets, and broad controller failures.
             runbook_url: "https://github.com/HughLardner/homelab/blob/main/docs/runbooks/node-io-saturation-recovery.md"
 
+        - alert: K3sRestartLoop
+          expr: changes(up{job="kubelet"}[15m]) > 3
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "K3s/kubelet restart loop detected ({{ "{{" }} $value | printf \"%.0f\" {{ "}}" }} restarts in 15min)"
+            description: >-
+              K3s has restarted {{ "{{" }} $value | printf "%.0f" {{ "}}" }} times in 15 minutes, indicating a crash loop.
+              The March 2026 incident showed 64 restarts over 9 hours before visible degradation.
+              Check: systemctl status k3s && journalctl -u k3s --since '10 minutes ago'
+            runbook_url: "https://github.com/HughLardner/homelab/blob/main/docs/runbooks/node-io-saturation-recovery.md"
+
     - name: storage-health
       interval: 60s
       rules:
