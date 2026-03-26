@@ -61,7 +61,7 @@ spec:
           restartPolicy: OnFailure
           containers:
             - name: kubectl
-              image: rancher/kubectl:v1.34.5
+              image: bitnami/kubectl:latest
               imagePullPolicy: IfNotPresent
               command:
                 - /bin/sh
