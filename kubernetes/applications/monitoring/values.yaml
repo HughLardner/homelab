@@ -10,7 +10,7 @@ services:
     domain: grafana.silverseekers.org
     storage_size: 5Gi
     # cert_issuer: letsencrypt-prod  # Falls back to global.cert_issuer if not set
-  
+
   monitoring:
     storage_class: longhorn
     prometheus_storage_size: 10Gi
@@ -20,4 +20,6 @@ services:
     instability_snapshot_schedule: "*/5 * * * *"
     instability_snapshot_success_history: 2
     instability_snapshot_failed_history: 2
+    etcd_maintenance_enabled: true
+    etcd_maintenance_schedule: "0 2 * * 0"  # 2am Sundays
 

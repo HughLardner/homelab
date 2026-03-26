@@ -352,3 +352,37 @@ spec:
       interval: "60s"
       path: /metrics
 
+---
+# =============================================================================
+# K3s Etcd Metrics Scrape
+# K3s embedded etcd exposes metrics on port 2381 (HTTP endpoint)
+# Scraping etcd health metrics to prevent database corruption and detect
+# performance degradation early (March 2026 incident: etcd WAL corruption
+# from 64 K3s crash loops)
+#
+# PREREQUISITE: K3s must be configured with --etcd-expose-metrics flag
+# This can be added via Ansible node-prep role or manually in /etc/systemd/system/k3s.service
+# After adding the flag, restart K3s: sudo systemctl restart k3s
+# Verify metrics are exposed: curl http://127.0.0.1:2381/metrics
+# =============================================================================
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMStaticScrape
+metadata:
+  name: etcd
+  namespace: monitoring
+spec:
+  jobName: etcd
+  targetEndpoints:
+    - targets:
+        - "192.168.10.20:2381"
+      labels:
+        component: etcd
+        job: etcd
+  interval: "60s"
+  scrapeTimeout: "30s"
+  metricRelabelConfigs:
+    # Keep only etcd metrics to reduce cardinality
+    - sourceLabels: [__name__]
+      regex: 'etcd_(server|mvcc|disk|network)_.*'
+      action: keep
+

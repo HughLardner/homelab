@@ -222,6 +222,61 @@ spec:
               Check: systemctl status k3s && journalctl -u k3s --since '10 minutes ago'
             runbook_url: "https://github.com/HughLardner/homelab/blob/main/docs/runbooks/node-io-saturation-recovery.md"
 
+    - name: etcd-health
+      interval: 60s
+      rules:
+        - alert: EtcdDatabaseSizeHigh
+          expr: etcd_mvcc_db_total_size_in_bytes > 1.5e9
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "etcd database approaching quota limit"
+            description: >-
+              etcd database size is {{ "{{" }} $value | humanize1024 {{ "}}" }}B (quota: 2GB).
+              The March 2026 incident showed etcd corruption from 64 K3s crash loops.
+              Database is at 75% capacity and needs defragmentation or quota increase.
+            runbook_url: "https://github.com/HughLardner/homelab/blob/main/docs/runbooks/node-io-saturation-recovery.md"
+
+        - alert: EtcdNoLeader
+          expr: etcd_server_has_leader == 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "etcd cluster has no leader"
+            description: >-
+              etcd leader election has been failing for 2+ minutes.
+              This will cause API server failures and prevent all cluster operations.
+              Check etcd logs: journalctl -u k3s | grep etcd
+            runbook_url: "https://github.com/HughLardner/homelab/blob/main/docs/runbooks/node-io-saturation-recovery.md"
+
+        - alert: EtcdHighCommitLatency
+          expr: histogram_quantile(0.99, rate(etcd_disk_backend_commit_duration_seconds_bucket[5m])) > 0.5
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "etcd commit latency high"
+            description: >-
+              etcd p99 commit latency is {{ "{{" }} $value {{ "}}" }}s (threshold: 0.5s).
+              High commit latency indicates disk I/O saturation or backend storage issues.
+              This can lead to API server timeouts and cluster instability.
+            runbook_url: "https://github.com/HughLardner/homelab/blob/main/docs/runbooks/node-io-saturation-recovery.md"
+
+        - alert: EtcdSlowFsync
+          expr: histogram_quantile(0.99, rate(etcd_disk_wal_fsync_duration_seconds_bucket[5m])) > 1
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "etcd WAL fsync slow"
+            description: >-
+              etcd p99 WAL fsync duration is {{ "{{" }} $value {{ "}}" }}s (threshold: 1s).
+              Slow WAL fsync indicates disk I/O saturation. The March 2026 incident showed
+              etcd WAL corruption (0000000000000240-0000000001d7face.wal.broken) from repeated crashes.
+            runbook_url: "https://github.com/HughLardner/homelab/blob/main/docs/runbooks/node-io-saturation-recovery.md"
+
     - name: storage-health
       interval: 60s
       rules:
