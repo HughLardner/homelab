@@ -112,7 +112,29 @@ sudo systemctl restart systemd-journald
 - **Resource requests/limits**: Ensure noisy workloads (Plex, Home Assistant, CouchDB, monitoring) have limits so one pod can’t monopolise CPU/IO.
 - **Consider moving heaviest apps off the cluster**: Running Plex or Home Assistant on a separate host (or a dedicated VM) would reduce I/O and CPU contention on the single K3s node.
 
-### 8. If you increase capacity
+### 8. Graceful node reboots after kernel updates
+
+**Status:** Kured (Kubernetes Reboot Daemon) is NOT currently deployed.
+
+The March 2026 incident analysis initially assumed kured was handling node reboots, but the ansible playbook exists but was never executed. Without kured:
+- Node reboots after kernel updates are uncoordinated
+- Pods are not gracefully drained before reboot
+- Risk of service disruption and data loss during unplanned reboots
+
+**To deploy kured (recommended for future resilience):**
+```bash
+make kured-install  # or: cd ansible && ansible-playbook playbooks/kured-install.yml
+```
+
+Kured will:
+- Detect when kernel updates require a reboot (via `/var/run/reboot-required`)
+- Drain pods from the node before rebooting
+- Reboot nodes during configured maintenance windows
+- Coordinate reboots across the cluster (single-node safe)
+
+**Ansible playbook location:** `ansible/playbooks/kured-install.yml`
+
+### 9. If you increase capacity
 
 - **More RAM** for the VM (e.g. 16 GB) gives more buffer for cache and reduces pressure that can indirectly increase I/O.
 - **Second node** would spread workloads and Longhorn traffic and avoid control-plane and data plane sharing one saturated machine.
@@ -125,16 +147,25 @@ sudo systemctl restart systemd-journald
    - Check VM 120 status: `qm status 120`  
    - If the VM is responsive: use **qm guest exec** to run `cat /proc/loadavg` and `vmstat 1 3`. High `wa` (iowait) and high load → I/O saturation again.
 
-2. **If you can SSH in**  
-   - Run: `vmstat 1 5`, `ps aux \| awk '$8 ~ /D/ { print }'`, `sudo dmesg \| tail -30 \| grep -iE 'oom|error|i/o|connection'`  
-   - If journald is in D state and iowait is high: journald rate limit should already be in place; consider temporarily scaling down vmagent:  
-     `kubectl -n monitoring scale deployment vmagent-vmagent --replicas=0`  
+2. **If you can SSH in**
+   - Run: `vmstat 1 5`, `ps aux \| awk '$8 ~ /D/ { print }'`, `sudo dmesg \| tail -30 \| grep -iE 'oom|error|i/o|connection'`
+   - If journald is in D state and iowait is high: journald rate limit should already be in place; consider temporarily scaling down vmagent:
+     `kubectl -n monitoring scale deployment vmagent-vmagent --replicas=0`
    - Restart journald only if the shell is responsive: `sudo systemctl restart systemd-journald`
    - Capture the first 10 minutes of evidence:
      - Grafana dashboard: `Node Saturation & Control Plane Health`
      - recent warnings: `kubectl get events -A --field-selector type=Warning --sort-by=.lastTimestamp | tail -n 80`
      - Longhorn state: `kubectl -n longhorn-system get volumes.longhorn.io -o wide`
      - restart spike: `kubectl get pods -A -o "custom-columns=NS:.metadata.namespace,NAME:.metadata.name,RESTARTS:.status.containerStatuses[*].restartCount" --no-headers | sort -k3 -nr | head -n 30`
+     - **etcd health:** Check database size and WAL health (see [Etcd Maintenance Runbook](etcd-maintenance.md) for detailed checks)
+       ```bash
+       sudo /usr/local/bin/k3s etcdctl \
+         --endpoints=https://127.0.0.1:2379 \
+         --cert=/var/lib/rancher/k3s/server/tls/etcd/server-client.crt \
+         --key=/var/lib/rancher/k3s/server/tls/etcd/server-client.key \
+         --cacert=/var/lib/rancher/k3s/server/tls/etcd/server-ca.crt \
+         endpoint status -w table
+       ```
 
 3. **If you cannot SSH and the API is unreachable**  
    - From Proxmox: try **Reboot** on the VM. If it doesn’t respond, use **Stop** then **Start**.  

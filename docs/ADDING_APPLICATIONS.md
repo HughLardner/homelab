@@ -782,6 +782,85 @@ kubectl logs -n kube-system deployment/sealed-secrets-controller
 
 ---
 
+## Image Selection Best Practices
+
+### Choosing Container Images
+
+**Lessons learned from March 2026 CronJob failures:**
+
+1. **Verify image tags exist** before deploying:
+   ```bash
+   # Check Docker Hub
+   curl -s https://hub.docker.com/v2/repositories/bitnami/kubectl/tags | jq '.results[].name'
+
+   # Or use docker CLI
+   docker pull bitnami/kubectl:1.33.5  # Test pull
+   ```
+
+2. **Prefer `:latest` for stable base images** in CronJobs:
+   - Use `:latest` for utility images like `kubectl`, `etcd`, `busybox`
+   - Pinning to specific versions can cause failures when tags are removed
+   - Exception: Pin versions for production application images
+
+3. **Match working patterns** from existing deployments:
+   - Check other CronJobs for image selection patterns
+   - Example: `argocd-daily-refresh` uses `bitnami/kubectl:latest` successfully
+
+4. **Verify required shells** for script-based containers:
+   ```bash
+   # Test image has required shell
+   docker run --rm bitnami/kubectl:latest sh -c "echo test"
+
+   # Some minimal images lack /bin/sh or /bin/bash
+   # Example: rancher/kubectl:v1.33.5 fails with "no such file or directory"
+   ```
+
+5. **Image selection checklist:**
+   - [ ] Image tag exists in registry
+   - [ ] Image has required shell (`/bin/sh` or `/bin/bash`) if running scripts
+   - [ ] Image size is appropriate (smaller = faster pull)
+   - [ ] Image is from a trusted source (official, verified publisher)
+   - [ ] Image matches patterns used in working deployments
+
+### Examples
+
+**Good (CronJob utility image):**
+```yaml
+image: bitnami/kubectl:latest  # Stable, always available
+command: ["sh", "-c"]
+args:
+  - |
+    kubectl get nodes
+```
+
+**Avoid (CronJob utility image):**
+```yaml
+image: rancher/kubectl:v1.33.5  # May lack /bin/sh, specific version may disappear
+command: ["sh", "-c"]  # Fails: "no such file or directory"
+```
+
+**Good (application image):**
+```yaml
+image: ghcr.io/gethomepage/homepage:v0.9.10  # Pin specific version for stability
+```
+
+### Testing Image Selection
+
+Before committing a CronJob or deployment with a new image:
+
+```bash
+# Test the image locally
+docker run --rm <image:tag> sh -c "echo test"
+
+# For CronJobs, test the full command
+docker run --rm <image:tag> sh -c "your full script here"
+
+# Check image metadata
+docker inspect <image:tag> | jq '.[0].Config.Entrypoint, .[0].Config.Cmd'
+```
+
+---
+
 ## Sync Wave Order
 
 Control deployment order with annotations:
