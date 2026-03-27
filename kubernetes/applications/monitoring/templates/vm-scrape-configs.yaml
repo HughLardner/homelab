@@ -378,11 +378,11 @@ spec:
       labels:
         component: etcd
         job: etcd
-  interval: "60s"
-  scrapeTimeout: "30s"
-  metricRelabelConfigs:
-    # Keep only etcd metrics to reduce cardinality
-    - sourceLabels: [__name__]
-      regex: 'etcd_(server|mvcc|disk|network)_.*'
-      action: keep
+      interval: "60s"
+      scrapeTimeout: "30s"
+      metricRelabelConfigs:
+        # Keep only etcd metrics to reduce cardinality
+        - sourceLabels: [__name__]
+          regex: 'etcd_(server|mvcc|disk|network)_.*'
+          action: keep
 
