@@ -222,6 +222,33 @@ spec:
               Check: systemctl status k3s && journalctl -u k3s --since '10 minutes ago'
             runbook_url: "https://github.com/HughLardner/homelab/blob/main/docs/runbooks/node-io-saturation-recovery.md"
 
+    - name: kubelet-health
+      interval: 60s
+      rules:
+        - alert: KubeletDown
+          expr: up{job="kubelet"} == 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Kubelet is down"
+            description: >-
+              Kubelet on {{ "{{" }} $labels.instance {{ "}}" }} has been down for 2+ minutes.
+              This prevents pod scheduling, health checks, and container lifecycle management on this node.
+            runbook_url: "https://github.com/HughLardner/homelab/blob/main/docs/runbooks/node-io-saturation-recovery.md"
+
+        - alert: KubeletTooManyPods
+          expr: kubelet_running_pods > 100
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Kubelet managing too many pods"
+            description: >-
+              {{ "{{" }} $labels.instance {{ "}}" }} is running {{ "{{" }} $value {{ "}}" }} pods.
+              High pod count can impact kubelet performance and increase control-plane load.
+            runbook_url: "https://github.com/HughLardner/homelab/blob/main/docs/runbooks/node-io-saturation-recovery.md"
+
     - name: etcd-health
       interval: 60s
       rules:
@@ -277,6 +304,45 @@ spec:
               etcd WAL corruption (0000000000000240-0000000001d7face.wal.broken) from repeated crashes.
             runbook_url: "https://github.com/HughLardner/homelab/blob/main/docs/runbooks/node-io-saturation-recovery.md"
 
+    - name: workload-slos
+      interval: 60s
+      rules:
+        - alert: TraefikHighErrorRate
+          expr: sum(rate(traefik_service_requests_total{code=~"5.."}[5m])) / sum(rate(traefik_service_requests_total[5m])) > 0.05
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Traefik 5xx error rate high"
+            description: >-
+              {{ "{{" }} $value | humanizePercentage {{ "}}" }} of Traefik requests are returning 5xx errors.
+              This indicates backend service failures or control-plane instability affecting ingress.
+            runbook_url: "https://github.com/HughLardner/homelab/blob/main/docs/runbooks/node-io-saturation-recovery.md"
+
+        - alert: ArgocdSyncFailureRate
+          expr: sum(rate(argocd_app_sync_total{phase="Failed"}[15m])) / sum(rate(argocd_app_sync_total[15m])) > 0.1
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "ArgoCD sync failure rate high"
+            description: >-
+              {{ "{{" }} $value | humanizePercentage {{ "}}" }} of ArgoCD syncs are failing.
+              This can indicate API server instability, resource exhaustion, or GitOps pipeline issues.
+            runbook_url: "https://github.com/HughLardner/homelab/blob/main/docs/runbooks/node-io-saturation-recovery.md"
+
+        - alert: CoreDNSHighErrorRate
+          expr: sum(rate(coredns_dns_responses_total{rcode="SERVFAIL"}[5m])) / sum(rate(coredns_dns_requests_total[5m])) > 0.05
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "CoreDNS SERVFAIL rate high"
+            description: >-
+              {{ "{{" }} $value | humanizePercentage {{ "}}" }} of DNS queries are returning SERVFAIL.
+              This can cause widespread application failures and indicates CoreDNS or upstream DNS issues.
+            runbook_url: "https://github.com/HughLardner/homelab/blob/main/docs/runbooks/node-io-saturation-recovery.md"
+
     - name: storage-health
       interval: 60s
       rules:
@@ -314,6 +380,33 @@ spec:
             description: >-
               The Longhorn instance-manager is using more than 3 GiB of memory for 10 minutes.
               On a single-node 12 GiB cluster this can materially reduce headroom for k3s and monitoring components.
+            runbook_url: "https://github.com/HughLardner/homelab/blob/main/docs/runbooks/node-io-saturation-recovery.md"
+
+    - name: backup-health
+      interval: 300s
+      rules:
+        - alert: VeleroBackupFailing
+          expr: increase(velero_backup_failure_total[24h]) > 0
+          for: 10m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Velero backup failures detected"
+            description: >-
+              {{ "{{" }} $value {{ "}}" }} backup failures have occurred in the last 24 hours.
+              Check Velero logs: kubectl -n velero logs deployment/velero
+            runbook_url: "https://github.com/HughLardner/homelab/blob/main/docs/runbooks/node-io-saturation-recovery.md"
+
+        - alert: VeleroBackupStale
+          expr: time() - velero_backup_last_successful_timestamp > 90000
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Velero backup stale"
+            description: >-
+              Last successful backup was {{ "{{" }} $value | humanizeDuration {{ "}}" }} ago (threshold: 25 hours).
+              Daily backups may not be running. Check backup schedule and Velero controller status.
             runbook_url: "https://github.com/HughLardner/homelab/blob/main/docs/runbooks/node-io-saturation-recovery.md"
 
     - name: cluster-churn
