@@ -2,6 +2,8 @@ global:
   domain: silverseekers.org
   cert_issuer: letsencrypt-prod
 
+priorityClassName: homelab-interactive
+
 services:
   quartz:
     domain: fallandrise.silverseekers.org

@@ -5,6 +5,8 @@ global:
   domain: silverseekers.org
   cert_issuer: letsencrypt-prod
 
+priorityClassName: homelab-interactive
+
 services:
   headlamp:
     domain: headlamp.silverseekers.org

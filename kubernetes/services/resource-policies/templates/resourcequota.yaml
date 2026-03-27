@@ -44,4 +44,67 @@ spec:
     limits.memory: "8Gi"
     persistentvolumeclaims: "5"
     pods: "10"
+---
+# ResourceQuota for home-automation namespace
+# Includes Node-RED, Zigbee2MQTT, Mosquitto
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: namespace-quota
+  namespace: home-automation
+spec:
+  hard:
+    requests.cpu: "2"
+    requests.memory: "4Gi"
+    limits.cpu: "4"
+    limits.memory: "8Gi"
+    persistentvolumeclaims: "10"
+    pods: "20"
+---
+# ResourceQuota for home-assistant namespace
+# Includes Home Assistant + Home Assistant Matter Hub
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: namespace-quota
+  namespace: home-assistant
+spec:
+  hard:
+    requests.cpu: "2"
+    requests.memory: "3Gi"
+    limits.cpu: "2"
+    limits.memory: "4Gi"
+    persistentvolumeclaims: "5"
+    pods: "10"
+---
+# ResourceQuota for obsidian-livesync namespace
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: namespace-quota
+  namespace: obsidian-livesync
+spec:
+  hard:
+    requests.cpu: "500m"
+    requests.memory: "512Mi"
+    limits.cpu: "1"
+    limits.memory: "1Gi"
+    persistentvolumeclaims: "3"
+    pods: "5"
+---
+# ResourceQuota for media namespace
+# Includes Plex (heavy workload - GPU transcoding)
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: namespace-quota
+  namespace: media
+spec:
+  hard:
+    requests.cpu: "500m"
+    requests.memory: "1.5Gi"
+    limits.cpu: "4"
+    limits.memory: "6Gi"
+    persistentvolumeclaims: "5"
+    pods: "10"
 
