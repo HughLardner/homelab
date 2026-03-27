@@ -21,6 +21,7 @@ spec:
         app.kubernetes.io/name: quartz
         app.kubernetes.io/component: webhook
     spec:
+      priorityClassName: {{ .Values.priorityClassName }}
       containers:
         - name: webhook
           image: "{{ .Values.builder.image.repository }}:{{ .Values.builder.image.tag }}"

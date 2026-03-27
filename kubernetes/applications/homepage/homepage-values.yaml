@@ -30,6 +30,9 @@ resources:
     cpu: 500m
     memory: 256Mi
 
+# Priority class for pod scheduling
+priorityClassName: homelab-interactive
+
 # Service configuration
 service:
   main:
