@@ -122,8 +122,12 @@ The March 2026 incident analysis initially assumed kured was handling node reboo
 - Risk of service disruption and data loss during unplanned reboots
 
 **To deploy kured (recommended for future resilience):**
+
+Kured deploys automatically via ArgoCD's root-app (app-of-apps pattern). It's already in git, so ArgoCD will deploy it within ~3 minutes.
+
+For immediate deployment without waiting:
 ```bash
-make kured-deploy  # Deploys via ArgoCD (GitOps-managed)
+make kured-deploy  # Optional: manually trigger ArgoCD Application creation
 ```
 
 Kured will:

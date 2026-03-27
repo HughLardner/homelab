@@ -15,10 +15,24 @@ Kured watches for the `/var/run/reboot-required` sentinel file (created by `apt`
 
 ## Deployment
 
-Deployed via ArgoCD (sync wave 4):
+### GitOps (Automatic)
+
+Kured is deployed automatically via the ArgoCD root-app (app-of-apps pattern). Once you push this directory to git, ArgoCD will:
+
+1. Detect `kubernetes/services/kured/application.yaml`
+2. Add kubereboot Helm repository
+3. Deploy kured DaemonSet to kube-system namespace
+4. Configure from `values.yaml`
+5. Monitor and self-heal automatically
+
+**No manual deployment needed** - just push to git and wait ~3 minutes for ArgoCD to sync.
+
+### Manual Deployment (Optional)
+
+For immediate deployment without waiting for ArgoCD's sync interval:
 
 ```bash
-# Deploy via ArgoCD
+# Manually trigger deployment via ArgoCD
 make kured-deploy
 
 # Check status
@@ -28,11 +42,7 @@ make kured-status
 make kured-logs
 ```
 
-ArgoCD will automatically:
-1. Add kubereboot Helm repository
-2. Deploy kured DaemonSet to kube-system namespace
-3. Configure from `values.yaml`
-4. Monitor and self-heal
+**Note:** This is optional - the root-app will deploy kured automatically after it's pushed to git.
 
 ## Configuration
 

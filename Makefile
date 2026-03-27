@@ -494,10 +494,13 @@ authelia-logs:
 	kubectl logs -n authelia -l app.kubernetes.io/name=authelia -f --tail=50
 
 kured-deploy:
-	@echo "Deploying Kured via ArgoCD..."
+	@echo "⚠️  Note: Kured deploys automatically via root-app (GitOps)"
+	@echo "   This command is optional - use it to trigger immediate sync"
+	@echo ""
+	@echo "Manually deploying Kured Application to ArgoCD..."
 	kubectl apply -f kubernetes/services/kured/application.yaml
 	@echo ""
-	@echo "✅ Kured application deployed!"
+	@echo "✅ Kured Application created in ArgoCD!"
 	@echo ""
 	@echo "Monitor sync status:"
 	@echo "  kubectl get application kured -n argocd"
