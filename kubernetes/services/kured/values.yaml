@@ -1,0 +1,161 @@
+# Kured (Kubernetes Reboot Daemon) Configuration
+# Handles automated, safe node reboots after kernel updates
+# Documentation: https://github.com/kubereboot/kured
+
+# Container image
+image:
+  repository: ghcr.io/kubereboot/kured
+  tag: 1.15.1
+  pullPolicy: IfNotPresent
+
+# Update strategy
+updateStrategy: RollingUpdate
+
+# Maintenance window (UTC time)
+# Nodes will only reboot during this window
+# Default: 04:00-08:00 UTC (midnight-4am Eastern, 4am-8am GMT)
+configuration:
+  # Reboot window (start-end in UTC, 24-hour format)
+  startTime: "04:00"
+  endTime: "08:00"
+
+  # Timezone for maintenance window (optional, uses UTC if not set)
+  # timeZone: "America/New_York"
+
+  # Check period (how often to check for reboot-required sentinel)
+  period: "15m"
+
+  # Reboot delay after acquiring lock
+  rebootDelay: "1m"
+
+  # Force reboot after this duration even if pods won't drain
+  # Set to 0 to never force reboot
+  drainTimeout: "0"
+
+  # Skip waiting for pod deletion confirmation
+  skipWaitForDeleteTimeout: "0"
+
+  # Reboot sentinel file (created by apt/yum after kernel updates)
+  # Default: /var/run/reboot-required (Ubuntu/Debian)
+  # Alternative for RHEL/CentOS: /var/run/reboot-required or custom
+  rebootSentinel: "/var/run/reboot-required"
+
+  # Prefer sentinel command over sentinel file
+  # Example: "[ -e /var/run/reboot-required ]"
+  # rebootSentinelCommand: ""
+
+  # Pre-reboot node labels (add these labels before rebooting)
+  # Useful for alerting or routing traffic away
+  # preRebootNodeLabels: ["kured-reboot-in-progress"]
+
+  # Post-reboot node labels (add these after reboot completes)
+  # postRebootNodeLabels: ["kured-rebooted"]
+
+  # Prometheus metrics
+  metricsHost: "0.0.0.0"
+  metricsPort: 8080
+
+  # Node selection
+  # Reboot nodes matching these labels/annotations only
+  # nodeSelector: {}
+
+  # Concurrency - maximum number of nodes rebooting simultaneously
+  # For single-node clusters: 1 (only one node can reboot at a time)
+  # For multi-node clusters: 1 is safest, increase for faster updates
+  concurrency: 1
+
+  # Slack notifications (optional)
+  # slackHookUrl: "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK"
+  # slackChannel: "#kured-notifications"
+  # slackUsername: "kured"
+
+  # Microsoft Teams notifications (optional)
+  # teamsHookUrl: "https://outlook.office.com/webhook/YOUR/TEAMS/WEBHOOK"
+
+  # Notify before and after reboot
+  # notifyUrl: ""
+
+  # Additional command-line flags
+  # See: https://github.com/kubereboot/kured#configuration
+  extraArgs: {}
+    # Example: Annotate nodes instead of rebooting (dry-run mode)
+    # annotate-nodes: "true"
+
+    # Example: Disable leader election (single-node clusters)
+    # lock-release-delay: "0"
+
+# Resource limits
+resources:
+  requests:
+    cpu: 10m
+    memory: 32Mi
+  limits:
+    cpu: 100m
+    memory: 64Mi
+
+# Tolerations (allow running on control-plane nodes)
+tolerations:
+  - key: node-role.kubernetes.io/control-plane
+    operator: Exists
+    effect: NoSchedule
+  - key: node-role.kubernetes.io/master
+    operator: Exists
+    effect: NoSchedule
+
+# Service account
+serviceAccount:
+  create: true
+  name: kured
+
+# RBAC
+rbac:
+  create: true
+
+# Pod security context
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65534  # nobody user
+  fsGroup: 65534
+
+# Security context
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+  privileged: false
+
+# Priority class (ensures kured stays running during resource pressure)
+priorityClassName: system-cluster-critical
+
+# Pod annotations
+podAnnotations: {}
+
+# Pod labels
+podLabels: {}
+
+# Node selector (which nodes to run kured on)
+nodeSelector: {}
+  # Example: Only run on control-plane nodes
+  # node-role.kubernetes.io/control-plane: ""
+
+# Affinity rules
+affinity: {}
+
+# Service for Prometheus metrics scraping
+service:
+  create: true
+  port: 8080
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8080"
+    prometheus.io/path: "/metrics"
+
+# Service monitor for Prometheus Operator
+serviceMonitor:
+  create: false
+  namespace: monitoring
+  labels: {}
+  interval: 60s
+  scrapeTimeout: 30s

@@ -495,16 +495,18 @@ authelia-logs:
 
 kured-deploy:
 	@echo "Deploying Kured via ArgoCD..."
-	kubectl apply -f kubernetes/applications/kured/application.yaml
+	kubectl apply -f kubernetes/services/kured/application.yaml
 	@echo ""
 	@echo "✅ Kured application deployed!"
 	@echo ""
 	@echo "Monitor sync status:"
-	@echo "  make apps-status"
+	@echo "  kubectl get application kured -n argocd"
 	@echo "  make kured-status"
 	@echo ""
 	@echo "💡 Maintenance Window: 04:00-08:00 UTC"
-	@echo "📖 Documentation: kubernetes/services/kured/README.md"
+	@echo "💡 Reboot sentinel: /var/run/reboot-required (created by apt)"
+	@echo ""
+	@echo "Configuration: kubernetes/services/kured/values.yaml"
 
 kured-status:
 	@echo "Kured Status:"

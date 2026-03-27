@@ -123,16 +123,22 @@ The March 2026 incident analysis initially assumed kured was handling node reboo
 
 **To deploy kured (recommended for future resilience):**
 ```bash
-make kured-install  # or: cd ansible && ansible-playbook playbooks/kured-install.yml
+make kured-deploy  # Deploys via ArgoCD (GitOps-managed)
 ```
 
 Kured will:
 - Detect when kernel updates require a reboot (via `/var/run/reboot-required`)
+- Wait for configured maintenance window (04:00-08:00 UTC)
+- Cordon the node to prevent new pod scheduling
 - Drain pods from the node before rebooting
-- Reboot nodes during configured maintenance windows
-- Coordinate reboots across the cluster (single-node safe)
+- Reboot the node
+- Uncordon the node after it comes back online
+- Coordinate reboots across the cluster (concurrency: 1 node at a time)
 
-**Ansible playbook location:** `ansible/playbooks/kured-install.yml`
+**Configuration location:** `kubernetes/services/kured/`
+- `values.yaml` - Kured configuration (maintenance window, concurrency, etc.)
+- `application.yaml` - ArgoCD Application manifest (sync wave 4)
+- `README.md` - Comprehensive documentation and troubleshooting guide
 
 ### 9. If you increase capacity
 

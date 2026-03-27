@@ -1,0 +1,48 @@
+---
+# ArgoCD Application for Kured (Kubernetes Reboot Daemon)
+# Handles automated, safe node reboots after kernel updates
+# Sync Wave 4: After core platform services are running
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kured
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+    # Wave 4: Platform utilities — after ingress (wave 3)
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+
+  sources:
+    # Kured Helm Chart (upstream)
+    - repoURL: https://kubereboot.github.io/charts
+      chart: kured
+      targetRevision: 5.5.1
+      helm:
+        releaseName: kured
+        valueFiles:
+          - $values/kubernetes/services/kured/values.yaml
+
+    # Values reference
+    - repoURL: https://github.com/HughLardner/homelab.git
+      targetRevision: HEAD
+      ref: values
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kube-system  # Kured runs in kube-system
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false  # kube-system already exists
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
