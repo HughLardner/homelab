@@ -96,7 +96,13 @@ homeassistant:
 
   # Home Assistant configuration
   configuration:
-    enabled: true
+    # Disabled because the upstream chart's built-in setup-config init container
+    # does not support resources, and namespace ResourceQuota requires requests
+    # and limits for every container (including init containers).
+    # Keep false unless the chart adds init-container resources support.
+    enabled: false
+    # forceInit is ignored while configuration.enabled=false.
+    # Keep the desired value documented here for future re-enable.
     # forceInit: false — configuration.yaml already contains the required
     # `homeassistant: packages: !include_dir_merge_named packages` line.
     # Setting true causes the expensive yq merge to run on EVERY pod restart,
