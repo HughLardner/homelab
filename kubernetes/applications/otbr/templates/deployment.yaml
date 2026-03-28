@@ -1,0 +1,63 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: otbr
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: otbr
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate  # Thread network state is singular
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: otbr
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: otbr
+    spec:
+      priorityClassName: {{ .Values.priorityClassName }}
+      hostNetwork: true  # Required for mDNS
+      dnsPolicy: ClusterFirstWithHostNet
+      containers:
+        - name: otbr
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: web
+              containerPort: {{ .Values.services.otbr.web_ui_port | default 80 }}
+              protocol: TCP
+            - name: rest-api
+              containerPort: {{ .Values.services.otbr.rest_api_port | default 8081 }}
+              protocol: TCP
+          env:
+            - name: OTBR_AGENT_OPTS
+              value: "-I {{ .Values.services.otbr.mdns_interface }} spinel+hdlc+tcp://{{ .Values.services.otbr.thread_rcp_url }}"
+            - name: OTBR_WEB_PORT
+              value: {{ .Values.services.otbr.web_ui_port | default 80 | quote }}
+            - name: OTBR_REST_LISTEN_ADDR
+              value: "0.0.0.0"
+            - name: OTBR_REST_LISTEN_PORT
+              value: {{ .Values.services.otbr.rest_api_port | default 8081 | quote }}
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/thread
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          livenessProbe:
+            tcpSocket:
+              port: rest-api
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /node/state
+              port: rest-api
+            initialDelaySeconds: 15
+            periodSeconds: 10
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: otbr-data

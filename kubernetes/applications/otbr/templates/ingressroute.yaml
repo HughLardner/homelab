@@ -1,0 +1,28 @@
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: otbr
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    gethomepage.dev/enabled: "true"
+    gethomepage.dev/group: "Home Automation"
+    gethomepage.dev/name: "Thread Border Router"
+    gethomepage.dev/icon: "openthread"
+    gethomepage.dev/description: "Thread/Matter border router"
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`{{ .Values.services.otbr.domain }}`)
+      kind: Rule
+      {{- if .Values.services.otbr.auth_enabled }}
+      middlewares:
+        - name: authelia-auth
+          namespace: authelia
+      {{- end }}
+      services:
+        - name: otbr
+          port: 80
+  tls:
+    secretName: otbr-tls

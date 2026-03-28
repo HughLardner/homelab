@@ -1,0 +1,13 @@
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: otbr-tls
+  namespace: {{ .Release.Namespace }}
+spec:
+  secretName: otbr-tls
+  issuerRef:
+    name: {{ .Values.global.cert_issuer | default "letsencrypt-prod" }}
+    kind: ClusterIssuer
+  dnsNames:
+    - {{ .Values.services.otbr.domain }}
