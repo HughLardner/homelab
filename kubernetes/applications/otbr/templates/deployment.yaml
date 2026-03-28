@@ -47,6 +47,8 @@ spec:
               value: "0"
             - name: DNS64
               value: "0"
+            - name: FIREWALL
+              value: "0"
             - name: WEB_GUI
               value: "1"
             - name: REST_API

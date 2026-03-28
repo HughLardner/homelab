@@ -77,4 +77,5 @@ kubectl delete pvc otbr-data -n home-automation
 **iptables/ip6tables permission errors:**
 - Container requires NET_ADMIN, NET_RAW, and SYS_MODULE capabilities
 - Verify securityContext is properly configured in deployment
-- NAT64/DNS64 are disabled by default to avoid additional iptables complexity
+- NAT64/DNS64/FIREWALL are disabled by default to avoid iptables/ip6tables complexity
+- OTBR only needs basic Thread networking, not routing/NAT features
