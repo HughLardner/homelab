@@ -25,6 +25,12 @@ spec:
         - name: otbr
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            capabilities:
+              add:
+                - NET_ADMIN
+                - NET_RAW
+                - SYS_MODULE
           ports:
             - name: web
               containerPort: {{ .Values.services.otbr.web_ui_port | default 80 }}
@@ -33,14 +39,20 @@ spec:
               containerPort: {{ .Values.services.otbr.rest_api_port | default 8081 }}
               protocol: TCP
           env:
-            - name: OTBR_AGENT_OPTS
-              value: "-I {{ .Values.services.otbr.mdns_interface }} spinel+hdlc+tcp://{{ .Values.services.otbr.thread_rcp_url }}"
+            - name: RADIO_URL
+              value: "spinel+hdlc+tcp://{{ .Values.services.otbr.thread_rcp_url }}"
+            - name: BACKBONE_INTERFACE
+              value: {{ .Values.services.otbr.mdns_interface | default "ens18" | quote }}
+            - name: NAT64
+              value: "0"
+            - name: DNS64
+              value: "0"
+            - name: WEB_GUI
+              value: "1"
+            - name: REST_API
+              value: "1"
             - name: OTBR_WEB_PORT
               value: {{ .Values.services.otbr.web_ui_port | default 80 | quote }}
-            - name: OTBR_REST_LISTEN_ADDR
-              value: "0.0.0.0"
-            - name: OTBR_REST_LISTEN_PORT
-              value: {{ .Values.services.otbr.rest_api_port | default 8081 | quote }}
           volumeMounts:
             - name: data
               mountPath: /var/lib/thread

@@ -8,6 +8,7 @@ Bridges Home Assistant with the Thread radio on the SLZB-MR3U coordinator for Th
 - **Namespace:** home-automation
 - **Wave:** 7 (after Home Assistant)
 - **Network:** hostNetwork: true (required for mDNS)
+- **Security:** NET_ADMIN, NET_RAW, SYS_MODULE capabilities (for iptables/network management)
 - **Storage:** 1Gi Longhorn PVC for Thread network state
 
 ## Configuration
@@ -66,7 +67,14 @@ kubectl delete pvc otbr-data -n home-automation
 - Test TCP connectivity: `telnet 192.168.40.185 6638`
 - Check SLZB-MR3U firmware and Thread radio enablement
 
-**Pod fails to start:**
+**Pod fails to start (CrashLoopBackOff):**
 - Check logs: `kubectl logs -n home-automation -l app.kubernetes.io/name=otbr`
 - Verify SLZB-MR3U device is accessible from cluster network
 - Ensure no port conflicts on host network
+- If iptables errors: verify NET_ADMIN, NET_RAW, SYS_MODULE capabilities are set
+- If "Permission denied" errors: check securityContext in deployment.yaml
+
+**iptables/ip6tables permission errors:**
+- Container requires NET_ADMIN, NET_RAW, and SYS_MODULE capabilities
+- Verify securityContext is properly configured in deployment
+- NAT64/DNS64 are disabled by default to avoid additional iptables complexity
