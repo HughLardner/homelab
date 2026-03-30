@@ -48,18 +48,8 @@ spec:
               value: "false"
             - name: BACKBONE_INTERFACE
               value: {{ .Values.services.otbr.mdns_interface | default "ens18" | quote }}
-            - name: NAT64
-              value: "0"
-            - name: DNS64
-              value: "0"
-            - name: FIREWALL
-              value: "0"
             - name: WEB_GUI
-              value: "1"
-            - name: REST_API
-              value: "1"
-            - name: OTBR_WEB_PORT
-              value: {{ .Values.services.otbr.web_ui_port | default 80 | quote }}
+              value: "true"
           volumeMounts:
             - name: data
               mountPath: /var/lib/thread
