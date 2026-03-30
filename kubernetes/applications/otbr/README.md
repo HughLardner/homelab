@@ -79,5 +79,14 @@ kubectl delete pvc otbr-data -n home-automation
 **iptables/ip6tables permission errors:**
 - Container requires NET_ADMIN, NET_RAW, and SYS_MODULE capabilities
 - Verify securityContext is properly configured in deployment
-- NAT64/DNS64/FIREWALL are disabled by default to avoid iptables/ip6tables complexity
-- OTBR only needs basic Thread networking, not routing/NAT features
+- Init container sets up required IPv6 networking prerequisites for TREL:
+  - Creates ipsets (otbr-ingress-deny-src, etc.)
+  - Enables IPv6 forwarding
+  - Sets ip6tables policy to ACCEPT
+- TREL (Thread Radio Encapsulation Link) requires these prerequisites before binding
+
+**TREL binding errors ("No such device"):**
+- TREL requires IPv6 networking and ipsets to be configured first
+- Init container handles this setup automatically
+- If errors persist, check that ip6tables and ipset commands are available in container
+- TREL is used for Thread-over-IP but is not essential for basic RCP functionality
