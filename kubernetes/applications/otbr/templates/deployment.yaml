@@ -21,6 +21,34 @@ spec:
       priorityClassName: {{ .Values.priorityClassName }}
       hostNetwork: true  # Required for mDNS
       dnsPolicy: ClusterFirstWithHostNet
+      initContainers:
+        - name: setup-networking
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          securityContext:
+            privileged: true
+            capabilities:
+              add:
+                - NET_ADMIN
+                - NET_RAW
+          command:
+            - /bin/bash
+            - -c
+            - |
+              echo "Setting up networking prerequisites for TREL..."
+
+              # Create ipsets (even if firewall is disabled, OTBR expects these to exist)
+              ipset create -exist otbr-ingress-deny-src hash:net family inet6 || true
+              ipset create -exist otbr-ingress-deny-src-swap hash:net family inet6 || true
+              ipset create -exist otbr-ingress-allow-dst hash:net family inet6 || true
+              ipset create -exist otbr-ingress-allow-dst-swap hash:net family inet6 || true
+
+              # Ensure IPv6 forwarding is enabled
+              echo 1 > /proc/sys/net/ipv6/conf/all/forwarding || true
+
+              # Set ip6tables to ACCEPT (similar to HA approach when firewall is disabled)
+              ip6tables -P FORWARD ACCEPT 2>/dev/null || true
+
+              echo "Networking setup complete."
       containers:
         - name: otbr
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
