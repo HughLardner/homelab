@@ -44,12 +44,16 @@ spec:
               value: {{ .Values.services.otbr.thread_rcp_url | quote }}
             - name: RCP_PORT
               value: "6638"
-            - name: FLOW_CONTROL
-              value: "false"
-            - name: BACKBONE_INTERFACE
+            - name: OTBR_RCP_ADDITIONAL_ARGS
+              value: ""
+            - name: OTBR_BACKBONE_IF
               value: {{ .Values.services.otbr.mdns_interface | default "ens18" | quote }}
             - name: OTBR_WEB_ENABLE
-              value: "true"
+              value: "1"
+            - name: OTBR_WEB_PORT
+              value: {{ .Values.services.otbr.web_ui_port | default 80 | quote }}
+            - name: OTBR_REST_LISTEN_PORT
+              value: {{ .Values.services.otbr.rest_api_port | default 8081 | quote }}
           volumeMounts:
             - name: data
               mountPath: /var/lib/thread
