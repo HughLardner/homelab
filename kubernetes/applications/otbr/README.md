@@ -4,12 +4,14 @@ Bridges Home Assistant with the Thread radio on the SLZB-MR3U coordinator for Th
 
 ## Architecture
 
-- **Image:** openthread/otbr:latest
+- **Image:** bnutzer/otbr-tcp:latest (adds TCP RCP support vs official openthread/otbr)
 - **Namespace:** home-automation
 - **Wave:** 7 (after Home Assistant)
 - **Network:** hostNetwork: true (required for mDNS)
 - **Security:** NET_ADMIN, NET_RAW, SYS_MODULE capabilities (for iptables/network management)
 - **Storage:** 1Gi Longhorn PVC for Thread network state
+
+**Why bnutzer/otbr-tcp?** The official OpenThread OTBR image doesn't support TCP connections to network-based Thread radios. This custom image adds TCP support specifically for devices like the SLZB-MR3U that expose Thread over TCP.
 
 ## Configuration
 

@@ -1,5 +1,5 @@
 image:
-  repository: openthread/otbr
+  repository: bnutzer/otbr-tcp
   tag: latest
   pullPolicy: IfNotPresent
 
