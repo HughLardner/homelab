@@ -21,41 +21,6 @@ spec:
       priorityClassName: {{ .Values.priorityClassName }}
       hostNetwork: true  # Required for mDNS
       dnsPolicy: ClusterFirstWithHostNet
-      initContainers:
-        - name: setup-networking
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-          securityContext:
-            privileged: true
-            capabilities:
-              add:
-                - NET_ADMIN
-                - NET_RAW
-          command:
-            - /bin/bash
-            - -c
-            - |
-              echo "Setting up networking prerequisites for TREL..."
-
-              # Create ipsets (even if firewall is disabled, OTBR expects these to exist)
-              ipset create -exist otbr-ingress-deny-src hash:net family inet6 || true
-              ipset create -exist otbr-ingress-deny-src-swap hash:net family inet6 || true
-              ipset create -exist otbr-ingress-allow-dst hash:net family inet6 || true
-              ipset create -exist otbr-ingress-allow-dst-swap hash:net family inet6 || true
-
-              # Ensure IPv6 forwarding is enabled
-              echo 1 > /proc/sys/net/ipv6/conf/all/forwarding || true
-
-              # Set ip6tables to ACCEPT (similar to HA approach when firewall is disabled)
-              ip6tables -P FORWARD ACCEPT 2>/dev/null || true
-
-              echo "Networking setup complete."
-          resources:
-            requests:
-              cpu: 10m
-              memory: 32Mi
-            limits:
-              cpu: 100m
-              memory: 64Mi
       containers:
         - name: otbr
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
@@ -67,6 +32,49 @@ spec:
                 - NET_ADMIN
                 - NET_RAW
                 - SYS_MODULE
+          command:
+            - /bin/bash
+            - -c
+            - |
+              # Start dbus
+              mkdir -p /var/run/dbus
+              dbus-daemon --system --nofork --nopidfile &
+
+              # Start socat for TCP RCP connection
+              if [ ! -z "${RCP_HOST}" ]; then
+                echo "Starting socat for TCP connection to ${RCP_HOST}:${RCP_PORT}..."
+                socat -d -d pty,raw,echo=0,wait-slave,ignoreeof,link=/tmp/ttyOTBR tcp:${RCP_HOST}:${RCP_PORT},nodelay,keepalive,forever,interval=5 &
+                sleep 2
+              fi
+
+              # Create ipsets (OTBR expects these to exist)
+              ipset create -exist otbr-ingress-deny-src hash:net family inet6 || true
+              ipset create -exist otbr-ingress-deny-src-swap hash:net family inet6 || true
+              ipset create -exist otbr-ingress-allow-dst hash:net family inet6 || true
+              ipset create -exist otbr-ingress-allow-dst-swap hash:net family inet6 || true
+
+              # Enable IPv6 forwarding
+              echo 1 > /proc/sys/net/ipv6/conf/all/forwarding || true
+              ip6tables -P FORWARD ACCEPT 2>/dev/null || true
+
+              # Start otbr-web if enabled
+              if [ "${OTBR_WEB_ENABLE}" = "1" ]; then
+                echo "Starting otbr-web on port ${OTBR_WEB_PORT}..."
+                otbr-web &
+              fi
+
+              # Wait for /var/lib/thread directory
+              mkdir -p /var/lib/thread
+
+              # Start otbr-agent WITHOUT TREL (only RCP radio)
+              echo "Starting otbr-agent..."
+              exec /usr/sbin/otbr-agent \
+                -I wpan0 \
+                -B ${OTBR_BACKBONE_IF} \
+                --rest-listen-address 0.0.0.0 \
+                --rest-listen-port ${OTBR_REST_LISTEN_PORT} \
+                -d6 -v -s \
+                "spinel+hdlc+uart:///tmp/ttyOTBR?uart-baudrate=460800"
           ports:
             - name: web
               containerPort: {{ .Values.services.otbr.web_ui_port | default 80 }}
