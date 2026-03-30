@@ -39,8 +39,8 @@ spec:
               containerPort: {{ .Values.services.otbr.rest_api_port | default 8081 }}
               protocol: TCP
           env:
-            - name: RADIO_URL
-              value: "spinel+hdlc+tcp://{{ .Values.services.otbr.thread_rcp_url }}"
+            - name: RCP_HOST
+              value: {{ .Values.services.otbr.thread_rcp_url | quote }}
             - name: BACKBONE_INTERFACE
               value: {{ .Values.services.otbr.mdns_interface | default "ens18" | quote }}
             - name: NAT64
