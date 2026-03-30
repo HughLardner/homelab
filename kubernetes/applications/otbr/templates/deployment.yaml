@@ -58,14 +58,29 @@ spec:
                 done
               fi
 
+              # Ensure backbone interface has IPv6 enabled
+              echo "Enabling IPv6 on ${OTBR_BACKBONE_IF}..."
+              sysctl -w net.ipv6.conf.${OTBR_BACKBONE_IF}.disable_ipv6=0 || true
+              sysctl -w net.ipv6.conf.all.disable_ipv6=0 || true
+              sysctl -w net.ipv6.conf.default.disable_ipv6=0 || true
+
+              # Enable IPv6 forwarding
+              sysctl -w net.ipv6.conf.all.forwarding=1 || true
+              sysctl -w net.ipv6.conf.${OTBR_BACKBONE_IF}.forwarding=1 || true
+
+              # Ensure interface is up
+              ip link set ${OTBR_BACKBONE_IF} up || true
+
+              # Wait a moment for IPv6 to initialize
+              sleep 2
+
               # Create ipsets (OTBR expects these to exist)
               ipset create -exist otbr-ingress-deny-src hash:net family inet6 || true
               ipset create -exist otbr-ingress-deny-src-swap hash:net family inet6 || true
               ipset create -exist otbr-ingress-allow-dst hash:net family inet6 || true
               ipset create -exist otbr-ingress-allow-dst-swap hash:net family inet6 || true
 
-              # Enable IPv6 forwarding
-              echo 1 > /proc/sys/net/ipv6/conf/all/forwarding || true
+              # Set ip6tables policy
               ip6tables -P FORWARD ACCEPT 2>/dev/null || true
 
               # Wait for /var/lib/thread directory
