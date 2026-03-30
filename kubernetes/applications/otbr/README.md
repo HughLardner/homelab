@@ -10,8 +10,15 @@ Bridges Home Assistant with the Thread radio on the SLZB-MR3U coordinator for Th
 - **Network:** hostNetwork: true (required for mDNS)
 - **Security:** NET_ADMIN, NET_RAW, SYS_MODULE capabilities (for iptables/network management)
 - **Storage:** 1Gi Longhorn PVC for Thread network state
+- **TREL:** Disabled (Thread Radio Encapsulation Link not needed with working RCP)
 
 **Why bnutzer/otbr-tcp?** The official OpenThread OTBR image doesn't support TCP connections to network-based Thread radios. This custom image adds TCP support specifically for devices like the SLZB-MR3U that expose Thread over TCP.
+
+**Custom startup:** Container uses custom command to start services manually:
+- Starts dbus and socat for RCP TCP connection
+- Sets up IPv6 networking prerequisites
+- Starts otbr-agent with ONLY RCP radio (TREL disabled to avoid binding errors)
+- This provides all essential Thread Border Router functionality
 
 ## Configuration
 
@@ -76,17 +83,14 @@ kubectl delete pvc otbr-data -n home-automation
 - If iptables errors: verify NET_ADMIN, NET_RAW, SYS_MODULE capabilities are set
 - If "Permission denied" errors: check securityContext in deployment.yaml
 
+**TREL binding errors ("No such device"):**
+- TREL (Thread Radio Encapsulation Link) is disabled by default in this deployment
+- TREL provides Thread-over-IP but is not essential when RCP radio connection is working
+- Custom startup command starts otbr-agent with ONLY the RCP radio URL
+- If you need TREL, modify the command in deployment.yaml to add `"trel://${OTBR_BACKBONE_IF}"`
+
 **iptables/ip6tables permission errors:**
 - Container requires NET_ADMIN, NET_RAW, and SYS_MODULE capabilities
 - Verify securityContext is properly configured in deployment
-- Init container sets up required IPv6 networking prerequisites for TREL:
-  - Creates ipsets (otbr-ingress-deny-src, etc.)
-  - Enables IPv6 forwarding
-  - Sets ip6tables policy to ACCEPT
-- TREL (Thread Radio Encapsulation Link) requires these prerequisites before binding
-
-**TREL binding errors ("No such device"):**
-- TREL requires IPv6 networking and ipsets to be configured first
-- Init container handles this setup automatically
-- If errors persist, check that ip6tables and ipset commands are available in container
-- TREL is used for Thread-over-IP but is not essential for basic RCP functionality
+- Custom startup command creates required ipsets and sets IPv6 forwarding
+- These are created even when firewall features are disabled
