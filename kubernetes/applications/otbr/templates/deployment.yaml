@@ -26,6 +26,7 @@ spec:
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           securityContext:
+            privileged: true
             capabilities:
               add:
                 - NET_ADMIN
