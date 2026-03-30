@@ -43,8 +43,19 @@ spec:
               # Start socat for TCP RCP connection
               if [ ! -z "${RCP_HOST}" ]; then
                 echo "Starting socat for TCP connection to ${RCP_HOST}:${RCP_PORT}..."
-                socat -d -d pty,raw,echo=0,wait-slave,ignoreeof,link=/tmp/ttyOTBR tcp:${RCP_HOST}:${RCP_PORT},nodelay,keepalive,forever,interval=5 &
-                sleep 2
+                socat -d -d -ly \
+                  pty,link=/tmp/ttyOTBR,raw,echo=0,wait-slave,ignoreeof \
+                  tcp:${RCP_HOST}:${RCP_PORT},nodelay,keepalive,forever,interval=5 &
+
+                # Wait for symlink to be created
+                echo "Waiting for /tmp/ttyOTBR to be ready..."
+                for i in {1..10}; do
+                  if [ -L /tmp/ttyOTBR ]; then
+                    echo "/tmp/ttyOTBR is ready"
+                    break
+                  fi
+                  sleep 0.5
+                done
               fi
 
               # Create ipsets (OTBR expects these to exist)
@@ -57,24 +68,44 @@ spec:
               echo 1 > /proc/sys/net/ipv6/conf/all/forwarding || true
               ip6tables -P FORWARD ACCEPT 2>/dev/null || true
 
-              # Start otbr-web if enabled
-              if [ "${OTBR_WEB_ENABLE}" = "1" ]; then
-                echo "Starting otbr-web on port ${OTBR_WEB_PORT}..."
-                otbr-web &
-              fi
-
               # Wait for /var/lib/thread directory
               mkdir -p /var/lib/thread
 
               # Start otbr-agent WITHOUT TREL (only RCP radio)
               echo "Starting otbr-agent..."
-              exec /usr/sbin/otbr-agent \
+              /usr/sbin/otbr-agent \
                 -I wpan0 \
                 -B ${OTBR_BACKBONE_IF} \
                 --rest-listen-address 0.0.0.0 \
                 --rest-listen-port ${OTBR_REST_LISTEN_PORT} \
                 -d6 -v -s \
-                "spinel+hdlc+uart:///tmp/ttyOTBR?uart-baudrate=460800"
+                "spinel+hdlc+uart:///tmp/ttyOTBR?uart-baudrate=460800" &
+
+              AGENT_PID=$!
+
+              # Wait for otbr-agent to be ready (check REST API)
+              echo "Waiting for otbr-agent REST API..."
+              for i in {1..30}; do
+                if curl -s http://localhost:${OTBR_REST_LISTEN_PORT}/node/state >/dev/null 2>&1; then
+                  echo "otbr-agent is ready"
+                  break
+                fi
+                sleep 1
+              done
+
+              # Start otbr-web if enabled
+              if [ "${OTBR_WEB_ENABLE}" = "1" ]; then
+                echo "Starting otbr-web on port ${OTBR_WEB_PORT}..."
+                /usr/sbin/otbr-web \
+                  -I wpan0 \
+                  -d6 \
+                  -s \
+                  -p ${OTBR_WEB_PORT} \
+                  -a 0.0.0.0 &
+              fi
+
+              # Wait for otbr-agent to exit (keep container running)
+              wait $AGENT_PID
           ports:
             - name: web
               containerPort: {{ .Values.services.otbr.web_ui_port | default 80 }}
