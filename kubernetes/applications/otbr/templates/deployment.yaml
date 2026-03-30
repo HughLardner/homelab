@@ -41,6 +41,10 @@ spec:
           env:
             - name: RCP_HOST
               value: {{ .Values.services.otbr.thread_rcp_url | quote }}
+            - name: RCP_PORT
+              value: "6638"
+            - name: FLOW_CONTROL
+              value: "false"
             - name: BACKBONE_INTERFACE
               value: {{ .Values.services.otbr.mdns_interface | default "ens18" | quote }}
             - name: NAT64
