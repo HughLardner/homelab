@@ -48,7 +48,7 @@ spec:
               value: "false"
             - name: BACKBONE_INTERFACE
               value: {{ .Values.services.otbr.mdns_interface | default "ens18" | quote }}
-            - name: WEB_GUI
+            - name: OTBR_WEB_ENABLE
               value: "true"
           volumeMounts:
             - name: data
