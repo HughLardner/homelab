@@ -58,21 +58,50 @@ spec:
                 done
               fi
 
-              # Ensure backbone interface has IPv6 enabled
-              echo "Enabling IPv6 on ${OTBR_BACKBONE_IF}..."
-              sysctl -w net.ipv6.conf.${OTBR_BACKBONE_IF}.disable_ipv6=0 || true
-              sysctl -w net.ipv6.conf.all.disable_ipv6=0 || true
-              sysctl -w net.ipv6.conf.default.disable_ipv6=0 || true
+              # Debug: Show available network interfaces
+              echo "Available network interfaces:"
+              ip link show
 
-              # Enable IPv6 forwarding
-              sysctl -w net.ipv6.conf.all.forwarding=1 || true
-              sysctl -w net.ipv6.conf.${OTBR_BACKBONE_IF}.forwarding=1 || true
+              echo "Checking for ${OTBR_BACKBONE_IF}..."
+              if ip link show ${OTBR_BACKBONE_IF} >/dev/null 2>&1; then
+                echo "Found ${OTBR_BACKBONE_IF}"
 
-              # Ensure interface is up
-              ip link set ${OTBR_BACKBONE_IF} up || true
+                # Ensure backbone interface has IPv6 enabled
+                echo "Enabling IPv6 on ${OTBR_BACKBONE_IF}..."
+                sysctl -w net.ipv6.conf.${OTBR_BACKBONE_IF}.disable_ipv6=0 || true
+                sysctl -w net.ipv6.conf.all.disable_ipv6=0 || true
+                sysctl -w net.ipv6.conf.default.disable_ipv6=0 || true
 
-              # Wait a moment for IPv6 to initialize
-              sleep 2
+                # Enable IPv6 forwarding
+                sysctl -w net.ipv6.conf.all.forwarding=1 || true
+                sysctl -w net.ipv6.conf.${OTBR_BACKBONE_IF}.forwarding=1 || true
+
+                # Ensure interface is up
+                ip link set ${OTBR_BACKBONE_IF} up || true
+
+                # Wait a moment for IPv6 to initialize
+                sleep 2
+              else
+                echo "ERROR: ${OTBR_BACKBONE_IF} not found!"
+                echo "Attempting to auto-detect primary interface..."
+
+                # Find first non-loopback interface
+                AUTO_IF=$(ip -o link show | grep -v loopback | awk '{print $2}' | sed 's/:$//' | head -n1)
+                if [ ! -z "$AUTO_IF" ]; then
+                  echo "Auto-detected interface: $AUTO_IF"
+                  export OTBR_BACKBONE_IF=$AUTO_IF
+
+                  # Enable IPv6 on auto-detected interface
+                  sysctl -w net.ipv6.conf.${OTBR_BACKBONE_IF}.disable_ipv6=0 || true
+                  sysctl -w net.ipv6.conf.all.disable_ipv6=0 || true
+                  sysctl -w net.ipv6.conf.all.forwarding=1 || true
+                  sysctl -w net.ipv6.conf.${OTBR_BACKBONE_IF}.forwarding=1 || true
+                  ip link set ${OTBR_BACKBONE_IF} up || true
+                  sleep 2
+                else
+                  echo "WARNING: Could not auto-detect network interface, OTBR may not work correctly"
+                fi
+              fi
 
               # Create ipsets (OTBR expects these to exist)
               ipset create -exist otbr-ingress-deny-src hash:net family inet6 || true
