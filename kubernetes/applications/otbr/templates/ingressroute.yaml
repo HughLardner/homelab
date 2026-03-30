@@ -18,7 +18,7 @@ spec:
       kind: Rule
       {{- if .Values.services.otbr.auth_enabled }}
       middlewares:
-        - name: authelia-auth
+        - name: authelia-forward-auth
           namespace: authelia
       {{- end }}
       services:
