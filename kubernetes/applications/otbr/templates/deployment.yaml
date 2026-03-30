@@ -49,6 +49,13 @@ spec:
               ip6tables -P FORWARD ACCEPT 2>/dev/null || true
 
               echo "Networking setup complete."
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
       containers:
         - name: otbr
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
