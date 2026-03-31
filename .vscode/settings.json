@@ -25,6 +25,18 @@
   "yaml.validate": false,
 
   // Prettier - use .prettierignore
-  "prettier.ignorePath": ".prettierignore"
+  "prettier.ignorePath": ".prettierignore",
+
+  // Claude Code environment variables for kubectl access
+  "claudeCode.environmentVariables": [
+    {
+      "name": "PATH",
+      "value": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+    },
+    {
+      "name": "KUBECONFIG",
+      "value": "/Users/hlardner/.kube/config-homelab"
+    }
+  ]
 }
 
