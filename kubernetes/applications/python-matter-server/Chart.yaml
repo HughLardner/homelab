@@ -3,4 +3,4 @@ name: python-matter-server
 description: Python Matter Server for Home Assistant Matter device integration
 type: application
 version: 1.0.0
-appVersion: "6.7.0"
+appVersion: "stable"

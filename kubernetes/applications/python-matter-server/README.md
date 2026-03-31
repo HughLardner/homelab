@@ -4,7 +4,7 @@ Official Python implementation of the Matter protocol server for Home Assistant.
 
 ## Architecture
 
-- **Image:** ghcr.io/home-assistant-libs/python-matter-server:6.7.0
+- **Image:** ghcr.io/matter-js/python-matter-server:stable
 - **Namespace:** home-automation
 - **Wave:** 7 (after Home Assistant, alongside OTBR)
 - **Network:** hostNetwork: true (required for Matter mDNS/commissioning)

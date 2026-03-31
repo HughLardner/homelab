@@ -19,9 +19,10 @@ auth_enabled: false
 priorityClassName: homelab-standard
 
 image:
-  repository: ghcr.io/home-assistant-libs/python-matter-server
+  repository: ghcr.io/matter-js/python-matter-server
   # Pin to stable release: https://github.com/home-assistant-libs/python-matter-server/releases
-  tag: "6.7.0"
+  # Published under matter-js organization
+  tag: "stable"
   pullPolicy: IfNotPresent
 
 # Service configuration
