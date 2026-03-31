@@ -160,7 +160,7 @@ spec:
       app.kubernetes.io/name: traefik
   podMetricsEndpoints:
     - port: metrics
-      interval: "30s"
+      interval: "60s"  # Reduced from 30s (ingress metrics don't need sub-minute resolution)
       path: /metrics
 
 ---
@@ -182,7 +182,7 @@ spec:
       app.kubernetes.io/name: argocd-application-controller
   podMetricsEndpoints:
     - port: metrics
-      interval: "30s"
+      interval: "60s"
       path: /metrics
 
 ---
@@ -201,7 +201,7 @@ spec:
       app.kubernetes.io/name: argocd-server
   podMetricsEndpoints:
     - port: metrics
-      interval: "30s"
+      interval: "60s"
       path: /metrics
 
 ---
@@ -220,7 +220,7 @@ spec:
       app.kubernetes.io/name: argocd-repo-server
   podMetricsEndpoints:
     - port: metrics
-      interval: "30s"
+      interval: "60s"
       path: /metrics
 
 ---
@@ -241,7 +241,7 @@ spec:
       app: longhorn-manager
   endpoints:
     - port: manager
-      interval: "30s"
+      interval: "60s"
       path: /metrics
 
 ---

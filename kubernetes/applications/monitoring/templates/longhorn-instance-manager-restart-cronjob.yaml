@@ -1,0 +1,145 @@
+{{- if .Values.services.monitoring.longhorn_instance_manager_restart_enabled }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: longhorn-instance-manager-restart
+  namespace: monitoring
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: longhorn-instance-manager-restart
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "delete"]
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: longhorn-instance-manager-restart
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: longhorn-instance-manager-restart
+subjects:
+  - kind: ServiceAccount
+    name: longhorn-instance-manager-restart
+    namespace: monitoring
+
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: longhorn-instance-manager-restart
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: longhorn-instance-manager-restart
+    app.kubernetes.io/component: maintenance
+spec:
+  # Every 6 hours at :07 (avoids :00/:30 API load spikes)
+  schedule: {{ .Values.services.monitoring.longhorn_instance_manager_restart_schedule | default "7 2,8,14,20 * * *" | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      ttlSecondsAfterFinished: 86400  # 24 hours
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: longhorn-instance-manager-restart
+            app.kubernetes.io/component: maintenance
+        spec:
+          serviceAccountName: longhorn-instance-manager-restart
+          restartPolicy: OnFailure
+          priorityClassName: homelab-standard
+          containers:
+            - name: restart-check
+              image: bitnami/kubectl:latest
+              imagePullPolicy: IfNotPresent
+              command:
+                - /bin/sh
+                - -ec
+                - |
+                  echo "=== Longhorn instance-manager restart check $(date -Iseconds) ==="
+
+                  # Memory threshold in bytes (1GB = 1073741824 bytes)
+                  MEMORY_THRESHOLD_BYTES=1073741824
+                  MEMORY_THRESHOLD_GB=1
+
+                  # Get all instance-manager pods
+                  PODS=$(kubectl get pods -n longhorn-system \
+                    -l longhorn.io/component=instance-manager \
+                    -o jsonpath='{.items[*].metadata.name}')
+
+                  if [ -z "$PODS" ]; then
+                    echo "No instance-manager pods found"
+                    exit 0
+                  fi
+
+                  echo "Found instance-manager pods: $PODS"
+
+                  RESTART_COUNT=0
+
+                  for POD in $PODS; do
+                    # Get memory usage from kubectl top
+                    MEMORY_USAGE=$(kubectl top pod -n longhorn-system "$POD" --no-headers 2>/dev/null | awk '{print $2}')
+
+                    if [ -z "$MEMORY_USAGE" ]; then
+                      echo "⚠️  Could not get memory usage for $POD (pod may be starting)"
+                      continue
+                    fi
+
+                    echo "Pod $POD memory usage: $MEMORY_USAGE"
+
+                    # Convert memory to bytes (handles Mi/Gi suffixes)
+                    MEMORY_BYTES=0
+                    if echo "$MEMORY_USAGE" | grep -q "Gi"; then
+                      MEMORY_GB=$(echo "$MEMORY_USAGE" | sed 's/Gi//')
+                      MEMORY_BYTES=$(echo "$MEMORY_GB * 1073741824" | bc | cut -d. -f1)
+                    elif echo "$MEMORY_USAGE" | grep -q "Mi"; then
+                      MEMORY_MB=$(echo "$MEMORY_USAGE" | sed 's/Mi//')
+                      MEMORY_BYTES=$(echo "$MEMORY_MB * 1048576" | bc | cut -d. -f1)
+                    fi
+
+                    echo "  Converted to bytes: $MEMORY_BYTES (threshold: $MEMORY_THRESHOLD_BYTES)"
+
+                    if [ "$MEMORY_BYTES" -gt "$MEMORY_THRESHOLD_BYTES" ]; then
+                      echo "⚠️  Pod $POD exceeds ${MEMORY_THRESHOLD_GB}GB threshold - restarting"
+
+                      # Get pod age before deleting
+                      POD_AGE=$(kubectl get pod -n longhorn-system "$POD" -o jsonpath='{.metadata.creationTimestamp}')
+                      echo "  Pod age: $POD_AGE"
+
+                      # Delete pod (Longhorn will recreate it)
+                      kubectl delete pod -n longhorn-system "$POD" --grace-period=30
+
+                      RESTART_COUNT=$((RESTART_COUNT + 1))
+                    else
+                      echo "✅ Pod $POD memory usage is healthy"
+                    fi
+                  done
+
+                  if [ "$RESTART_COUNT" -gt 0 ]; then
+                    echo "=== Restarted $RESTART_COUNT instance-manager pod(s) ==="
+                  else
+                    echo "=== No restarts needed - all instance-managers healthy ==="
+                  fi
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  cpu: 200m
+                  memory: 128Mi
+              env:
+                - name: HOME
+                  value: /tmp
+{{- end }}

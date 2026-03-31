@@ -65,3 +65,14 @@ data:
 
   # Evict replicas when a node is cordoned, reducing recovery I/O later.
   node-drain-policy: "block-for-eviction-if-contains-last-replica"
+
+  # ---------------------------------------------------------------------------
+  # Resource limits for system-managed components
+  # ---------------------------------------------------------------------------
+
+  # Instance manager memory limit (MB). Default: no limit.
+  # March 2026: Memory leak identified (200MB → 3.4GB over 19h = 180MB/h leak)
+  # Single-node 12GB cluster needs strict limits to prevent OOM cascades.
+  # Normal usage: 200-300MB. Limit set to 1536MB (1.5GB) allows 5-7x headroom
+  # for burst activity while preventing runaway memory leaks.
+  guaranteed-instance-manager-memory: "1536"

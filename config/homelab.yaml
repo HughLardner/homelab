@@ -85,6 +85,9 @@ services:
     # Mounted from Proxmox LV: /dev/pve/k8s-persistent-data (200GB)
     data_path: /mnt/longhorn-data
     ui_service_type: LoadBalancer
+    # Instance manager resource limits for single-node cluster
+    # Prevents memory leak from consuming all cluster memory (March 2026 issue)
+    instance_manager_memory_mb: 1536  # 1.5GB limit
 
   # ---------------------------------------------------------------------------
   # Monitoring Stack (VictoriaMetrics)
@@ -94,6 +97,15 @@ services:
     prometheus_storage_size: 10Gi
     prometheus_retention: 15d
     alertmanager_storage_size: 2Gi
+    # Reduced scrape frequencies to decrease API server load (March 2026 optimization)
+    instability_snapshot_schedule: "*/15 * * * *"  # Was every 5 min
+    traefik_scrape_interval: 60s  # Was 30s
+    argocd_scrape_interval: 60s   # Was 30s
+    longhorn_scrape_interval: 60s # Was 30s
+    # Longhorn instance-manager automated restart (Phase 3 - enable after Phase 1 stable)
+    longhorn_instance_manager_restart_enabled: false  # Set to true after 48h
+    longhorn_instance_manager_restart_schedule: "7 2,8,14,20 * * *"  # Every 6h
+    longhorn_instance_manager_restart_threshold_gb: 1
 
   # ---------------------------------------------------------------------------
   # MetalLB Load Balancer

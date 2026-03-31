@@ -240,6 +240,14 @@
       changed_when: "'patched' in min_avail.stdout"
       failed_when: false
 
+    - name: Set instance-manager memory limit (prevent memory leak OOM cascades)
+      ansible.builtin.shell: |
+        /usr/local/bin/k3s kubectl patch settings.longhorn.io -n {{ longhorn_namespace }} guaranteed-instance-manager-memory \
+          --type=merge -p '{"value":"{{ services.longhorn.instance_manager_memory_mb | default(1536) }}"}'
+      register: instance_mgr_memory
+      changed_when: "'patched' in instance_mgr_memory.stdout"
+      failed_when: false
+
     - name: Configure Longhorn default data path
       ansible.builtin.shell: |
         /usr/local/bin/k3s kubectl patch settings.longhorn.io -n {{ longhorn_namespace }} default-data-path \
