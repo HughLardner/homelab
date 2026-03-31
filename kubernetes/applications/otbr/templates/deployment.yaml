@@ -76,6 +76,12 @@ spec:
                 sysctl -w net.ipv6.conf.all.forwarding=1 || true
                 sysctl -w net.ipv6.conf.${OTBR_BACKBONE_IF}.forwarding=1 || true
 
+                # CRITICAL: Enable IPv6 Router Advertisement acceptance
+                # When forwarding=1, accept_ra must be =2 to receive RAs (required for Thread)
+                echo "Configuring IPv6 Router Advertisement acceptance..."
+                sysctl -w net.ipv6.conf.${OTBR_BACKBONE_IF}.accept_ra=2 || true
+                sysctl -w net.ipv6.conf.${OTBR_BACKBONE_IF}.accept_ra_rt_info_max_plen=128 || true
+
                 # Ensure interface is up
                 ip link set ${OTBR_BACKBONE_IF} up || true
 
@@ -96,6 +102,9 @@ spec:
                   sysctl -w net.ipv6.conf.all.disable_ipv6=0 || true
                   sysctl -w net.ipv6.conf.all.forwarding=1 || true
                   sysctl -w net.ipv6.conf.${OTBR_BACKBONE_IF}.forwarding=1 || true
+                  # CRITICAL: Enable IPv6 RA acceptance (required for Thread)
+                  sysctl -w net.ipv6.conf.${OTBR_BACKBONE_IF}.accept_ra=2 || true
+                  sysctl -w net.ipv6.conf.${OTBR_BACKBONE_IF}.accept_ra_rt_info_max_plen=128 || true
                   ip link set ${OTBR_BACKBONE_IF} up || true
                   sleep 2
                 else
