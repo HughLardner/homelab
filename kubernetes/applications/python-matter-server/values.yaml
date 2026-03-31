@@ -1,0 +1,84 @@
+# Python Matter Server for Home Assistant
+# https://github.com/home-assistant-libs/python-matter-server
+#
+# Connects Matter/Thread devices to Home Assistant via Matter protocol.
+# Works with OTBR for Thread connectivity.
+#
+# Home Assistant Integration:
+# Settings → Devices & Services → Add Integration → Matter (experimental)
+# Host: matter-server.home-automation.svc (or service ClusterIP)
+# Port: 5580 (default Matter server port)
+
+global:
+  domain: silverseekers.org
+  cert_issuer: letsencrypt-prod
+
+# Authelia protection for web UI (if enabled in future versions)
+auth_enabled: false
+
+priorityClassName: homelab-standard
+
+image:
+  repository: ghcr.io/home-assistant-libs/python-matter-server
+  # Pin to stable release: https://github.com/home-assistant-libs/python-matter-server/releases
+  tag: "6.7.0"
+  pullPolicy: IfNotPresent
+
+# Service configuration
+service:
+  port: 5580  # Matter server WebSocket port
+
+# Storage for Matter fabric and device credentials
+persistence:
+  enabled: true
+  size: 1Gi
+  storageClass: longhorn
+  mountPath: /data
+
+# Resource limits
+resources:
+  requests:
+    cpu: 50m
+    memory: 256Mi
+  limits:
+    cpu: "1"
+    memory: 512Mi
+
+# Environment variables
+env:
+  # Storage path for Matter credentials
+  - name: MATTER_SERVER_STORAGE_PATH
+    value: /data
+  # Log level (debug, info, warning, error)
+  - name: MATTER_SERVER_LOG_LEVEL
+    value: info
+  # Listen on all interfaces
+  - name: MATTER_SERVER_LISTEN_ADDRESS
+    value: "0.0.0.0"
+
+# Probes
+probes:
+  liveness:
+    enabled: true
+    tcpSocket:
+      port: 5580
+    initialDelaySeconds: 30
+    periodSeconds: 30
+    timeoutSeconds: 10
+    failureThreshold: 3
+  readiness:
+    enabled: true
+    tcpSocket:
+      port: 5580
+    initialDelaySeconds: 15
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+# Security context
+securityContext:
+  # Matter server needs network access for commissioning
+  capabilities:
+    add:
+      - NET_ADMIN
+      - NET_RAW

@@ -204,6 +204,15 @@ services:
     mdns_interface: "ens18"         # Proxmox VM interface
 
   # ---------------------------------------------------------------------------
+  # Python Matter Server
+  # Matter protocol handler for commissioning and controlling Matter devices
+  # Works with OTBR for Thread-based Matter devices
+  # ---------------------------------------------------------------------------
+  python_matter_server:
+    storage_size: 1Gi
+    storage_class: longhorn
+
+  # ---------------------------------------------------------------------------
   # Pi-hole DNS & Ad Blocker
   # ---------------------------------------------------------------------------
   pihole:
