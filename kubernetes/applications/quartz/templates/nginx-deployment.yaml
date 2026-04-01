@@ -33,20 +33,6 @@ spec:
           volumeMounts:
             - name: site-data
               mountPath: /usr/share/nginx/html
-        - name: wait-for-build
-          image: busybox:1.36
-          command: ["sh", "-c"]
-          args:
-            - |
-              echo "Waiting for Quartz build to complete..."
-              until [ -f /usr/share/nginx/html/output/index.html ] && ! grep -q "quartz-placeholder" /usr/share/nginx/html/output/index.html; do
-                echo "Build not ready yet, retrying in 15s..."
-                sleep 15
-              done
-              echo "Quartz build detected — nginx starting."
-          volumeMounts:
-            - name: site-data
-              mountPath: /usr/share/nginx/html
       containers:
         - name: nginx
           image: "{{ .Values.nginx.image.repository }}:{{ .Values.nginx.image.tag }}"

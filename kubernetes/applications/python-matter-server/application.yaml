@@ -30,12 +30,22 @@ spec:
     server: https://kubernetes.default.svc
     namespace: home-automation
 
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      name: matter-server
+      namespace: home-automation
+      jqPathExpressions:
+        - .spec.template.spec.containers[]?.livenessProbe.enabled
+        - .spec.template.spec.containers[]?.readinessProbe.enabled
+
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+      - RespectIgnoreDifferences=true
     retry:
       limit: 5
       backoff:

@@ -4,9 +4,9 @@
 
 **Strategy**: Layered bootstrap approach - critical services via Ansible, additional services via ArgoCD.
 
-**Status**: ✅ **ALL PHASES COMPLETE** - Single-node cluster fully operational with 15+ applications
+**Status**: ✅ **ALL PHASES COMPLETE** - Single-node cluster operational; see `docs/CLUSTER_STATE_SNAPSHOT_2026-04-02.md` for the latest drift review
 
-**Last Updated**: 2026-03-19
+**Last Updated**: 2026-04-02
 
 ---
 
@@ -21,13 +21,13 @@
 | 5 | **Monitoring** | ✅ Complete | Victoria Metrics + Grafana at https://grafana.silverseekers.org |
 | 6 | **Authelia** | ✅ Complete | SSO/2FA portal at https://auth.silverseekers.org |
 | 7 | **Platform Services** | ✅ Complete | Garage, Velero, Loki, Promtail, External-DNS, Cloudflared, Intel GPU |
-| 8 | **Applications** | ✅ Complete | 15 applications deployed (see Layer 4 below) |
+| 8 | **Applications** | ✅ Complete | 15 workload applications defined, including OTBR, Python Matter Server, and Matter Hub |
 
 ### Current Configuration
 
-- **Single-node deployment**: 1 VM with 12GB RAM, 100GB disk
+- **Repo desired infrastructure**: 1 VM with 14GB RAM, 100GB disk
 - **Node IP**: 192.168.10.20
-- **All services operational** on single node
+- **Current live node**: still running at ~12GB allocatable memory; see drift snapshot for repo-vs-live differences
 
 ---
 
@@ -54,7 +54,7 @@
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │ Layer 0: Infrastructure (Terraform)                              │
-│  ✅ Proxmox VM (192.168.10.20), 12GB RAM, 100GB disk             │
+│  ✅ Proxmox VM (192.168.10.20), repo target 14GB RAM, 100GB disk │
 └─────────────────────────────────────────────────────────────────┘
                               ↓
 ┌─────────────────────────────────────────────────────────────────┐
@@ -92,18 +92,19 @@
 ┌─────────────────────────────────────────────────────────────────┐
 │ Layer 4: Applications (ArgoCD)                                  │
 │  ✅ Homepage (homelab dashboard)                                │
-│  ✅ KEDA + KEDA HTTP (auto-scaling to zero)                     │
 │  ✅ Home Assistant (home automation, OIDC)                      │
+│  ✅ Home Assistant Matter Hub (Matter bridge)                   │
 │  ✅ Node-RED (IoT automation, OIDC)                             │
 │  ✅ Zigbee2MQTT (Zigbee via SMLIGHT SLZB TCP)                  │
 │  ✅ Mosquitto (MQTT broker)                                     │
-│  ✅ Plex (media server, Intel GPU transcoding, KEDA)            │
+│  ✅ OTBR + Python Matter Server (Thread/Matter stack)           │
+│  ✅ Plex (media server, Intel GPU transcoding)                  │
 │  ✅ Filebrowser (media upload UI)                               │
 │  ✅ Pi-hole (DNS ad-blocker @ 192.168.10.152)                   │
-│  ✅ Forgejo (self-hosted Git, KEDA)                             │
+│  ✅ Forgejo (self-hosted Git)                                   │
 │  ✅ Quartz (digital garden, public via Cloudflare Tunnel)       │
 │  ✅ Obsidian LiveSync (CouchDB)                                 │
-│  ✅ Headlamp (Kubernetes UI, KEDA)                              │
+│  ✅ Headlamp (Kubernetes UI)                                     │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -140,7 +141,7 @@
 ### Current State (Verified ✅)
 
 - ✅ Terraform infrastructure deployed
-- ✅ K3s cluster running (3 control plane nodes)
+- ✅ K3s cluster running (single control-plane node)
 - ✅ MetalLB installed (192.168.10.150-159)
 - ✅ KubeVIP configured (192.168.10.15)
 - ✅ kubectl access configured
@@ -1881,7 +1882,7 @@ kubectl delete namespace argocd
 - [x] Cloudflare integration working
 
 ### Phase 3 Complete ✅
-- [x] Traefik deployed with LoadBalancer (192.168.10.146)
+- [x] Traefik deployed with LoadBalancer (192.168.10.150)
 - [x] Dashboard accessible (https://traefik.silverseekers.org)
 - [x] HTTPS working with Let's Encrypt
 - [x] Test application routable
@@ -1968,4 +1969,4 @@ See individual service READMEs in `kubernetes/services/<service>/`
 
 **Plan Version**: 3.0
 **Last Updated**: 2026-03-19
-**Status**: ✅ Implementation Complete — Single-node cluster running 15+ applications (Proxmox VE 9)
+**Status**: ✅ Implementation Complete — Single-node cluster running 15 workload applications on Proxmox VE 9
