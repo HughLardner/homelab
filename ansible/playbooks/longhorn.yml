@@ -33,7 +33,7 @@
     - "{{ playbook_dir }}/../../config/homelab.yaml"
 
   vars:
-    longhorn_version: "v1.11.0"
+    longhorn_version: "v1.11.1"
     longhorn_namespace: "longhorn-system"
     longhorn_manifests_path: "{{ playbook_dir }}/../../kubernetes/services/longhorn"
     # Variables loaded from config/homelab.yaml via vars_files

@@ -1,6 +1,6 @@
 ---
 # Longhorn Sequential Upgrade Playbook
-# Upgrades Longhorn through each required minor version to reach v1.11.0
+# Upgrades Longhorn through each required minor version to reach v1.11.1
 #
 # Longhorn does NOT support skipping minor versions. This playbook handles
 # the full chain: v1.6 -> v1.7 -> v1.8 -> v1.9 -> v1.10 -> v1.11
@@ -20,7 +20,7 @@
 #   4. Verify volume health between each step
 #   5. Apply v1.11.0 hotfix images at the end
 
-- name: Upgrade Longhorn to v1.11.0
+- name: Upgrade Longhorn to v1.11.1
   hosts: k3s_masters[0]
   become: true
   gather_facts: true
@@ -34,14 +34,14 @@
     longhorn_data_path: "{{ services.longhorn.data_path | default('/var/lib/longhorn') }}"
     longhorn_ui_service_type: "{{ services.longhorn.ui_service_type | default('LoadBalancer') }}"
 
-    longhorn_target_version: "1.11.0"
+    longhorn_target_version: "1.11.1"
 
     longhorn_upgrade_chain:
       - "1.7.3"
       - "1.8.2"
       - "1.9.2"
       - "1.10.2"
-      - "1.11.0"
+      - "1.11.1"
 
   pre_tasks:
     - name: Wait for K3s to be ready
@@ -156,11 +156,11 @@
         loop_var: upgrade_target_version
 
     # =========================================================================
-    # NOTE: Longhorn hotfix images (e.g. v1.11.0-hotfix-1) cannot be applied
+    # NOTE: Longhorn hotfix images (e.g. v1.11.1-hotfix-1) cannot be applied
     # via Helm. Longhorn's upgrade path checker treats semver pre-release
     # suffixes as downgrades and rejects the upgrade. Hotfix images would
     # need to be applied by patching the DaemonSet/Deployment directly if
-    # needed. For now we stay on the base v1.11.0 images.
+    # needed. For now we stay on the base v1.11.1 images.
     # =========================================================================
 
     - name: Wait for longhorn-manager to fully stabilize
