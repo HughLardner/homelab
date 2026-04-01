@@ -23,8 +23,9 @@ Bridges Home Assistant with the Thread radio on the SLZB-MR3U coordinator for Th
 ## Configuration
 
 Configured via `config/homelab.yaml`:
-- `thread_rcp_url`: TCP endpoint to SLZB-MR3U Thread radio (192.168.40.185:6638)
-- `mdns_interface`: Node network interface for mDNS advertisement (ens18)
+- `thread_rcp_url`: TCP host/IP for SLZB-MR3U Thread RCP endpoint
+- `thread_rcp_port`: TCP port for Thread RCP Spinel stream (default 6638)
+- `mdns_interface`: Node network interface for mDNS advertisement (eth0 in this cluster)
 - `rest_api_port`: 8081 (Home Assistant integration)
 - `web_ui_port`: 80 (web UI)
 
@@ -72,9 +73,10 @@ kubectl delete pvc otbr-data -n home-automation
 - Ensure Home Assistant Thread integration is enabled
 
 **Cannot connect to Thread radio:**
-- Verify thread_rcp_url in config/homelab.yaml
-- Test TCP connectivity: `telnet 192.168.40.185 6638`
+- Verify `thread_rcp_url` and `thread_rcp_port` in `config/homelab.yaml`
+- Test TCP connectivity: `nc -vz 192.168.40.185 6638`
 - Check SLZB-MR3U firmware and Thread radio enablement
+- If TCP succeeds but logs show `P-SpinelDrive: Wait for response timeout`, treat it as a mode/protocol mismatch first (endpoint reachable but not providing Thread RCP Spinel stream)
 
 **Pod fails to start (CrashLoopBackOff):**
 - Check logs: `kubectl logs -n home-automation -l app.kubernetes.io/name=otbr`

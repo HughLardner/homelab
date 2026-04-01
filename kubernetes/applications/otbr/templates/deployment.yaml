@@ -42,6 +42,14 @@ spec:
 
               # Start socat for TCP RCP connection
               if [ ! -z "${RCP_HOST}" ]; then
+                echo "RCP endpoint configured: ${RCP_HOST}:${RCP_PORT}"
+                echo "Preflight: checking TCP connectivity to RCP endpoint..."
+                if timeout 3 bash -c ">/dev/tcp/${RCP_HOST}/${RCP_PORT}" 2>/dev/null; then
+                  echo "Preflight OK: TCP connection to ${RCP_HOST}:${RCP_PORT} succeeded"
+                else
+                  echo "WARNING: TCP preflight to ${RCP_HOST}:${RCP_PORT} failed; otbr-agent may timeout if endpoint is not an RCP stream"
+                fi
+
                 echo "Starting socat for TCP connection to ${RCP_HOST}:${RCP_PORT}..."
                 socat -d -d -ly \
                   pty,link=/tmp/ttyOTBR,raw,echo=0,wait-slave,ignoreeof \
@@ -56,6 +64,12 @@ spec:
                   fi
                   sleep 0.5
                 done
+
+                if [ -L /tmp/ttyOTBR ]; then
+                  ls -l /tmp/ttyOTBR || true
+                else
+                  echo "WARNING: /tmp/ttyOTBR symlink not found after wait period"
+                fi
               fi
 
               # Debug: Show available network interfaces
@@ -92,7 +106,7 @@ spec:
                 echo "Attempting to auto-detect primary interface..."
 
                 # Find first non-loopback interface
-                AUTO_IF=$(ip -o link show | grep -v loopback | awk '{print $2}' | sed 's/:$//' | head -n1)
+                AUTO_IF=$(ip -o link show | awk -F': ' '$2 != "lo" {print $2; exit}')
                 if [ ! -z "$AUTO_IF" ]; then
                   echo "Auto-detected interface: $AUTO_IF"
                   export OTBR_BACKBONE_IF=$AUTO_IF
@@ -168,9 +182,9 @@ spec:
               protocol: TCP
           env:
             - name: RCP_HOST
-              value: {{ .Values.services.otbr.thread_rcp_url | quote }}
+              value: "{{ .Values.services.otbr.thread_rcp_url }}"
             - name: RCP_PORT
-              value: "6638"
+              value: "{{ .Values.services.otbr.thread_rcp_port | default 6638 }}"
             - name: OTBR_RCP_ADDITIONAL_ARGS
               value: ""
             - name: OTBR_BACKBONE_IF

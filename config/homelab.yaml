@@ -210,6 +210,7 @@ services:
     storage_class: longhorn
     # Thread RCP connection to SLZB-MR3U Thread radio (IP address for bnutzer/otbr-tcp)
     thread_rcp_url: "192.168.40.185"
+    thread_rcp_port: 6638           # SLZB Thread RCP (TCP Spinel endpoint)
     rest_api_port: 8081             # Home Assistant integration
     web_ui_port: 80                 # Web UI (proxied via Traefik)
     # Network interface for mDNS advertisement (K3s node primary interface)

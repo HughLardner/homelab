@@ -81,6 +81,28 @@ kubectl -n <namespace> describe pod <pod-name>
 kubectl -n <namespace> logs <pod-or-deploy> --previous
 ```
 
+### OTBR: TCP reachable but Thread still fails
+
+Typical signature:
+
+- OTBR startup reaches socat and creates `/tmp/ttyOTBR`
+- logs show repeated `P-SpinelDrive: Wait for response timeout`
+
+Interpretation:
+
+- network path is up, but endpoint is likely not exposing a valid Thread RCP Spinel stream
+- treat as SLZB mode/endpoint mismatch before changing Kubernetes networking
+
+Checks:
+
+```bash
+kubectl -n home-automation logs deploy/otbr
+kubectl -n home-automation exec deploy/otbr -- sh -lc 'nc -vz 192.168.40.185 6638'
+kubectl -n home-automation exec deploy/otbr -- curl -s http://localhost:8081/node/state
+```
+
+If `nc` succeeds but Spinel still times out, validate SLZB mode and Thread endpoint configuration.
+
 ### Repo says one thing, live infra says another
 
 Example:
