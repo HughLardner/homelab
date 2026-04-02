@@ -28,6 +28,3 @@ services:
   minio:
     domain: minio.silverseekers.org
     console_domain: minio-console.silverseekers.org
-  home_assistant_matter_hub:
-    domain: matter-hub.silverseekers.org
-

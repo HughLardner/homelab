@@ -53,12 +53,6 @@ data:
 
   # Services — static groups below; Traefik IngressRoutes are still discovered via kubernetes.yaml
   services.yaml: |
-    - Matter:
-        - Matter Hub:
-            href: https://{{ .Values.services.home_assistant_matter_hub.domain }}
-            icon: home-assistant
-            description: Home Assistant Matter bridge (HAMH dashboard)
-
   # Bookmarks - quick links
   bookmarks.yaml: |
     - Developer:
