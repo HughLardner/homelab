@@ -25,6 +25,18 @@ Both automation features are adapted from [small-hack/home-assistant-chart](http
 - **URL**: https://home-assistant.silverseekers.org
 - **Authentication**: Authelia SSO via OIDC
 
+## Thread / OTBR Endpoint
+
+OTBR is hosted on the SLZB-MR3U device (not in-cluster). Configure Home Assistant integrations to use:
+
+- **OTBR REST URL:** `http://192.168.40.185:8080`
+
+Recommended checks after any OTBR or firmware change:
+
+```bash
+curl -sS http://192.168.40.185:8080/node/state
+```
+
 ## Architecture
 
 ```

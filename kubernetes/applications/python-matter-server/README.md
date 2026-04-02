@@ -6,7 +6,7 @@ Official Python implementation of the Matter protocol server for Home Assistant.
 
 - **Image:** ghcr.io/matter-js/python-matter-server:stable
 - **Namespace:** home-automation
-- **Wave:** 7 (after Home Assistant, alongside OTBR)
+- **Wave:** 7 (after Home Assistant)
 - **Network:** hostNetwork: true (required for Matter mDNS/commissioning)
 - **Security:** NET_ADMIN, NET_RAW capabilities (for network access during commissioning)
 - **Storage:** 1Gi Longhorn PVC for Matter fabric credentials and device data
@@ -26,10 +26,10 @@ Your setup has two complementary services:
 
 | Service | Purpose | Port |
 |---------|---------|------|
-| **OTBR** | Thread Border Router (network layer) | 8081 (REST API) |
+| **SLZB Device OTBR** | Thread Border Router (network layer) | 8080 (REST API) |
 | **Matter Server** | Matter protocol handler (application layer) | 5580 (WebSocket) |
 
-**Flow:** Matter device → Thread (via OTBR) → Matter Server → Home Assistant
+**Flow:** Matter device → Thread (via SLZB OTBR) → Matter Server → Home Assistant
 
 ## Configuration
 
@@ -67,8 +67,8 @@ Once the Matter integration is added:
 For Thread-based Matter devices:
 
 ```bash
-# Check OTBR is running and connected to Thread radio
-kubectl logs -n home-automation -l app.kubernetes.io/name=otbr
+# Check device-hosted OTBR REST endpoint is reachable
+curl -sS http://192.168.40.185:8080/node/state
 
 # Check Matter server logs
 kubectl logs -n home-automation -l app.kubernetes.io/name=matter-server
@@ -120,14 +120,13 @@ Matter credentials and device data are stored in the PVC at `/data`. This includ
 ### Cannot Commission Matter Devices
 
 - **Check hostNetwork:** Pod must use `hostNetwork: true` for mDNS
-- **Check OTBR:** Thread devices require OTBR to be running and connected
+- **Check OTBR:** Thread devices require SLZB device-hosted OTBR to be reachable at `http://192.168.40.185:8080`
 - **Check Thread integration:** Verify Thread integration is configured in HA
 - **Network firewall:** Ensure no firewall rules blocking Matter traffic
 
 ### Thread Devices Not Connecting
 
-- Verify OTBR is running: `kubectl get pods -n home-automation -l app.kubernetes.io/name=otbr`
-- Check OTBR connectivity to Thread radio (SLZB-MR3U at 192.168.40.185:6638)
+- Verify SLZB OTBR endpoint is up: `curl -sS http://192.168.40.185:8080/node/state`
 - Verify Thread network is active in HA Thread integration
 - Check device is within Thread network range
 
@@ -159,6 +158,6 @@ To update to a newer version:
 
 ## Related Documentation
 
-- [OTBR Setup](../otbr/README.md) - Thread Border Router configuration
+- [SLZB Thread setup](https://smlight.tech/support/manuals/books/slzb-06xmrxmrxuultima-series/page/thread-setup-network-and-usb-connection) - Device-hosted OTBR mode
 - [Home Assistant](../home-assistant/README.md) - Main HA deployment
 - [Matter Specification](https://csa-iot.org/all-solutions/matter/) - Official Matter protocol docs

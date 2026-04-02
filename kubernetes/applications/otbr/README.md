@@ -1,5 +1,8 @@
 # Open Thread Border Router (OTBR)
 
+> Status: in-cluster OTBR deployment is deprecated in this homelab.
+> SLZB-MR3U now runs OTBR directly on-device (`http://192.168.40.185:8080`).
+
 Bridges Home Assistant with the Thread radio on the SLZB-MR3U coordinator for Thread/Matter device integration.
 
 ## Architecture

@@ -81,27 +81,27 @@ kubectl -n <namespace> describe pod <pod-name>
 kubectl -n <namespace> logs <pod-or-deploy> --previous
 ```
 
-### OTBR: TCP reachable but Thread still fails
+### OTBR (device-hosted on SLZB): endpoint/drift checks
 
 Typical signature:
 
-- OTBR startup reaches socat and creates `/tmp/ttyOTBR`
-- logs show repeated `P-SpinelDrive: Wait for response timeout`
+- Home Assistant Thread integration cannot find or use OTBR
+- Matter-over-Thread commissioning fails despite Matter server being healthy
 
 Interpretation:
 
-- network path is up, but endpoint is likely not exposing a valid Thread RCP Spinel stream
-- treat as SLZB mode/endpoint mismatch before changing Kubernetes networking
+- OTBR now runs directly on SLZB; do not debug in-cluster OTBR pods
+- failures are usually endpoint reachability, device mode, or HA integration config drift
 
 Checks:
 
 ```bash
-kubectl -n home-automation logs deploy/otbr
-kubectl -n home-automation exec deploy/otbr -- sh -lc 'nc -vz 192.168.40.185 6638'
-kubectl -n home-automation exec deploy/otbr -- curl -s http://localhost:8081/node/state
+curl -sS http://192.168.40.185:8080/node/state
+kubectl -n home-assistant get pods
+kubectl -n home-automation get pods -l app.kubernetes.io/name=matter-server
 ```
 
-If `nc` succeeds but Spinel still times out, validate SLZB mode and Thread endpoint configuration.
+If the SLZB OTBR endpoint is healthy but HA still fails, re-check HA Thread/OpenThread Border Router integration target URL.
 
 ### Repo says one thing, live infra says another
 
