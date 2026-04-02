@@ -8,7 +8,7 @@ metadata:
     - resources-finalizer.argocd.argoproj.io
   annotations:
     argocd.argoproj.io/sync-wave: "7"
-    # After Home Assistant (wave 6) and OTBR (wave 7); HA needs Matter integration ready
+    # After Home Assistant (wave 6); HA can then attach its UI-configured Matter integration
 spec:
   project: default
 

@@ -30,12 +30,30 @@ Both automation features are adapted from [small-hack/home-assistant-chart](http
 OTBR is hosted on the SLZB-MR3U device (not in-cluster). Configure Home Assistant integrations to use:
 
 - **OTBR REST URL:** `http://192.168.40.185:8080`
+- **Matter Server URL:** `ws://matter-server.home-automation.svc.cluster.local:5580/ws`
 
 Recommended checks after any OTBR or firmware change:
 
 ```bash
 curl -sS http://192.168.40.185:8080/node/state
 ```
+
+## Matter Server
+
+Because this Home Assistant deployment runs in a container rather than Home
+Assistant OS, it cannot use the Supervisor Matter add-on. Instead, this repo
+deploys the standalone Python Matter Server in Kubernetes at
+`kubernetes/applications/python-matter-server`.
+
+The Matter integration itself is still configured in the Home Assistant UI:
+
+1. Go to **Settings → Devices & Services**
+2. Add the **Matter** integration
+3. Choose the existing/external Matter server option
+4. Enter `ws://matter-server.home-automation.svc.cluster.local:5580/ws`
+
+Keep the HA Thread integration pointed at the SLZB OTBR endpoint above for
+Thread-backed Matter devices.
 
 ## Architecture
 

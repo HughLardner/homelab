@@ -4,12 +4,17 @@ Official Python implementation of the Matter protocol server for Home Assistant.
 
 ## Architecture
 
-- **Image:** ghcr.io/matter-js/python-matter-server:stable
+- **Image:** ghcr.io/matter-js/python-matter-server:8.1.2
 - **Namespace:** home-automation
 - **Wave:** 7 (after Home Assistant)
 - **Network:** hostNetwork: true (required for Matter mDNS/commissioning)
 - **Security:** NET_ADMIN, NET_RAW capabilities (for network access during commissioning)
 - **Storage:** 1Gi Longhorn PVC for Matter fabric credentials and device data
+
+Home Assistant only officially supports the OS-managed Matter app. This homelab
+uses the upstream Matter server container instead, which is appropriate for a
+containerized Home Assistant deployment but should be treated as an advanced,
+operator-managed setup.
 
 ## What It Does
 
@@ -38,9 +43,17 @@ Configured via `config/homelab.yaml`:
 ```yaml
 services:
   python_matter_server:
+    image_tag: "8.1.2"
+    log_level: info
+    host_network: true
+    primary_interface: ""
     storage_size: 1Gi
     storage_class: longhorn
 ```
+
+`primary_interface` should stay empty unless commissioning or mDNS binds to the
+wrong NIC. Determine the correct override from the Matter server logs if you
+need to pin it explicitly.
 
 ## Home Assistant Integration
 
@@ -48,10 +61,10 @@ services:
 
 1. Navigate to **Settings → Devices & Services**
 2. Click **Add Integration**
-3. Search for **Matter (experimental)**
-4. Configure:
-   - **Host:** `matter-server.home-automation.svc.cluster.local` (or service ClusterIP)
-   - **Port:** `5580`
+3. Search for **Matter**
+4. When prompted to use an existing Matter server, provide:
+   - **URL:** `ws://matter-server.home-automation.svc.cluster.local:5580/ws`
+5. Finish the config flow in the UI
 
 ### 2. Commission Matter Devices
 
@@ -79,7 +92,8 @@ kubectl logs -n home-automation -l app.kubernetes.io/name=matter-server
 
 ## Access
 
-- **Service:** `matter-server.home-automation.svc:5580` (cluster-internal WebSocket)
+- **Service:** `matter-server.home-automation.svc:5580` (cluster-internal Service)
+- **WebSocket URL:** `ws://matter-server.home-automation.svc.cluster.local:5580/ws`
 - **Host Network:** Also accessible via node IP on port 5580 (for debugging)
 
 ## Verification
@@ -99,6 +113,13 @@ kubectl run -it --rm debug --image=curlimages/curl --restart=Never -- \
 kubectl get pvc -n home-automation matter-server-data
 ```
 
+If Home Assistant is already running, also verify the integration connects
+cleanly:
+
+```bash
+kubectl logs -n home-automation deployment/matter-server | rg "Started|Listening|WebSocket|interface"
+```
+
 ## Storage
 
 Matter credentials and device data are stored in the PVC at `/data`. This includes:
@@ -111,11 +132,11 @@ Matter credentials and device data are stored in the PVC at `/data`. This includ
 
 ## Troubleshooting
 
-### Matter Integration Not Discovered
+### Matter integration cannot connect
 
 - Verify the pod is running: `kubectl get pods -n home-automation`
 - Check Matter server logs for errors
-- Ensure Home Assistant can reach the service: `matter-server.home-automation.svc:5580`
+- Ensure Home Assistant is using the full URL: `ws://matter-server.home-automation.svc.cluster.local:5580/ws`
 
 ### Cannot Commission Matter Devices
 
@@ -123,6 +144,7 @@ Matter credentials and device data are stored in the PVC at `/data`. This includ
 - **Check OTBR:** Thread devices require SLZB device-hosted OTBR to be reachable at `http://192.168.40.185:8080`
 - **Check Thread integration:** Verify Thread integration is configured in HA
 - **Network firewall:** Ensure no firewall rules blocking Matter traffic
+- **Wrong NIC:** Set `services.python_matter_server.primary_interface` in `config/homelab.yaml` if the server binds to the wrong node interface
 
 ### Thread Devices Not Connecting
 
@@ -134,6 +156,14 @@ Matter credentials and device data are stored in the PVC at `/data`. This includ
 
 - Verify securityContext includes `NET_ADMIN` and `NET_RAW` capabilities
 - Check pod security policies aren't blocking the capabilities
+
+### Rollback
+
+If a Matter server change breaks commissioning:
+
+1. Revert the last repo change affecting `kubernetes/applications/python-matter-server`
+2. Let ArgoCD resync the application
+3. If fabric state is corrupted and you intentionally want a clean Matter fabric, delete `matter-server-data` only after confirming you are willing to re-pair devices
 
 ## Device Support
 
@@ -153,7 +183,7 @@ Both **Thread** and **Wi-Fi** based Matter devices are supported.
 To update to a newer version:
 
 1. Check releases: https://github.com/home-assistant-libs/python-matter-server/releases
-2. Update `image.tag` in [values.yaml](values.yaml)
+2. Update `services.python_matter_server.image_tag` in `config/homelab.yaml`
 3. Commit and push (ArgoCD will sync automatically)
 
 ## Related Documentation

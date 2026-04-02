@@ -216,6 +216,11 @@ services:
   # Works with OTBR for Thread-based Matter devices
   # ---------------------------------------------------------------------------
   python_matter_server:
+    image_tag: "8.1.2"
+    log_level: info
+    host_network: true
+    # Set the node NIC if commissioning or mDNS binds to the wrong interface.
+    primary_interface: ""
     storage_size: 1Gi
     storage_class: longhorn
 

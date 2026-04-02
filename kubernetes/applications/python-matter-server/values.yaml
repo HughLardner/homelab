@@ -6,8 +6,7 @@
 #
 # Home Assistant Integration:
 # Settings → Devices & Services → Add Integration → Matter (experimental)
-# Host: matter-server.home-automation.svc (or service ClusterIP)
-# Port: 5580 (default Matter server port)
+# URL: ws://matter-server.home-automation.svc.cluster.local:5580/ws
 
 global:
   domain: silverseekers.org
@@ -20,9 +19,8 @@ priorityClassName: homelab-standard
 
 image:
   repository: ghcr.io/matter-js/python-matter-server
-  # Pin to stable release: https://github.com/home-assistant-libs/python-matter-server/releases
-  # Published under matter-js organization
-  tag: "stable"
+  # Default tag; prefer overriding via config/homelab.yaml services.python_matter_server.image_tag
+  tag: "8.1.2"
   pullPolicy: IfNotPresent
 
 # Service configuration
@@ -36,6 +34,15 @@ persistence:
   storageClass: longhorn
   mountPath: /data
 
+network:
+  hostNetwork: true
+
+matterServer:
+  logLevel: info
+  listenAddress: "0.0.0.0"
+  primaryInterface: ""
+  extraArgs: []
+
 # Resource limits
 resources:
   requests:
@@ -45,17 +52,7 @@ resources:
     cpu: "1"
     memory: 512Mi
 
-# Environment variables
-env:
-  # Storage path for Matter credentials
-  - name: MATTER_SERVER_STORAGE_PATH
-    value: /data
-  # Log level (debug, info, warning, error)
-  - name: MATTER_SERVER_LOG_LEVEL
-    value: info
-  # Listen on all interfaces
-  - name: MATTER_SERVER_LISTEN_ADDRESS
-    value: "0.0.0.0"
+extraEnv: []
 
 # Probes
 probes:

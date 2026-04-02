@@ -22,18 +22,34 @@ spec:
     spec:
       priorityClassName: {{ .Values.priorityClassName }}
       # Use host network for mDNS/Matter commissioning
-      hostNetwork: true
-      dnsPolicy: ClusterFirstWithHostNet
+      hostNetwork: {{ .Values.services.python_matter_server.host_network | default .Values.network.hostNetwork }}
+      dnsPolicy: {{ if (.Values.services.python_matter_server.host_network | default .Values.network.hostNetwork) }}ClusterFirstWithHostNet{{ else }}ClusterFirst{{ end }}
       containers:
         - name: matter-server
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          image: "{{ .Values.image.repository }}:{{ .Values.services.python_matter_server.image_tag | default .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- if or (.Values.services.python_matter_server.primary_interface | default .Values.matterServer.primaryInterface) (gt (len .Values.matterServer.extraArgs) 0) }}
+          args:
+            {{- with (.Values.services.python_matter_server.primary_interface | default .Values.matterServer.primaryInterface) }}
+            - "--primary-interface"
+            - {{ . | quote }}
+            {{- end }}
+            {{- range .Values.matterServer.extraArgs }}
+            - {{ . | quote }}
+            {{- end }}
+          {{- end }}
           ports:
             - name: websocket
               containerPort: {{ .Values.service.port }}
               protocol: TCP
           env:
-            {{- range .Values.env }}
+            - name: MATTER_SERVER_STORAGE_PATH
+              value: {{ .Values.persistence.mountPath | quote }}
+            - name: MATTER_SERVER_LOG_LEVEL
+              value: {{ .Values.services.python_matter_server.log_level | default .Values.matterServer.logLevel | quote }}
+            - name: MATTER_SERVER_LISTEN_ADDRESS
+              value: {{ .Values.matterServer.listenAddress | quote }}
+            {{- range .Values.extraEnv }}
             - name: {{ .name }}
               value: {{ .value | quote }}
             {{- end }}
