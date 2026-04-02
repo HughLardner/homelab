@@ -32,10 +32,31 @@ OTBR is hosted on the SLZB-MR3U device (not in-cluster). Configure Home Assistan
 - **OTBR REST URL:** `http://192.168.40.185:8080`
 - **Matter Server URL:** `ws://matter-server.home-automation.svc.cluster.local:5580/ws`
 
+### VLAN and firewall prerequisites (critical)
+
+In this homelab, Home Assistant and SLZB are on different VLANs:
+- HA path: `192.168.10.0/24` (Homelab VLAN)
+- SLZB OTBR: `192.168.40.185` on `192.168.40.0/24` (IoT VLAN)
+
+Before troubleshooting HA integrations, confirm network policy allows:
+- HA -> SLZB OTBR on TCP `8080` (required)
+- Optional HA -> SLZB OTBR on TCP `80` (diagnostics/UI)
+
+For mobile Matter commissioning:
+- Avoid guest/client-isolated SSIDs during pairing.
+- If phone is on a different VLAN, ensure cross-VLAN mDNS reflection is enabled.
+- Ensure IPv6 is enabled for VLANs participating in Thread/Matter onboarding.
+- In this homelab, a phone on `Default` is still not the same onboarding LAN as
+  HA on `Homelab`; for the initial `Sync Thread Credentials` and Matter pairing
+  flow, use the trusted HA-side LAN/SSID first.
+
 Recommended checks after any OTBR or firmware change:
 
 ```bash
 curl -sS http://192.168.40.185:8080/node/state
+curl -sS http://192.168.40.185:8080/node/ba-id
+kubectl -n home-assistant exec home-assistant-0 -- \
+  curl -sS http://192.168.40.185:8080/node/state
 ```
 
 ## Matter Server

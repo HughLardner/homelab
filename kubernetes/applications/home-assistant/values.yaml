@@ -183,5 +183,7 @@ homeassistant:
       timeoutSeconds: 10
       failureThreshold: 5
 
-  # Host network disabled - not needed when using ingress
-  hostNetwork: false
+  # Home Assistant's Thread integration needs direct LAN visibility for OTBR
+  # border-agent discovery; REST access alone is not enough.
+  hostNetwork: true
+  dnsPolicy: ClusterFirstWithHostNet

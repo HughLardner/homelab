@@ -45,6 +45,23 @@ device-hosted OTBR endpoint:
 
 - OTBR REST URL: `http://192.168.40.185:8080`
 
+## VLAN and onboarding prerequisites
+
+Current homelab topology:
+- Home Assistant path: `192.168.10.0/24` (Homelab VLAN)
+- SLZB OTBR path: `192.168.40.0/24` (IoT VLAN)
+
+Live validation shows the OTBR endpoint is healthy and HA can already reach it.
+If the companion app still says no border routers are available, treat phone
+placement as a first-class prerequisite:
+
+- Do not use the `Guest` SSID for pairing.
+- Do not assume `Default` is equivalent to the HA LAN just because routing works.
+- For the Home Assistant mobile app `Sync Thread Credentials` step, place the
+  phone on the same trusted LAN/SSID path as Home Assistant during onboarding.
+- Keep IPv6 enabled on the participating VLANs. The SLZB OTBR-on-device mode
+  requires IPv6 on the LAN and exposes OTBR over `http://device-ip:8080`.
+
 ## Verification
 
 ```bash
@@ -55,6 +72,9 @@ kubectl get svc,pvc -n home-automation | rg "matter-server|matter-server-data"
 kubectl run -i --rm curl --image=curlimages/curl --restart=Never -- \
   curl -sS telnet://matter-server.home-automation.svc:5580
 curl -sS http://192.168.40.185:8080/node/state
+curl -sS http://192.168.40.185:8080/node/ba-id
+kubectl -n home-assistant exec home-assistant-0 -- \
+  curl -sS http://192.168.40.185:8080/node/state
 ```
 
 Success looks like:
@@ -83,6 +103,10 @@ Success looks like:
 
 - Confirm the SLZB OTBR endpoint is reachable at `http://192.168.40.185:8080`
 - Verify the Home Assistant Thread integration is healthy
+- If the phone is on `Default` while HA is on `Homelab`, re-test from the
+  Homelab SSID/LAN before changing firewall rules
+- If the phone must stay on another VLAN, verify cross-VLAN mDNS reflection and
+  same-network requirements for the HA companion app first
 
 ## Rollback
 
