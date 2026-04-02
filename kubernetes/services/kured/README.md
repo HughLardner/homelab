@@ -52,15 +52,20 @@ make kured-logs
 
 ```yaml
 configuration:
-  # Maintenance window (UTC)
-  startTime: "04:00"    # 4am UTC
-  endTime: "08:00"      # 8am UTC
+  # Maintenance window (Europe/Dublin local time)
+  startTime: "03:00"
+  endTime: "05:00"
+  timeZone: "Europe/Dublin"
 
   # Check period
   period: "15m"         # Check every 15 minutes
 
   # Reboot delay
   rebootDelay: "1m"     # Wait 60s before reboot
+
+  # Bound drain time on a single-node cluster
+  drainTimeout: "10m"
+  skipWaitForDeleteTimeout: "60"
 
   # Concurrency
   concurrency: 1        # Only 1 node reboots at a time
@@ -70,10 +75,10 @@ configuration:
 ```
 
 **Maintenance Window:**
-- Default: 04:00-08:00 UTC
-  - 11pm-3am EST (Eastern)
-  - 4am-8am GMT (UK)
-- Nodes will ONLY reboot during this window
+- Default: 03:00-05:00 Europe/Dublin local time
+- Kubernetes nodes will ONLY reboot during this window
+- The 2-hour window is intentional: it covers the 15-minute check cadence,
+  bounded drain time, reboot, and post-boot recovery
 - Updates detected outside the window wait until next window
 
 ## How It Works
@@ -109,6 +114,8 @@ configuration:
    ```
    - Gracefully evicts pods (respects PodDisruptionBudgets)
    - DaemonSets remain (kured, kube-proxy, etc.)
+   - In this repo, the drain is bounded to 10 minutes so a failed eviction
+     cannot leave the only node cordoned forever
 
 7. **Reboots node:**
    ```bash
@@ -188,7 +195,7 @@ level=info msg="Rebooting node"
 ssh ubuntu@192.168.10.20 "sudo touch /var/run/reboot-required"
 
 # Kured will detect on next check (within 15 minutes)
-# Reboot will occur during next maintenance window (04:00-08:00 UTC)
+# Reboot will occur during next maintenance window (03:00-05:00 Europe/Dublin)
 ```
 
 ### Dry Run Mode (annotate only, don't reboot)
@@ -236,13 +243,19 @@ serviceMonitor:
 
 **Current setup (single node):**
 - Concurrency: 1 (only node reboots)
-- During reboot: ~2-5 minutes of cluster downtime
-- All pods restart after node comes back
+- During reboot: brief full-cluster downtime is expected
+- Drain is bounded to 10 minutes before kured proceeds with reboot
+- All non-DaemonSet pods restart after the node comes back
 
 **Impact:**
 - Home automation may be unavailable during reboot
 - Monitoring gaps during reboot window
-- No cascading failures (only one node)
+- Longhorn volumes reconnect after boot, but there is no zero-downtime failover
+
+**Single-node safeguards in this repo:**
+- Traefik and Sealed Secrets do not use blocking PodDisruptionBudgets
+- Longhorn uses `always-allow` node drain policy when `infrastructure.node_count == 1`
+- If the node still fails to drain cleanly, the bounded timeout prevents an indefinite `SchedulingDisabled` state
 
 **Multi-node future:**
 - Concurrency: 1 (one node at a time)
@@ -272,10 +285,10 @@ kubectl logs -n kube-system -l app.kubernetes.io/name=kured --tail=50
 
 **Check current time vs maintenance window:**
 ```bash
-# Current UTC time
-date -u
+# Current local time used by kured
+TZ=Europe/Dublin date
 
-# Maintenance window: 04:00-08:00 UTC
+# Maintenance window: 03:00-05:00 Europe/Dublin
 ```
 
 **Check if another node has lock:**
@@ -300,6 +313,17 @@ kubectl get pods -A --field-selector spec.nodeName=homelab-node-0
 kubectl get pdb -A
 ```
 
+**Check whether the node is still cordoned:**
+```bash
+kubectl get nodes
+kubectl describe node homelab-node-0 | rg "Unschedulable|Taints" -A2 -B1
+```
+
+**Check recent scheduling failures:**
+```bash
+kubectl get events -A --sort-by=.lastTimestamp | rg "FailedScheduling|unschedulable|Preemption"
+```
+
 **Force reboot (emergency only):**
 ```bash
 # Via Proxmox console
@@ -316,8 +340,9 @@ ssh ubuntu@192.168.10.20 "sudo reboot now"
 1. Edit `kubernetes/services/kured/values.yaml`:
    ```yaml
    configuration:
-     startTime: "02:00"  # New start time (UTC)
-     endTime: "06:00"    # New end time (UTC)
+     startTime: "02:00"
+     endTime: "04:00"
+     timeZone: "Europe/Dublin"
    ```
 
 2. Commit and push changes
@@ -340,7 +365,7 @@ Or set `concurrency: 0` in values.yaml to pause reboots.
 
 - [Kured Documentation](https://github.com/kubereboot/kured)
 - [Kured Helm Chart](https://github.com/kubereboot/charts/tree/main/charts/kured)
-- Maintenance window: 04:00-08:00 UTC
+- Maintenance window: 03:00-05:00 Europe/Dublin
 - Reboot sentinel: `/var/run/reboot-required` (created by apt)
 - ArgoCD Application: `kubernetes/services/kured/application.yaml`
 - Configuration: `kubernetes/services/kured/values.yaml`

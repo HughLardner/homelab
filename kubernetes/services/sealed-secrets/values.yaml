@@ -40,8 +40,8 @@ replicas: 1
 
 # Pod disruption budget
 podDisruptionBudget:
-  enabled: true
-  minAvailable: 1
+  # Single-node cluster: blocking eviction here can deadlock a planned reboot.
+  enabled: false
 
 # Metrics
 metrics:

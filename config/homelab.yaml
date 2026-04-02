@@ -49,7 +49,7 @@ services:
   # ---------------------------------------------------------------------------
   traefik:
     domain: traefik.silverseekers.org
-    replicas: 2
+    replicas: 1
     service_type: LoadBalancer
     storage_class: longhorn
     traefik_ip: "192.168.10.150"

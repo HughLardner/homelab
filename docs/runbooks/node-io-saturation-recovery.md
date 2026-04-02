@@ -114,35 +114,39 @@ sudo systemctl restart systemd-journald
 
 ### 8. Graceful node reboots after kernel updates
 
-**Status:** Kured (Kubernetes Reboot Daemon) is NOT currently deployed.
+**Status:** Kured is deployed and now tuned for single-node operation.
 
-The March 2026 incident analysis initially assumed kured was handling node reboots, but the ansible playbook exists but was never executed. Without kured:
-- Node reboots after kernel updates are uncoordinated
-- Pods are not gracefully drained before reboot
-- Risk of service disruption and data loss during unplanned reboots
-
-**To deploy kured (recommended for future resilience):**
-
-Kured deploys automatically via ArgoCD's root-app (app-of-apps pattern). It's already in git, so ArgoCD will deploy it within ~3 minutes.
-
-For immediate deployment without waiting:
-```bash
-make kured-deploy  # Optional: manually trigger ArgoCD Application creation
-```
-
-Kured will:
+Current repo behavior:
 - Detect when kernel updates require a reboot (via `/var/run/reboot-required`)
-- Wait for configured maintenance window (04:00-08:00 UTC)
+- Wait for the configured maintenance window (`03:00-05:00` in `Europe/Dublin`)
 - Cordon the node to prevent new pod scheduling
-- Drain pods from the node before rebooting
+- Drain pods from the node before rebooting, but only for a bounded period
 - Reboot the node
 - Uncordon the node after it comes back online
 - Coordinate reboots across the cluster (concurrency: 1 node at a time)
+
+Single-node safeguards now expected during planned reboots:
+- Traefik and Sealed Secrets do not publish blocking PodDisruptionBudgets
+- Longhorn uses an `always-allow` node drain policy when the cluster has one node
+- Kured uses a `10m` drain timeout and `60s` skip-wait-for-delete timeout so the node cannot remain cordoned indefinitely
+
+Operational expectation:
+- a reboot is a short planned full-cluster outage, not a zero-downtime failover event
+- all non-DaemonSet pods will restart after the node returns
+- if the node is still `SchedulingDisabled` after the maintenance window, treat it as a failed reboot recovery and run the checks below
 
 **Configuration location:** `kubernetes/services/kured/`
 - `values.yaml` - Kured configuration (maintenance window, concurrency, etc.)
 - `application.yaml` - ArgoCD Application manifest (sync wave 4)
 - `README.md` - Comprehensive documentation and troubleshooting guide
+
+**Post-reboot verification:**
+```bash
+kubectl get nodes -o wide
+kubectl get pods -A --field-selector=status.phase!=Running
+kubectl get applications.argoproj.io -A
+kubectl get events -A --sort-by=.lastTimestamp | rg "FailedScheduling|unschedulable|Drain|Evict" -i
+```
 
 ### 9. If you increase capacity
 

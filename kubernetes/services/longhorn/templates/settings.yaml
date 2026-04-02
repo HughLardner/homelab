@@ -63,8 +63,10 @@ data:
   # Node drain / pod disruption
   # ---------------------------------------------------------------------------
 
-  # Evict replicas when a node is cordoned, reducing recovery I/O later.
-  node-drain-policy: "block-for-eviction-if-contains-last-replica"
+  # On a single-node cluster there is nowhere else to move the last replica, so
+  # allowing the drain is safer than leaving the only node permanently cordoned.
+  # Preserve the more protective multi-node default for future HA expansion.
+  node-drain-policy: "{{ if eq (int (default 1 .Values.infrastructure.node_count)) 1 }}always-allow{{ else }}block-for-eviction-if-contains-last-replica{{ end }}"
 
   # ---------------------------------------------------------------------------
   # Resource limits for system-managed components

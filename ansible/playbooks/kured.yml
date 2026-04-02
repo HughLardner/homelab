@@ -143,10 +143,12 @@
             Ready: {{ kured_ds_json.status.numberReady }}
 
           Maintenance Window:
-            Time: 04:00-08:00 UTC (configured in values.yaml)
+            Time: 03:00-05:00 Europe/Dublin (configured in values.yaml)
             Concurrency: 1 node at a time
             Check Period: Every 15 minutes
             Reboot Delay: 60 seconds
+            Drain Timeout: 10 minutes
+            Skip Wait For Delete Timeout: 60 seconds
 
           Reboot Sentinel:
             File: /var/run/reboot-required (Ubuntu/Debian)
@@ -155,10 +157,10 @@
           How It Works:
             1. System updates create /var/run/reboot-required
             2. Kured detects the file (checks every 15 min)
-            3. Waits for maintenance window (04:00-08:00 UTC)
+            3. Waits for maintenance window (03:00-05:00 Europe/Dublin)
             4. Acquires reboot lock (ensures single node)
             5. Cordons node (prevents new pods)
-            6. Drains node (evicts pods gracefully)
+            6. Drains node (evicts pods gracefully, but only for 10 minutes)
             7. Reboots node (systemctl reboot)
             8. Uncordons node when back online
 
@@ -168,7 +170,7 @@
             kubectl logs -n {{ kured_namespace }} -l app.kubernetes.io/name=kured
 
           Test Kured (creates reboot sentinel on one node):
-            ssh ubuntu@192.168.10.22 'sudo touch /var/run/reboot-required'
+            ssh ubuntu@192.168.10.20 'sudo touch /var/run/reboot-required'
             # Kured will reboot node during next maintenance window
 
           Check Pending Reboots:
@@ -185,7 +187,7 @@
           1. Monitor first automated reboot during maintenance window
           2. Configure Slack notifications (optional)
           3. Enable Prometheus metrics (when monitoring is ready)
-          4. Set up PodDisruptionBudgets for critical applications
+          4. Verify the node is no longer cordoned after the reboot
 
           ==========================================
 

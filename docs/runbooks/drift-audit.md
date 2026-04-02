@@ -23,6 +23,8 @@ kubectl get svc -A | rg "LoadBalancer|NAMESPACE"
 kubectl get applications.argoproj.io -A
 kubectl get pods -A --field-selector=status.phase!=Running
 kubectl get deploy,statefulset -A
+kubectl get pdb -A
+kubectl get events -A --sort-by=.lastTimestamp | rg "FailedScheduling|unschedulable|Evict|Drain" -i
 git rev-parse HEAD
 ```
 
@@ -81,6 +83,30 @@ kubectl -n <namespace> describe pod <pod-name>
 kubectl -n <namespace> logs <pod-or-deploy> --previous
 ```
 
+### Large `Pending` wave after a reboot window
+
+Typical signature:
+
+- many pods across unrelated namespaces are stuck in `Pending`
+- scheduler events say `node(s) were unschedulable`
+- the single node is `Ready` but also `SchedulingDisabled`
+
+Checks:
+
+```bash
+kubectl get nodes -o wide
+kubectl describe node homelab-node-0 | rg "Unschedulable|Taints|Ready" -A3 -B2
+kubectl get events -A --sort-by=.lastTimestamp | rg "FailedScheduling|unschedulable|Preemption" -i
+kubectl get pdb -A
+kubectl -n kube-system logs -l app.kubernetes.io/name=kured --since=24h
+```
+
+Interpretation:
+
+- if events only mention `node(s) were unschedulable`, the problem is usually a stuck cordon/drain rather than CPU or memory exhaustion
+- on this single-node cluster, check for blocking PDBs and Longhorn drain behavior before changing workload requests
+- if kured started a reboot but the node stayed cordoned, verify the node was uncordoned after boot and inspect the recent kured drain logs
+
 ### OTBR (device-hosted on SLZB): endpoint/drift checks
 
 Typical signature:
@@ -123,8 +149,10 @@ That indicates infra drift which needs Terraform / VM reconciliation rather than
 Re-run:
 
 ```bash
+kubectl get nodes -o wide
 kubectl get applications.argoproj.io -A
 kubectl get pods -A --field-selector=status.phase!=Running
+kubectl get events -A --sort-by=.lastTimestamp | rg "FailedScheduling|unschedulable|Evict|Drain" -i
 ```
 
 If the cluster is still not fully green, capture the new state in a dated `CLUSTER_STATE_SNAPSHOT_YYYY-MM-DD.md`.

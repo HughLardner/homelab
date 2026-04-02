@@ -169,8 +169,9 @@ priorityClassName: homelab-critical
 
 # Pod disruption budget
 podDisruptionBudget:
-  enabled: true
-  minAvailable: 1
+  # Single-node cluster: blocking voluntary eviction leaves the whole cluster
+  # cordoned during a reboot drain, so disable the PDB here.
+  enabled: false
 
 # Affinity rules (spread across nodes)
 affinity:

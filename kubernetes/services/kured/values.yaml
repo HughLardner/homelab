@@ -11,16 +11,17 @@ image:
 # Update strategy
 updateStrategy: RollingUpdate
 
-# Maintenance window (UTC time)
-# Nodes will only reboot during this window
-# Default: 04:00-08:00 UTC (midnight-4am Eastern, 4am-8am GMT)
+# Maintenance window for automated reboots.
+# These times are interpreted in the configured timezone below.
+# The current 03:00-05:00 Europe/Dublin window gives kured enough time to
+# detect a pending reboot, drain the single node, and let it return.
 configuration:
-  # Reboot window (start-end in UTC, 24-hour format)
-  startTime: "04:00"
-  endTime: "08:00"
+  # Reboot window in local wall-clock time for timeZone below.
+  startTime: "03:00"
+  endTime: "05:00"
 
   # Timezone for maintenance window (optional, uses UTC if not set)
-  # timeZone: "America/New_York"
+  timeZone: "Europe/Dublin"
 
   # Check period (how often to check for reboot-required sentinel)
   period: "15m"
@@ -28,12 +29,13 @@ configuration:
   # Reboot delay after acquiring lock
   rebootDelay: "1m"
 
-  # Force reboot after this duration even if pods won't drain
-  # Set to 0 to never force reboot
-  drainTimeout: "0"
+  # Bound drain time so the cluster cannot remain cordoned forever if an
+  # eviction hangs. In a single-node cluster this still implies a brief outage.
+  drainTimeout: "10m"
 
-  # Skip waiting for pod deletion confirmation
-  skipWaitForDeleteTimeout: "0"
+  # Stop waiting forever for pods that acknowledged eviction but never fully
+  # disappear. kubectl drain expects this value in seconds.
+  skipWaitForDeleteTimeout: "60"
 
   # Reboot sentinel file (created by apt/yum after kernel updates)
   # Default: /var/run/reboot-required (Ubuntu/Debian)
