@@ -11,6 +11,7 @@ This deployment includes:
 - **VMAlert** - Alert rule evaluation
 - **VMAlertmanager** - Alert routing and notifications
 - **Grafana** - Metrics visualization and dashboarding
+- **Loki Datasource** - Log queries for Kubernetes logs and external device syslog
 - **Node Exporter** - Host-level metrics
 - **Kube State Metrics** - Kubernetes object metrics
 
@@ -173,9 +174,16 @@ spec:
 **Features:**
 
 - Victoria Metrics datasource (Prometheus compatible)
+- Loki datasource for Kubernetes logs plus external device syslog
 - Pre-loaded dashboards
 - TLS via Traefik IngressRoute
 - Persistent storage for dashboards
+
+### External Device Logs
+
+Grafana can also query logs from LAN devices that send `RFC3164` syslog into the
+dedicated receiver in `kubernetes/services/syslog-receiver`. Use the existing
+Loki datasource and start with a LogQL filter such as `{job="slzb"}`.
 
 ## Service Scraping
 

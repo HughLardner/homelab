@@ -1,0 +1,26 @@
+global:
+  domain: silverseekers.org
+
+services:
+  syslog_receiver:
+    enabled: true
+    load_balancer_ip: "192.168.10.153"
+    service_port: 514
+    target_port: 5514
+    loki_url: http://loki.loki.svc:3100
+    replicas: 1
+    image:
+      repository: timberio/vector
+      tag: "0.37.1-debian"
+      pullPolicy: IfNotPresent
+    default_labels:
+      job: slzb
+      device: slzb-mr3u
+    resources:
+      requests:
+        cpu: 25m
+        memory: 64Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
+

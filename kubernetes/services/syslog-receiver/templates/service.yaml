@@ -1,0 +1,26 @@
+{{- if .Values.services.syslog_receiver.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: syslog-receiver
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: syslog-receiver
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: ingest
+  annotations:
+    metallb.io/loadBalancerIPs: "{{ .Values.services.syslog_receiver.load_balancer_ip }}"
+spec:
+  type: LoadBalancer
+  externalTrafficPolicy: Local
+  ports:
+    - name: syslog-udp
+      port: {{ .Values.services.syslog_receiver.service_port }}
+      targetPort: syslog-udp
+      protocol: UDP
+  selector:
+    app.kubernetes.io/name: syslog-receiver
+    app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end }}
+

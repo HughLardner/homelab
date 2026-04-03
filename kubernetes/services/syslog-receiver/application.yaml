@@ -1,0 +1,49 @@
+---
+# ArgoCD Application for Syslog Receiver
+# Dedicated UDP syslog intake for LAN devices such as the SLZB-MR3U
+# Sync Wave 6: After Loki is available
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: syslog-receiver
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
+    # Wave 6: log ingestion endpoint — depends on loki (wave 5)
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+
+  sources:
+    # Syslog receiver local Helm chart
+    - repoURL: https://github.com/HughLardner/homelab.git
+      targetRevision: HEAD
+      path: kubernetes/services/syslog-receiver
+      helm:
+        releaseName: syslog-receiver
+        valueFiles:
+          - $values/config/homelab.yaml
+
+    # Values reference
+    - repoURL: https://github.com/HughLardner/homelab.git
+      targetRevision: HEAD
+      ref: values
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: loki
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+

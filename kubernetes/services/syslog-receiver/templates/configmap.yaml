@@ -1,0 +1,66 @@
+{{- if .Values.services.syslog_receiver.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: syslog-receiver-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: syslog-receiver
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: config
+data:
+  vector.yaml: |
+    data_dir: /vector-data-dir
+
+    api:
+      enabled: true
+      address: 0.0.0.0:8686
+
+    sources:
+      slzb_syslog:
+        type: syslog
+        mode: udp
+        address: 0.0.0.0:{{ .Values.services.syslog_receiver.target_port }}
+
+    transforms:
+      annotate_logs:
+        type: remap
+        inputs:
+          - slzb_syslog
+        source: |
+{{- range $key, $value := .Values.services.syslog_receiver.default_labels }}
+          .{{ $key }} = {{ $value | quote }}
+{{- end }}
+          .ingest_source = "syslog-receiver"
+          .transport = "udp"
+          if !exists(.hostname) || is_null(.hostname) {
+            .hostname = "unknown"
+          }
+          if !exists(.appname) || is_null(.appname) {
+            .appname = "syslog"
+          }
+          if exists(.severity) {
+            .severity = to_string(.severity) ?? "unknown"
+          }
+          if exists(.facility) {
+            .facility = to_string(.facility) ?? "unknown"
+          }
+
+    sinks:
+      loki:
+        type: loki
+        inputs:
+          - annotate_logs
+        endpoint: {{ .Values.services.syslog_receiver.loki_url | quote }}
+        encoding:
+          codec: json
+        labels:
+{{- range $key, $_ := .Values.services.syslog_receiver.default_labels }}
+          {{ $key }}: "{{ "{{" }} {{ $key }} {{ "}}" }}"
+{{- end }}
+          source_host: "{{ "{{" }} hostname {{ "}}" }}"
+          appname: "{{ "{{" }} appname {{ "}}" }}"
+          transport: "{{ "{{" }} transport {{ "}}" }}"
+{{- end }}
+

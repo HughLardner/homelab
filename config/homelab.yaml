@@ -211,6 +211,19 @@ services:
     device_rest_url: "http://192.168.10.185:8080"
 
   # ---------------------------------------------------------------------------
+  # Syslog Receiver
+  # Dedicated UDP RFC3164 syslog endpoint for LAN devices such as the SLZB-MR3U
+  # ---------------------------------------------------------------------------
+  syslog_receiver:
+    enabled: true
+    load_balancer_ip: "192.168.10.153"
+    service_port: 514
+    target_port: 5514
+    default_labels:
+      job: slzb
+      device: slzb-mr3u
+
+  # ---------------------------------------------------------------------------
   # Python Matter Server
   # Matter protocol handler for commissioning and controlling Matter devices
   # Works with OTBR for Thread-based Matter devices

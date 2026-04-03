@@ -1,0 +1,76 @@
+{{- if .Values.services.syslog_receiver.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: syslog-receiver
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: syslog-receiver
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: ingest
+spec:
+  replicas: {{ .Values.services.syslog_receiver.replicas | default 1 }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: syslog-receiver
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: syslog-receiver
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: ingest
+    spec:
+      priorityClassName: homelab-standard
+      securityContext:
+        fsGroup: 10001
+      containers:
+        - name: vector
+          image: "{{ .Values.services.syslog_receiver.image.repository }}:{{ .Values.services.syslog_receiver.image.tag }}"
+          imagePullPolicy: {{ .Values.services.syslog_receiver.image.pullPolicy }}
+          args:
+            - --config
+            - /etc/vector/vector.yaml
+          ports:
+            - name: syslog-udp
+              containerPort: {{ .Values.services.syslog_receiver.target_port }}
+              protocol: UDP
+            - name: api
+              containerPort: 8686
+              protocol: TCP
+          readinessProbe:
+            tcpSocket:
+              port: api
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: api
+            initialDelaySeconds: 20
+            periodSeconds: 20
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 10001
+            runAsGroup: 10001
+          resources:
+{{ toYaml .Values.services.syslog_receiver.resources | indent 12 }}
+          volumeMounts:
+            - name: config
+              mountPath: /etc/vector
+              readOnly: true
+            - name: data
+              mountPath: /vector-data-dir
+      volumes:
+        - name: config
+          configMap:
+            name: syslog-receiver-config
+        - name: data
+          emptyDir: {}
+{{- end }}
+
