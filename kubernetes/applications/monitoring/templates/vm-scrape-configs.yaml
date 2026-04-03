@@ -321,7 +321,7 @@ metadata:
 spec:
   namespaceSelector:
     matchNames:
-      - promtail
+      - loki
   selector:
     matchLabels:
       app.kubernetes.io/name: promtail

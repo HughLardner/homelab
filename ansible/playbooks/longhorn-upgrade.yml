@@ -30,9 +30,12 @@
 
   vars:
     longhorn_namespace: "longhorn-system"
+    longhorn_values_src: "{{ playbook_dir }}/../../kubernetes/services/longhorn/longhorn-values.yaml"
+    longhorn_values_tmp: "/tmp/longhorn-values.yaml"
     longhorn_replica_count: "{{ services.longhorn.replica_count | default(1) }}"
     longhorn_data_path: "{{ services.longhorn.data_path | default('/var/lib/longhorn') }}"
     longhorn_ui_service_type: "{{ services.longhorn.ui_service_type | default('LoadBalancer') }}"
+    longhorn_node_drain_policy: "{{ 'always-allow' if (infrastructure.node_count | default(1) | int) == 1 else 'block-for-eviction-if-contains-last-replica' }}"
 
     longhorn_target_version: "1.11.1"
 
@@ -145,6 +148,12 @@
         KUBECONFIG: /etc/rancher/k3s/k3s.yaml
       changed_when: false
 
+    - name: Template Longhorn Helm values
+      ansible.builtin.template:
+        src: "{{ longhorn_values_src }}"
+        dest: "{{ longhorn_values_tmp }}"
+        mode: "0644"
+
   tasks:
     # =========================================================================
     # Sequential upgrade - each version completes fully before the next starts
@@ -243,3 +252,8 @@
           - "    2. Check Longhorn UI: https://longhorn.silverseekers.org"
           - ""
           - "========================================="
+
+    - name: Cleanup temporary Longhorn values file
+      ansible.builtin.file:
+        path: "{{ longhorn_values_tmp }}"
+        state: absent

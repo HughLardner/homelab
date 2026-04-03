@@ -197,6 +197,6 @@ If automated + manual restarts don't resolve the issue:
 ## References
 
 - Implementation Plan: `/Users/hlardner/.claude/plans/elegant-munching-dusk.md`
-- Longhorn Settings: `/kubernetes/services/longhorn/templates/settings.yaml`
+- Longhorn Helm Values: `/kubernetes/services/longhorn/longhorn-values.yaml`
 - Automated Restart CronJob: `/kubernetes/applications/monitoring/templates/longhorn-instance-manager-restart-cronjob.yaml`
 - Alert Rules: `/kubernetes/applications/monitoring/templates/alert-rules.yaml`

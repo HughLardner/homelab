@@ -233,36 +233,17 @@ dashboardProviders:
           path: /var/lib/grafana/dashboards/apps
 
 # Pre-load dashboards from Grafana.com.
+# Keep only the pod drilldown dashboard here; the curated homelab dashboards live
+# in ConfigMaps and replace the old generic cluster, PVC, GPU, and Loki imports.
 # Removed: victoriametrics (too meta), k8s-apiserver (broken — 1 text panel),
-#   k8s-resources-namespace (redundant with kubernetes-cluster),
-#   k8s-deployments (redundant with kubernetes-cluster + pod overview),
-#   k8s-kubelet (K8s internals, not useful for daily homelab ops),
-#   k8s-networking (single-node, minimal value), node-exporter (Node I/O Health
-#   custom dashboard covers this homelab better).
-# CoreDNS and Pi-hole merged into the custom DNS Health dashboard (ConfigMap).
+#   k8s-resources-namespace, k8s-deployments, k8s-kubelet, k8s-networking,
+#   node-exporter, persistent-volumes, intel-gpu.
 dashboards:
   kubernetes:
-    # Kubernetes Cluster (7249) is provisioned from ConfigMap kubernetes-cluster-homelab.json
-    # (patched pod/container cAdvisor labels). Do not re-add gnetId 7249 — it duplicates and breaks top pods/CPU.
-
     # Drill-down by namespace / pod / container for CPU, memory, and network.
     # Revision 1 uses deprecated cAdvisor labels (pod_name, container_name) — no data on K8s 1.16+.
     # Revision 5+ uses pod/container; keep synced with grafana.com/dashboards/6781 revisions.
     k8s-resources-pod:
       gnetId: 6781
       revision: 5
-      datasource: VictoriaMetrics
-
-    # PVC fill predictions, storage class usage, volumes nearing capacity
-    persistent-volumes:
-      gnetId: 13646
-      revision: 2
-      datasource: VictoriaMetrics
-
-  apps:
-    # Intel GPU (onedr0p exporter): expects metrics igpu_* with job=intel-gpu.
-    # The Intel Device Plugin does NOT export Prometheus metrics — deploy intel-gpu-exporter or this stays empty.
-    intel-gpu:
-      gnetId: 23251
-      revision: 1
       datasource: VictoriaMetrics

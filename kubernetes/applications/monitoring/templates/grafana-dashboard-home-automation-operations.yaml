@@ -1,0 +1,14 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-home-automation-operations
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+  annotations:
+    grafana_folder: "Apps"
+data:
+  home-automation-operations.json: |-
+{{ .Files.Get "dashboards/home-automation-operations.json" | nindent 4 }}
+

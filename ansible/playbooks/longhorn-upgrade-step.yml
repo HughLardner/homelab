@@ -11,16 +11,7 @@
     helm upgrade longhorn longhorn/longhorn \
       --namespace {{ longhorn_namespace }} \
       --version {{ upgrade_target_version }} \
-      --set defaultSettings.createDefaultDiskLabeledNodes=true \
-      --set defaultSettings.defaultDataPath={{ longhorn_data_path }} \
-      --set defaultSettings.defaultReplicaCount={{ longhorn_replica_count }} \
-      --set persistence.defaultClass=false \
-      --set persistence.defaultClassReplicaCount={{ longhorn_replica_count }} \
-      --set service.ui.type={{ longhorn_ui_service_type }} \
-      --set csi.attacherReplicaCount=1 \
-      --set csi.provisionerReplicaCount=1 \
-      --set csi.resizerReplicaCount=1 \
-      --set csi.snapshotterReplicaCount=0 \
+      --values {{ longhorn_values_tmp }} \
       --wait \
       --timeout 10m
   environment:
@@ -63,6 +54,14 @@
   delay: 10
   register: csi_ready
   until: csi_ready.rc == 0
+
+- name: "Reconcile node drain policy after v{{ upgrade_target_version }}"
+  ansible.builtin.shell: |
+    /usr/local/bin/k3s kubectl patch settings.longhorn.io -n {{ longhorn_namespace }} node-drain-policy \
+      --type=merge -p '{"value":"{{ longhorn_node_drain_policy }}"}'
+  register: node_drain_policy_config
+  changed_when: "'patched' in node_drain_policy_config.stdout"
+  failed_when: false
 
 - name: "Verify volume health after v{{ upgrade_target_version }}"
   ansible.builtin.shell: |

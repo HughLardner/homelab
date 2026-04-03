@@ -1,6 +1,7 @@
 ---
-# ArgoCD Application for Longhorn Ingress Resources
+# ArgoCD Application for Longhorn wrapper resources
 # Deploys: Certificate, IngressRoute, StorageClasses
+# Longhorn itself is installed separately via the official Helm release.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:

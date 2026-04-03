@@ -72,6 +72,12 @@ LONGHORN_IP=$(kubectl get svc -n longhorn-system longhorn-frontend -o jsonpath='
 open "http://$LONGHORN_IP"
 ```
 
+The authoritative Longhorn runtime configuration is applied by the Ansible
+playbook to the official `longhorn` Helm release using
+`kubernetes/services/longhorn/longhorn-values.yaml`, plus a few targeted
+`settings.longhorn.io` patches for settings that are not reliably managed via
+Helm alone.
+
 ### Manual (Helm)
 
 ```bash
@@ -79,11 +85,11 @@ open "http://$LONGHORN_IP"
 helm repo add longhorn https://charts.longhorn.io
 helm repo update
 
-# Install with custom values
+# Install with the authoritative values file
 helm upgrade --install longhorn longhorn/longhorn \
   --namespace longhorn-system \
   --create-namespace \
-  --values kubernetes/services/longhorn/values.yaml
+  --values kubernetes/services/longhorn/longhorn-values.yaml
 
 # Verify
 kubectl get pods -n longhorn-system
@@ -386,11 +392,16 @@ kubectl delete crd $(kubectl get crd | grep longhorn | awk '{print $1}')
 
 ## Integration with Ansible
 
-**These manifest files are the single source of truth for Longhorn configuration.**
+**The official `longhorn` Helm release is the source of truth for Longhorn runtime settings.**
 
 The Ansible playbook (`ansible/playbooks/longhorn.yml`) uses these files:
-- Templates `values.yaml` with variables from inventory
-- Applies Longhorn manifests to the cluster
+- Templates `longhorn-values.yaml` with variables from `config/homelab.yaml`
+- Applies the official `longhorn/longhorn` Helm chart
+- Reconciles selected `settings.longhorn.io` resources after Helm applies
+
+The ArgoCD application in `kubernetes/services/longhorn/application.yaml`
+manages only the ingress, certificate, and storage-class wrapper resources. It
+does **not** own the live Longhorn runtime settings.
 
 ### Configuration Workflow
 
@@ -402,12 +413,12 @@ The Ansible playbook (`ansible/playbooks/longhorn.yml`) uses these files:
 2. **Manual Changes** (Day-2 Operations):
    ```bash
    # Edit configuration
-   vim kubernetes/services/longhorn/values.yaml
+   vim kubernetes/services/longhorn/longhorn-values.yaml
 
    # Apply via Helm
    helm upgrade longhorn longhorn/longhorn \
      -n longhorn-system \
-     --values kubernetes/services/longhorn/values.yaml
+     --values kubernetes/services/longhorn/longhorn-values.yaml
 
    # Or re-run Ansible
    make longhorn-install

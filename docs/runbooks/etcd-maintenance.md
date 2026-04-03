@@ -184,16 +184,19 @@ Slow WAL fsync indicates disk I/O saturation and increases corruption risk:
 
 ---
 
-## Monitoring Dashboard
+## Monitoring
 
-The "Node Saturation & Control Plane Health" dashboard in Grafana includes 4 etcd panels:
+The old dedicated "Node Saturation & Control Plane Health" dashboard was retired
+during dashboard consolidation. Etcd metrics are still scraped and alerted, but
+you should now inspect them in Grafana Explore with the `VictoriaMetrics`
+datasource using these PromQL queries:
 
-1. **Etcd Database Size** - Time series showing database growth (alert threshold at 1.5GB)
-2. **Etcd Leader Status** - Stat panel (green=has leader, red=no leader)
-3. **Etcd Commit Latency (p99)** - Time series with warning/critical thresholds
-4. **Etcd WAL Fsync Duration (p99)** - Time series with warning/critical thresholds
+1. **Etcd Database Size** - `etcd_mvcc_db_total_size_in_bytes`
+2. **Etcd Leader Status** - `etcd_server_has_leader`
+3. **Etcd Commit Latency (p99)** - `histogram_quantile(0.99, sum(rate(etcd_disk_backend_commit_duration_seconds_bucket[5m])) by (le))`
+4. **Etcd WAL Fsync Duration (p99)** - `histogram_quantile(0.99, sum(rate(etcd_disk_wal_fsync_duration_seconds_bucket[5m])) by (le))`
 
-Access via: `https://grafana.silverseekers.org` → Dashboards → Node Saturation & Control Plane Health
+Access via: `https://grafana.silverseekers.org` → Explore → `VictoriaMetrics`
 
 ---
 
@@ -309,5 +312,5 @@ Then re-run: `make k3s-install`
 - [Etcd maintenance guide](https://etcd.io/docs/v3.5/op-guide/maintenance/)
 - [K3s etcd configuration](https://docs.k3s.io/cli/server#etcd)
 - March 2026 incident analysis: 64 K3s restarts → etcd WAL corruption → 20+ minute recovery
-- Grafana dashboard: Node Saturation & Control Plane Health
+- Grafana Explore with the `VictoriaMetrics` datasource and the etcd queries above
 - Alert rules: `kubernetes/applications/monitoring/templates/alert-rules.yaml` (etcd-health group)

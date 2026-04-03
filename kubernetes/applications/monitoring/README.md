@@ -86,12 +86,23 @@ argocd app get monitoring
 
 ## Pre-loaded Dashboards
 
-| Dashboard          | Description             | Grafana ID |
-| ------------------ | ----------------------- | ---------- |
-| Victoria Metrics   | VM node metrics         | 10229      |
-| Kubernetes Cluster | Overall cluster metrics | 315        |
-| Node Exporter Full | Detailed node metrics   | 1860       |
-| Kubernetes Pods    | Pod-level metrics       | 6336       |
+The homelab now favors a curated set of repo-managed dashboards over a larger
+mix of generic imports. Key dashboards include:
+
+- `Cluster Overview`
+- `Node and Storage Health`
+- `Unified Logs`
+- `Monitoring Control Plane`
+- `Cloud Edge and DNS Automation`
+- `Home Automation Operations`
+- `Traefik`
+- `ArgoCD`
+- `Platform Health`
+- `DNS Health`
+- `Longhorn`
+- `Garage Object Storage`
+- `Resource Quotas`
+- `Kubernetes Pods` (Grafana.com drilldown import)
 
 ## Configuration Files
 
@@ -105,6 +116,9 @@ argocd app get monitoring
 | `vmalertmanager.yaml`            | VMAlertmanager CRD               |
 | `vm-scrape-configs.yaml`         | Scrape target configurations     |
 | `grafana-values.yaml`            | Grafana Helm values              |
+| `templates/dashboards-configmaps.yaml` | Inline custom dashboards and legacy curated dashboards |
+| `templates/grafana-dashboard-*.yaml` | JSON-backed curated dashboard wrappers |
+| `dashboards/*.json`              | Versioned dashboard JSON sources |
 | `node-exporter-values.yaml`      | Node Exporter config             |
 | `kube-state-metrics-values.yaml` | Kube State Metrics config        |
 | `ingressroute.yaml`              | Traefik IngressRoute for Grafana |
@@ -289,8 +303,8 @@ kubectl port-forward -n monitoring svc/vmagent-vmagent 8429:8429
 | **Platform Health — Cert-Manager** | `prometheus.enabled: true` on the Jetstack chart (controller exposes `:9402/metrics`). |
 | **Platform Health — Velero** | Velero must be scraped (`VMServiceScrape` on `http-monitoring` / `:8085`). |
 | **Garage** | Dashboard filters `job="garage"`; scrape config must set that `job` (relabel), not `jobLabel: garage` without a matching Service label. |
-| **Intel GPU (gnet 23251)** | Expects **intel-gpu-exporter** (`igpu_*`, `job=intel-gpu`). The Intel **device plugin** does not expose these metrics. |
-| **Kubernetes Cluster (7249)** | Upstream uses `pod_name` / `container_name`; homelab ships a patched JSON (`kubernetes-cluster-homelab.json`) via ConfigMap. “Current connections” / “Request time” expect **nginx** / generic HTTP metrics — use **Traefik** dashboard for ingress. |
+| **Unified Logs** | Kubernetes panels require `namespace` and `pod` labels. Device panels require syslog labels like `job`, `device`, `source_host`, and `appname` from the syslog receiver. |
+| **Monitoring Control Plane** | Promtail panels require the Promtail scrape to target the `loki` namespace. If they are empty, verify the `VMServiceScrape` selector and namespace match the deployment. |
 
 ### Grafana Dashboard Not Loading
 

@@ -21,11 +21,24 @@ defaultSettings:
   # Uses persistent data disk mounted at /mnt/longhorn-data - survives cluster rebuilds
   defaultDataPath: {{ longhorn_data_path | default('/mnt/longhorn-data') }}
 
+  # On a single-node cluster there is nowhere to evacuate the last healthy
+  # replica, so allow the drain rather than blocking kured forever.
+  nodeDrainPolicy: {{ 'always-allow' if (infrastructure.node_count | default(1) | int) == 1 else 'block-for-eviction-if-contains-last-replica' }}
+
   # ⚠️ CRITICAL: Only create default disks on labeled nodes
   # This prevents Longhorn from auto-discovering the VM's ephemeral OS disk
   # Nodes must have label: node.longhorn.io/create-default-disk=config
   # and annotation: node.longhorn.io/default-disks-config with disk path JSON
   createDefaultDiskLabeledNodes: true
+
+  # Keep replica placement and rebuild behavior conservative on a single disk.
+  replicaAutoBalance: disabled
+  concurrentAutomaticEngineUpgradePerNodeLimit: 2
+  concurrentReplicaRebuildPerNodeLimit: 1
+  concurrentVolumeBackupRestorePerNodeLimit: 1
+  allowVolumeCreationWithDegradedAvailability: true
+  storageReservedPercentageForDefaultDisk: 20
+  engineReplicaTimeout: 60
 
   # Automatically clean up snapshot when volume is deleted
   autoCleanupSystemGeneratedSnapshot: true

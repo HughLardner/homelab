@@ -72,7 +72,7 @@ sudo systemctl restart systemd-journald
 
 ### 4. Early warning (alerting / dashboards)
 
-- **Dashboard**: Use `Node Saturation & Control Plane Health` in Grafana for a single-incident view of:
+- **Dashboard**: Use `Node and Storage Health` in Grafana for the node/storage view, and use Grafana Explore with `VictoriaMetrics` for etcd-specific queries from the etcd maintenance runbook:
   - node pressure (`iowait`, disk util, throughput, memory, rootfs free space/inodes)
   - control-plane health (API `up`, 5xx rate, p95/p99 latency)
   - storage health (Longhorn robustness counts, instance-manager memory)
@@ -96,7 +96,7 @@ sudo systemctl restart systemd-journald
 ### 6. Rollout and threshold tuning
 
 - **Initial validation after deploy**:
-  - confirm the `Node Saturation & Control Plane Health` dashboard loads and shows data for all panels
+  - confirm the `Node and Storage Health` dashboard loads and shows data for the node and Longhorn panels
   - confirm VMAlert loads the new rules without evaluation errors
   - verify the `instability-snapshot` CronJob runs and logs appear in Loki
 - **Burn-in review (first week)**:
@@ -167,7 +167,7 @@ kubectl get events -A --sort-by=.lastTimestamp | rg "FailedScheduling|unschedula
      `kubectl -n monitoring scale deployment vmagent-vmagent --replicas=0`
    - Restart journald only if the shell is responsive: `sudo systemctl restart systemd-journald`
    - Capture the first 10 minutes of evidence:
-     - Grafana dashboard: `Node Saturation & Control Plane Health`
+    - Grafana dashboard: `Node and Storage Health`
      - recent warnings: `kubectl get events -A --field-selector type=Warning --sort-by=.lastTimestamp | tail -n 80`
      - Longhorn state: `kubectl -n longhorn-system get volumes.longhorn.io -o wide`
      - restart spike: `kubectl get pods -A -o "custom-columns=NS:.metadata.namespace,NAME:.metadata.name,RESTARTS:.status.containerStatuses[*].restartCount" --no-headers | sort -k3 -nr | head -n 30`
@@ -189,7 +189,7 @@ kubectl get events -A --sort-by=.lastTimestamp | rg "FailedScheduling|unschedula
    - Check Longhorn: `kubectl -n longhorn-system get nodes,pods -o wide`  
    - Restore vmagent if scaled down: `kubectl -n monitoring scale deployment vmagent-vmagent --replicas=1`  
    - Review the incident window in Grafana and Loki:
-     - dashboard: `Node Saturation & Control Plane Health`
+    - dashboard: `Node and Storage Health`
      - snapshot logs: `kubectl -n monitoring logs job/<instability-snapshot-job-name>`
    - Correlate:
      - node pressure rising first
