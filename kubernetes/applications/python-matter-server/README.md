@@ -31,10 +31,11 @@ Your setup has two complementary services:
 
 | Service | Purpose | Port |
 |---------|---------|------|
-| **SLZB Device OTBR** | Thread Border Router (network layer) | 8080 (REST API) |
+| **OTBR (in-cluster)** | Thread Border Router (network layer) | 8081 (REST API) |
+| **SLZB-MR3U RCP** | Thread radio transport for OTBR | 6638 (TCP Spinel) |
 | **Matter Server** | Matter protocol handler (application layer) | 5580 (WebSocket) |
 
-**Flow:** Matter device → Thread (via SLZB OTBR) → Matter Server → Home Assistant
+**Flow:** Matter device → Thread (via in-cluster OTBR) → Matter Server → Home Assistant
 
 ## Configuration
 
@@ -80,8 +81,8 @@ Once the Matter integration is added:
 For Thread-based Matter devices:
 
 ```bash
-# Check device-hosted OTBR REST endpoint is reachable
-curl -sS http://192.168.10.185:8080/node/state
+# Check in-cluster OTBR REST endpoint is reachable
+curl -sS http://otbr.home-automation.svc:8081/node/state
 
 # Check Matter server logs
 kubectl logs -n home-automation -l app.kubernetes.io/name=matter-server
@@ -141,14 +142,16 @@ Matter credentials and device data are stored in the PVC at `/data`. This includ
 ### Cannot Commission Matter Devices
 
 - **Check hostNetwork:** Pod must use `hostNetwork: true` for mDNS
-- **Check OTBR:** Thread devices require SLZB device-hosted OTBR to be reachable at `http://192.168.10.185:8080`
+- **Check OTBR:** Thread devices require the in-cluster OTBR to be reachable at `http://otbr.home-automation.svc:8081`
+- **Check RCP path:** OTBR still depends on the SLZB-MR3U RCP at `192.168.10.185:6638`
 - **Check Thread integration:** Verify Thread integration is configured in HA
 - **Network firewall:** Ensure no firewall rules blocking Matter traffic
 - **Wrong NIC:** Set `services.python_matter_server.primary_interface` in `config/homelab.yaml` if the server binds to the wrong node interface
 
 ### Thread Devices Not Connecting
 
-- Verify SLZB OTBR endpoint is up: `curl -sS http://192.168.10.185:8080/node/state`
+- Verify OTBR endpoint is up: `curl -sS http://otbr.home-automation.svc:8081/node/state`
+- Verify OTBR can still reach the SLZB-MR3U RCP at `192.168.10.185:6638`
 - Verify Thread network is active in HA Thread integration
 - Check device is within Thread network range
 
@@ -188,6 +191,6 @@ To update to a newer version:
 
 ## Related Documentation
 
-- [SLZB Thread setup](https://smlight.tech/support/manuals/books/slzb-06xmrxmrxuultima-series/page/thread-setup-network-and-usb-connection) - Device-hosted OTBR mode
+- [SLZB Thread setup](https://smlight.tech/support/manuals/books/slzb-06xmrxmrxuultima-series/page/thread-setup-network-and-usb-connection) - RCP/Thread radio reference
 - [Home Assistant](../home-assistant/README.md) - Main HA deployment
 - [Matter Specification](https://csa-iot.org/all-solutions/matter/) - Official Matter protocol docs

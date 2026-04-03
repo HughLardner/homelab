@@ -200,15 +200,22 @@ services:
     transmit_power: 20
 
   # ---------------------------------------------------------------------------
-  # Open Thread Border Router (OTBR) endpoint
-  # SLZB-MR3U now runs OTBR directly on-device (SLZB-OS 3.2.6.dev0+)
-  # In-cluster OTBR application is disabled/removed.
+  # Open Thread Border Router (OTBR)
+  # ArgoCD manages the in-cluster OTBR deployment. The SLZB-MR3U provides the
+  # Thread RCP radio over TCP while OTBR runs in Kubernetes.
   # ---------------------------------------------------------------------------
   otbr:
-    mode: device                    # Options: device, cluster
-    device_host: "192.168.10.185"
-    device_rest_port: 8080          # SLZB device-hosted OTBR REST API
-    device_rest_url: "http://192.168.10.185:8080"
+    mode: cluster                   # Options: cluster, device
+    domain: otbr.silverseekers.org
+    auth_enabled: true
+    thread_rcp_url: "192.168.10.185"
+    thread_rcp_port: 6638
+    # OTBR sees the host-network interface as eth0 inside the pod on this cluster.
+    mdns_interface: "eth0"
+    rest_api_port: 8081
+    web_ui_port: 80
+    storage_size: 1Gi
+    storage_class: longhorn
 
   # ---------------------------------------------------------------------------
   # Syslog Receiver

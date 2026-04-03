@@ -41,45 +41,52 @@ Configure the Home Assistant Matter integration in the UI with:
 - URL: `ws://matter-server.home-automation.svc.cluster.local:5580/ws`
 
 For Thread-backed Matter devices, keep the Thread integration pointed at the
-device-hosted OTBR endpoint:
+in-cluster OTBR endpoint:
 
-- OTBR REST URL: `http://192.168.10.185:8080`
+- OTBR REST URL: `http://otbr.home-automation.svc:8081`
 
 ## VLAN and onboarding prerequisites
 
 Current homelab topology:
 - Home Assistant path: `192.168.10.0/24` (Homelab VLAN)
-- SLZB OTBR path: `192.168.10.0/24` (Homelab VLAN)
+- SLZB RCP path: `192.168.10.0/24` (Homelab VLAN)
 
-With HA and the SLZB now on the same trusted LAN, onboarding is simpler.
+With HA and the SLZB RCP now on the same trusted LAN, onboarding is simpler.
 Treat phone placement as a first-class prerequisite:
 
 - Do not use the `Guest` SSID for pairing.
 - For the Home Assistant mobile app `Sync Thread Credentials` step, place the
   phone on the same trusted LAN/SSID path as Home Assistant during onboarding.
-- Keep IPv6 enabled on the participating VLANs. The SLZB OTBR-on-device mode
-  requires IPv6 on the LAN and exposes OTBR over `http://device-ip:8080`.
+- Keep IPv6 enabled on the participating VLANs. The in-cluster OTBR still
+  depends on local LAN IPv6/mDNS behaviour for stable Thread commissioning.
 
 ## Verification
 
 ```bash
 kubectl get application -n argocd python-matter-server
+kubectl get application -n argocd otbr
 kubectl get pods -n home-automation -l app.kubernetes.io/name=matter-server
+kubectl get pods -n home-automation -l app.kubernetes.io/name=otbr
 kubectl logs -n home-automation deployment/matter-server
+kubectl logs -n home-automation deployment/otbr
 kubectl get svc,pvc -n home-automation | rg "matter-server|matter-server-data"
+kubectl get svc,pvc -n home-automation | rg "otbr|otbr-data"
 kubectl run -i --rm curl --image=curlimages/curl --restart=Never -- \
   curl -sS telnet://matter-server.home-automation.svc:5580
-curl -sS http://192.168.10.185:8080/node/state
-curl -sS http://192.168.10.185:8080/node/ba-id
+curl -sS http://otbr.home-automation.svc:8081/node/state
+curl -sS http://otbr.home-automation.svc:8081/node/ba-id
 kubectl -n home-assistant exec home-assistant-0 -- \
-  curl -sS http://192.168.10.185:8080/node/state
+  curl -sS http://otbr.home-automation.svc:8081/node/state
 ```
 
 Success looks like:
 
 - ArgoCD app is `Synced` and `Healthy`
+- OTBR ArgoCD app is `Synced` and `Healthy`
 - Matter server pod is `Running` and not crash-looping
+- OTBR pod is `Running` and not crash-looping
 - `matter-server-data` PVC is `Bound`
+- `otbr-data` PVC is `Bound`
 - Home Assistant connects to the Matter server URL without retry loops
 - A test Matter device can be commissioned and controlled
 
@@ -99,7 +106,8 @@ Success looks like:
 
 ### Thread devices do not join
 
-- Confirm the SLZB OTBR endpoint is reachable at `http://192.168.10.185:8080`
+- Confirm the in-cluster OTBR endpoint is reachable at `http://otbr.home-automation.svc:8081`
+- Confirm OTBR can still reach the SLZB-MR3U RCP at `192.168.10.185:6638`
 - Verify the Home Assistant Thread integration is healthy
 - If the phone is on `Default` while HA is on `Homelab`, re-test from the
   Homelab SSID/LAN before changing firewall rules

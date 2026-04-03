@@ -1,7 +1,7 @@
 # Open Thread Border Router (OTBR)
 
-> Status: in-cluster OTBR deployment is deprecated in this homelab.
-> SLZB-MR3U now runs OTBR directly on-device (`http://192.168.10.185:8080`).
+> Status: ArgoCD manages the in-cluster OTBR deployment in this homelab.
+> The SLZB-MR3U provides the Thread RCP radio over TCP while OTBR runs in Kubernetes.
 
 Bridges Home Assistant with the Thread radio on the SLZB-MR3U coordinator for Thread/Matter device integration.
 
@@ -10,6 +10,7 @@ Bridges Home Assistant with the Thread radio on the SLZB-MR3U coordinator for Th
 - **Image:** bnutzer/otbr-tcp:latest (adds TCP RCP support vs official openthread/otbr)
 - **Namespace:** home-automation
 - **Wave:** 7 (after Home Assistant)
+- **GitOps:** Managed by `kubernetes/applications/otbr/application.yaml`
 - **Network:** hostNetwork: true (required for mDNS)
 - **Security:** NET_ADMIN, NET_RAW, SYS_MODULE capabilities (for iptables/network management)
 - **Storage:** 1Gi Longhorn PVC for Thread network state
@@ -26,9 +27,12 @@ Bridges Home Assistant with the Thread radio on the SLZB-MR3U coordinator for Th
 ## Configuration
 
 Configured via `config/homelab.yaml`:
+- `mode`: `cluster`
+- `domain`: public OTBR UI hostname
+- `auth_enabled`: whether Authelia protects the web UI
 - `thread_rcp_url`: TCP host/IP for SLZB-MR3U Thread RCP endpoint
 - `thread_rcp_port`: TCP port for Thread RCP Spinel stream (default 6638)
-- `mdns_interface`: Node network interface for mDNS advertisement (eth0 in this cluster)
+- `mdns_interface`: Host-network interface seen inside the OTBR pod (`eth0` in this cluster)
 - `rest_api_port`: 8081 (Home Assistant integration)
 - `web_ui_port`: 80 (web UI)
 
@@ -41,7 +45,7 @@ Configured via `config/homelab.yaml`:
 
 1. Navigate to Settings → Devices & Services
 2. Thread integration should auto-discover OTBR via mDNS
-3. Configure Thread integration pointing to OTBR REST API
+3. Configure the Thread integration to use `http://otbr.home-automation.svc:8081`
 4. Commission Thread devices via HA UI
 
 ## Verification

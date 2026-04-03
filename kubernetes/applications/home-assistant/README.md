@@ -27,20 +27,21 @@ Both automation features are adapted from [small-hack/home-assistant-chart](http
 
 ## Thread / OTBR Endpoint
 
-OTBR is hosted on the SLZB-MR3U device (not in-cluster). Configure Home Assistant integrations to use:
+OTBR runs in-cluster and is managed by ArgoCD. The SLZB-MR3U provides the Thread
+RCP radio over TCP. Configure Home Assistant integrations to use:
 
-- **OTBR REST URL:** `http://192.168.10.185:8080`
+- **OTBR REST URL:** `http://otbr.home-automation.svc:8081`
 - **Matter Server URL:** `ws://matter-server.home-automation.svc.cluster.local:5580/ws`
 
 ### VLAN and firewall prerequisites (critical)
 
-In this homelab, Home Assistant and the SLZB OTBR share the same trusted LAN:
+In this homelab, Home Assistant and the SLZB-MR3U radio path share the same trusted LAN:
 - HA path: `192.168.10.0/24` (Homelab VLAN)
-- SLZB OTBR: `192.168.10.185` on `192.168.10.0/24` (Homelab VLAN)
+- SLZB RCP endpoint: `192.168.10.185:6638` on `192.168.10.0/24` (Homelab VLAN)
 
 Before troubleshooting HA integrations, confirm network policy allows:
-- HA -> SLZB OTBR on TCP `8080` (required)
-- Optional HA -> SLZB OTBR on TCP `80` (diagnostics/UI)
+- OTBR pod/node -> SLZB RCP on TCP `6638` (required)
+- Home Assistant -> OTBR service on `http://otbr.home-automation.svc:8081`
 
 For mobile Matter commissioning:
 - Avoid guest/client-isolated SSIDs during pairing.
@@ -51,10 +52,10 @@ For mobile Matter commissioning:
 Recommended checks after any OTBR or firmware change:
 
 ```bash
-curl -sS http://192.168.10.185:8080/node/state
-curl -sS http://192.168.10.185:8080/node/ba-id
+curl -sS http://otbr.home-automation.svc:8081/node/state
+curl -sS http://otbr.home-automation.svc:8081/node/ba-id
 kubectl -n home-assistant exec home-assistant-0 -- \
-  curl -sS http://192.168.10.185:8080/node/state
+  curl -sS http://otbr.home-automation.svc:8081/node/state
 ```
 
 ## Matter Server
@@ -71,7 +72,7 @@ The Matter integration itself is still configured in the Home Assistant UI:
 3. Choose the existing/external Matter server option
 4. Enter `ws://matter-server.home-automation.svc.cluster.local:5580/ws`
 
-Keep the HA Thread integration pointed at the SLZB OTBR endpoint above for
+Keep the HA Thread integration pointed at the in-cluster OTBR endpoint above for
 Thread-backed Matter devices.
 
 ## Architecture

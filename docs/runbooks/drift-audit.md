@@ -116,18 +116,20 @@ Typical signature:
 
 Interpretation:
 
-- OTBR now runs directly on SLZB; do not debug in-cluster OTBR pods
-- failures are usually endpoint reachability, device mode, or HA integration config drift
+- OTBR now runs in-cluster under ArgoCD; the SLZB provides the RCP radio over TCP
+- failures are usually OTBR app drift, RCP reachability, or HA integration config drift
 
 Checks:
 
 ```bash
-curl -sS http://192.168.10.185:8080/node/state
+curl -sS http://otbr.home-automation.svc:8081/node/state
 kubectl -n home-assistant get pods
+kubectl -n argocd get application otbr
+kubectl -n home-automation get pods -l app.kubernetes.io/name=otbr
 kubectl -n home-automation get pods -l app.kubernetes.io/name=matter-server
 ```
 
-If the SLZB OTBR endpoint is healthy but HA still fails, re-check HA Thread/OpenThread Border Router integration target URL.
+If the OTBR service is healthy but HA still fails, re-check HA Thread/OpenThread Border Router integration target URL and the SLZB RCP path.
 
 #### Same-LAN checks (HA and SLZB both on Homelab VLAN)
 
@@ -135,7 +137,7 @@ Use this when HA shows "No border routers were found" even though OTBR API respo
 
 Topology in this homelab:
 - HA node/pod path on `192.168.10.0/24` (Homelab VLAN)
-- SLZB OTBR on `192.168.10.185` in `192.168.10.0/24` (Homelab VLAN)
+- SLZB RCP on `192.168.10.185:6638` in `192.168.10.0/24` (Homelab VLAN)
 
 Current live findings:
 - OTBR API is healthy and returns a valid border-agent ID.
@@ -146,14 +148,14 @@ Current live findings:
 Network checks (in order):
 1. **Address groups**
    - `net_homelab = 192.168.10.0/24`
-   - `host_slzb_otbr = 192.168.10.185`
+   - `host_slzb_rcp = 192.168.10.185`
    - `host_ha = <HA IP on homelab>`
 2. **Firewall order and isolation**
    - Inspect `LAN IN`, `LAN LOCAL`, and `GUEST` rules.
-   - Ensure no same-LAN client isolation or ACL blocks HA -> SLZB OTBR traffic.
+   - Ensure no same-LAN client isolation or ACL blocks node/OTBR -> SLZB RCP traffic.
 3. **Minimum allow rules**
-   - Allow `host_ha -> host_slzb_otbr` TCP `8080`.
-   - Optional diagnostic allow `host_ha -> host_slzb_otbr` TCP `80`.
+   - Allow `cluster node / OTBR pod -> host_slzb_rcp` TCP `6638`.
+   - Allow `HA pod -> otbr.home-automation.svc` TCP `8081`.
 4. **Discovery and onboarding**
    - Keep the phone on the `Homelab` SSID/LAN for `Sync Thread Credentials`.
    - Verify guest isolation is not enabled on the pairing SSID.
@@ -162,10 +164,10 @@ Network checks (in order):
 Verification after each network change:
 
 ```bash
-curl -sS http://192.168.10.185:8080/node/state
-curl -sS http://192.168.10.185:8080/node/ba-id
+curl -sS http://otbr.home-automation.svc:8081/node/state
+curl -sS http://otbr.home-automation.svc:8081/node/ba-id
 kubectl -n home-assistant exec home-assistant-0 -- \
-  curl -sS http://192.168.10.185:8080/node/state
+  curl -sS http://otbr.home-automation.svc:8081/node/state
 kubectl -n home-assistant exec home-assistant-0 -- \
   python3 -c "import json;from pathlib import Path;obj=json.loads(Path('/config/.storage/core.config_entries').read_text());[print(e['domain'],e.get('data')) for e in obj['data']['entries'] if e.get('domain') in {'matter','otbr','thread'}]"
 ```
@@ -173,7 +175,7 @@ kubectl -n home-assistant exec home-assistant-0 -- \
 Expected:
 - OTBR state returns `"leader"`
 - `ba-id` returns a non-empty ID
-- HA config entries show OTBR URL `http://192.168.10.185:8080`
+- HA config entries show OTBR URL `http://otbr.home-automation.svc:8081`
 - Thread integration no longer reports "No border routers were found"
 - Home Assistant companion app can complete `Sync Thread Credentials` from the trusted HA LAN
 
