@@ -81,7 +81,7 @@ For Thread-based Matter devices:
 
 ```bash
 # Check device-hosted OTBR REST endpoint is reachable
-curl -sS http://192.168.40.185:8080/node/state
+curl -sS http://192.168.10.185:8080/node/state
 
 # Check Matter server logs
 kubectl logs -n home-automation -l app.kubernetes.io/name=matter-server
@@ -141,14 +141,14 @@ Matter credentials and device data are stored in the PVC at `/data`. This includ
 ### Cannot Commission Matter Devices
 
 - **Check hostNetwork:** Pod must use `hostNetwork: true` for mDNS
-- **Check OTBR:** Thread devices require SLZB device-hosted OTBR to be reachable at `http://192.168.40.185:8080`
+- **Check OTBR:** Thread devices require SLZB device-hosted OTBR to be reachable at `http://192.168.10.185:8080`
 - **Check Thread integration:** Verify Thread integration is configured in HA
 - **Network firewall:** Ensure no firewall rules blocking Matter traffic
 - **Wrong NIC:** Set `services.python_matter_server.primary_interface` in `config/homelab.yaml` if the server binds to the wrong node interface
 
 ### Thread Devices Not Connecting
 
-- Verify SLZB OTBR endpoint is up: `curl -sS http://192.168.40.185:8080/node/state`
+- Verify SLZB OTBR endpoint is up: `curl -sS http://192.168.10.185:8080/node/state`
 - Verify Thread network is active in HA Thread integration
 - Check device is within Thread network range
 

@@ -93,6 +93,39 @@
     - multipath_config is defined
     - multipath_config.changed
 
+- name: Resolve LAN interface for IPv6 router advertisements
+  ansible.builtin.set_fact:
+    node_prep_effective_ipv6_backbone_interface: >-
+      {{ node_prep_ipv6_backbone_interface | default('') | trim
+         or ansible_default_ipv4.interface }}
+  when:
+    - node_prep_configure_sysctl | bool
+    - node_prep_enable_ipv6_thread_routing | bool
+
+- name: Persist netplan IPv6 router advertisement override
+  ansible.builtin.copy:
+    dest: /etc/netplan/60-ipv6-router-advertisements.yaml
+    mode: '0644'
+    content: |
+      network:
+        version: 2
+        ethernets:
+          {{ node_prep_effective_ipv6_backbone_interface }}:
+            accept-ra: true
+  when:
+    - node_prep_enable_ipv6_thread_routing | bool
+    - node_prep_configure_ipv6_accept_ra_netplan | bool
+    - node_prep_effective_ipv6_backbone_interface | length > 0
+  register: node_prep_ipv6_netplan_override
+
+- name: Apply netplan IPv6 router advertisement override
+  ansible.builtin.command: netplan apply
+  when:
+    - node_prep_enable_ipv6_thread_routing | bool
+    - node_prep_configure_ipv6_accept_ra_netplan | bool
+    - node_prep_ipv6_netplan_override is changed
+  changed_when: true
+
 - name: Configure system settings for Kubernetes
   ansible.builtin.sysctl:
     name: "{{ item.key }}"
@@ -101,9 +134,32 @@
     reload: true
   loop:
     - { key: 'net.ipv4.ip_forward', value: '1' }
+    - { key: 'net.ipv6.conf.all.disable_ipv6', value: '0' }
+    - { key: 'net.ipv6.conf.default.disable_ipv6', value: '0' }
+    - { key: 'net.ipv6.conf.all.forwarding', value: '1' }
     - { key: 'net.bridge.bridge-nf-call-iptables', value: '1' }
     - { key: 'net.bridge.bridge-nf-call-ip6tables', value: '1' }
   when: node_prep_configure_sysctl | bool
+
+- name: Configure IPv6 router advertisement settings for Matter/Thread
+  ansible.builtin.sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    state: present
+    reload: true
+  loop:
+    - key: "net.ipv6.conf.{{ node_prep_effective_ipv6_backbone_interface }}.disable_ipv6"
+      value: '0'
+    - key: "net.ipv6.conf.{{ node_prep_effective_ipv6_backbone_interface }}.forwarding"
+      value: '1'
+    - key: "net.ipv6.conf.{{ node_prep_effective_ipv6_backbone_interface }}.accept_ra"
+      value: '2'
+    - key: "net.ipv6.conf.{{ node_prep_effective_ipv6_backbone_interface }}.accept_ra_rt_info_max_plen"
+      value: "{{ node_prep_ipv6_accept_ra_rt_info_max_plen }}"
+  when:
+    - node_prep_configure_sysctl | bool
+    - node_prep_enable_ipv6_thread_routing | bool
+    - node_prep_effective_ipv6_backbone_interface | length > 0
 
 - name: Load required kernel modules
   community.general.modprobe:

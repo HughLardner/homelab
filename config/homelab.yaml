@@ -196,7 +196,7 @@ services:
     storage_size: 2Gi
     storage_class: longhorn
     serial_adapter: zstack
-    serial_port: "tcp://192.168.40.185:7638"
+    serial_port: "tcp://192.168.10.185:7638"
     transmit_power: 20
 
   # ---------------------------------------------------------------------------
@@ -206,9 +206,9 @@ services:
   # ---------------------------------------------------------------------------
   otbr:
     mode: device                    # Options: device, cluster
-    device_host: "192.168.40.185"
+    device_host: "192.168.10.185"
     device_rest_port: 8080          # SLZB device-hosted OTBR REST API
-    device_rest_url: "http://192.168.40.185:8080"
+    device_rest_url: "http://192.168.10.185:8080"
 
   # ---------------------------------------------------------------------------
   # Python Matter Server

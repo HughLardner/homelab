@@ -1,7 +1,7 @@
 # Open Thread Border Router (OTBR)
 
 > Status: in-cluster OTBR deployment is deprecated in this homelab.
-> SLZB-MR3U now runs OTBR directly on-device (`http://192.168.40.185:8080`).
+> SLZB-MR3U now runs OTBR directly on-device (`http://192.168.10.185:8080`).
 
 Bridges Home Assistant with the Thread radio on the SLZB-MR3U coordinator for Thread/Matter device integration.
 
@@ -77,7 +77,7 @@ kubectl delete pvc otbr-data -n home-automation
 
 **Cannot connect to Thread radio:**
 - Verify `thread_rcp_url` and `thread_rcp_port` in `config/homelab.yaml`
-- Test TCP connectivity: `nc -vz 192.168.40.185 6638`
+- Test TCP connectivity: `nc -vz 192.168.10.185 6638`
 - Check SLZB-MR3U firmware and Thread radio enablement
 - If TCP succeeds but logs show `P-SpinelDrive: Wait for response timeout`, treat it as a mode/protocol mismatch first (endpoint reachable but not providing Thread RCP Spinel stream)
 

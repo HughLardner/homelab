@@ -122,56 +122,50 @@ Interpretation:
 Checks:
 
 ```bash
-curl -sS http://192.168.40.185:8080/node/state
+curl -sS http://192.168.10.185:8080/node/state
 kubectl -n home-assistant get pods
 kubectl -n home-automation get pods -l app.kubernetes.io/name=matter-server
 ```
 
 If the SLZB OTBR endpoint is healthy but HA still fails, re-check HA Thread/OpenThread Border Router integration target URL.
 
-#### UniFi inter-VLAN checks (HA on Homelab VLAN, SLZB on IoT VLAN)
+#### Same-LAN checks (HA and SLZB both on Homelab VLAN)
 
 Use this when HA shows "No border routers were found" even though OTBR API responds.
 
 Topology in this homelab:
 - HA node/pod path on `192.168.10.0/24` (Homelab VLAN)
-- SLZB OTBR on `192.168.40.185` in `192.168.40.0/24` (IoT VLAN)
+- SLZB OTBR on `192.168.10.185` in `192.168.10.0/24` (Homelab VLAN)
 
 Current live findings:
 - OTBR API is healthy and returns a valid border-agent ID.
 - HA has `matter`, `otbr`, and `thread` config entries pointing at the expected OTBR endpoint.
-- UniFi already allows routed traffic from `Homelab -> IoT` and from `Default -> IoT`.
 - The `Guest` VLAN is not part of the active pairing path.
-- A phone on `Default` is still not the same onboarding network path as HA on `Homelab`, even when inter-VLAN routing works.
+- A phone on `Homelab` remains the preferred onboarding path for credential sync and pairing.
 
-UniFi checks (in order):
+Network checks (in order):
 1. **Address groups**
    - `net_homelab = 192.168.10.0/24`
-   - `net_iot = 192.168.40.0/24`
-   - `host_slzb_otbr = 192.168.40.185`
+   - `host_slzb_otbr = 192.168.10.185`
    - `host_ha = <HA IP on homelab>`
 2. **Firewall order and isolation**
    - Inspect `LAN IN`, `LAN LOCAL`, and `GUEST` rules.
-   - Ensure explicit allow rules are above broad deny/isolation rules.
+   - Ensure no same-LAN client isolation or ACL blocks HA -> SLZB OTBR traffic.
 3. **Minimum allow rules**
    - Allow `host_ha -> host_slzb_otbr` TCP `8080`.
    - Optional diagnostic allow `host_ha -> host_slzb_otbr` TCP `80`.
-4. **Routing/policy checks**
-   - Verify inter-VLAN routing is enabled between Homelab and IoT.
-   - Confirm no policy-based routing or security profile blocks this path.
-5. **Discovery across VLANs**
-   - If phone remains on another VLAN, enable and validate mDNS reflection.
-   - Verify guest isolation is not enabled on the pairing VLAN.
-   - Verify IPv6 is enabled on VLANs participating in Thread/Matter onboarding.
-   - If the phone is on `Default` while HA is on `Homelab`, test from the Homelab SSID/LAN before assuming firewall policy is the blocker.
+4. **Discovery and onboarding**
+   - Keep the phone on the `Homelab` SSID/LAN for `Sync Thread Credentials`.
+   - Verify guest isolation is not enabled on the pairing SSID.
+   - Verify IPv6 is enabled on the `Homelab` LAN used for Thread/Matter onboarding.
 
 Verification after each network change:
 
 ```bash
-curl -sS http://192.168.40.185:8080/node/state
-curl -sS http://192.168.40.185:8080/node/ba-id
+curl -sS http://192.168.10.185:8080/node/state
+curl -sS http://192.168.10.185:8080/node/ba-id
 kubectl -n home-assistant exec home-assistant-0 -- \
-  curl -sS http://192.168.40.185:8080/node/state
+  curl -sS http://192.168.10.185:8080/node/state
 kubectl -n home-assistant exec home-assistant-0 -- \
   python3 -c "import json;from pathlib import Path;obj=json.loads(Path('/config/.storage/core.config_entries').read_text());[print(e['domain'],e.get('data')) for e in obj['data']['entries'] if e.get('domain') in {'matter','otbr','thread'}]"
 ```
@@ -179,7 +173,7 @@ kubectl -n home-assistant exec home-assistant-0 -- \
 Expected:
 - OTBR state returns `"leader"`
 - `ba-id` returns a non-empty ID
-- HA config entries show OTBR URL `http://192.168.40.185:8080`
+- HA config entries show OTBR URL `http://192.168.10.185:8080`
 - Thread integration no longer reports "No border routers were found"
 - Home Assistant companion app can complete `Sync Thread Credentials` from the trusted HA LAN
 

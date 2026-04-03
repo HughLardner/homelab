@@ -35,6 +35,10 @@ node_prep_optional_packages:
 # Kubernetes preparation
 node_prep_configure_sysctl: true
 node_prep_load_kernel_modules: true
+node_prep_enable_ipv6_thread_routing: true
+node_prep_configure_ipv6_accept_ra_netplan: true
+node_prep_ipv6_backbone_interface: ""
+node_prep_ipv6_accept_ra_rt_info_max_plen: 128
 node_prep_disable_swap: false
 node_prep_swap_size_mb: 2048
 node_prep_swappiness: 10
