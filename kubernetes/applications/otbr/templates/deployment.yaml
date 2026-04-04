@@ -7,7 +7,7 @@ metadata:
   labels:
     app.kubernetes.io/name: otbr
 spec:
-  replicas: 1
+  replicas: {{ .Values.services.otbr.replicas | default 1 }}
   strategy:
     type: Recreate  # Thread network state is singular
   selector:
