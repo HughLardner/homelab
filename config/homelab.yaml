@@ -206,7 +206,7 @@ services:
   # ---------------------------------------------------------------------------
   otbr:
     mode: cluster                   # Options: cluster, device
-    replicas: 0                     # Temporary: isolate Zigbee while diagnosing SLZB dual-radio instability
+    replicas: 1                     # Temporary: isolate Zigbee while diagnosing SLZB dual-radio instability
     domain: otbr.silverseekers.org
     auth_enabled: true
     thread_rcp_url: "192.168.10.185"
