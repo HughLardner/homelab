@@ -46,6 +46,7 @@ views:
                 icon: mdi:fire
                 icon_color: red
                 fill_container: true
+                layout: vertical
                 tap_action:
                   action: perform-action
                   perform_action: button.press
@@ -57,6 +58,7 @@ views:
                 icon: mdi:close-circle
                 icon_color: blue-grey
                 fill_container: true
+                layout: vertical
                 tap_action:
                   action: perform-action
                   perform_action: button.press
@@ -68,6 +70,7 @@ views:
                 icon: mdi:fire-off
                 icon_color: grey
                 fill_container: true
+                layout: vertical
                 tap_action:
                   action: perform-action
                   perform_action: button.press
@@ -79,6 +82,7 @@ views:
                 icon: mdi:arrow-down-bold-hexagon-outline
                 icon_color: orange
                 fill_container: true
+                layout: vertical
                 tap_action:
                   action: perform-action
                   perform_action: button.press
@@ -113,15 +117,16 @@ views:
                 icon_color: indigo
                 content_info: state
           - type: grid
-            columns: 2
+            columns: 3
             square: false
             cards:
               - type: custom:mushroom-template-card
-                primary: Boost hot water
+                primary: Boost HW
                 secondary: 30 min
                 icon: mdi:water-plus
                 icon_color: blue
                 fill_container: true
+                layout: vertical
                 tap_action:
                   action: perform-action
                   perform_action: button.press
@@ -133,39 +138,34 @@ views:
                 icon: mdi:water-percent-alert
                 icon_color: amber
                 fill_container: true
+                layout: vertical
                 tap_action:
                   action: perform-action
                   perform_action: button.press
                   target:
                     entity_id: button.wiser_toggle_hot_water
               - type: custom:mushroom-template-card
-                primary: Cancel HW overrides
+                primary: Cancel HW
                 secondary: Return to schedule
                 icon: mdi:close-circle
                 icon_color: blue-grey
                 fill_container: true
+                layout: vertical
                 tap_action:
                   action: perform-action
                   perform_action: button.press
                   target:
                     entity_id: button.wiser_cancel_hot_water_overrides
-          - type: custom:mini-graph-card
-            name: Hot water demand (24h)
-            hours_to_show: 24
-            points_per_hour: 2
-            line_width: 2
-            entities:
-              - entity: sensor.wiser_lts_hot_water_demand
-                name: HW demand
-              - entity: sensor.wiser_lts_heating_demand_channel_1
-                name: Ch1
-              - entity: sensor.wiser_lts_heating_demand_channel_3
-                name: Ch3
-            show:
-              labels: true
-              legend: true
-              icon: false
-              state: false
+          - type: custom:scheduler-card
+            title: Hot water schedule
+            include:
+              - switch.wiser_hot_water
+              - select.wiser_hot_water_mode
+            discover_existing: true
+            show_header_toggle: false
+      # ===========================================================
+      # Zones: mini-climate-card grid (compact — fits 8 zones on one screen)
+      # ===========================================================
       - title: Zones
         column_span: 4
         cards:
@@ -173,176 +173,145 @@ views:
             columns: 4
             square: false
             cards:
-              - type: thermostat
+              - type: custom:mini-climate-card
                 entity: climate.wiser_kitchen_dining_room
                 name: Kitchen / Dining
-              - type: thermostat
+              - type: custom:mini-climate-card
                 entity: climate.wiser_sitting_room
                 name: Sitting Room
-              - type: thermostat
+              - type: custom:mini-climate-card
                 entity: climate.wiser_bedroom
                 name: Bedroom
-              - type: thermostat
+              - type: custom:mini-climate-card
                 entity: climate.wiser_hugh_s_office
                 name: Hugh's Office
-              - type: thermostat
+              - type: custom:mini-climate-card
                 entity: climate.wiser_marie_s_office
                 name: Marie's Office
-              - type: thermostat
+              - type: custom:mini-climate-card
                 entity: climate.wiser_alexander_s_room
                 name: Alex's Room
-              - type: thermostat
+              - type: custom:mini-climate-card
                 entity: climate.wiser_lily_s_room
                 name: Lily's Room
-              - type: thermostat
+              - type: custom:mini-climate-card
                 entity: climate.wiser_attic
                 name: Attic
-      - title: Room temperatures (24h)
-        column_span: 2
-        cards:
-          - type: custom:apexcharts-card
-            header:
-              show: true
-              title: Measured vs target
-              show_states: false
-            graph_span: 24h
-            span:
-              end: minute
-            yaxis:
-              - min: 12
-                max: 26
-                decimals: 1
-            apex_config:
-              chart:
-                height: 320
-              stroke:
-                width: 2
-                curve: smooth
-              legend:
-                position: bottom
-              grid:
-                borderColor: rgba(255,255,255,0.08)
-            series:
-              - entity: sensor.wiser_lts_temperature_kitchen_dining_room
-                name: Kitchen
-                stroke_width: 2
-              - entity: sensor.wiser_lts_temperature_sitting_room
-                name: Sitting
-              - entity: sensor.wiser_lts_temperature_bedroom
-                name: Bedroom
-              - entity: sensor.wiser_lts_temperature_hugh_s_office
-                name: H-Office
-              - entity: sensor.wiser_lts_temperature_marie_s_office
-                name: M-Office
-              - entity: sensor.wiser_lts_temperature_alexander_s_room
-                name: Alex
-              - entity: sensor.wiser_lts_temperature_lily_s_room
-                name: Lily
-              - entity: sensor.wiser_lts_temperature_attic
-                name: Attic
-      - title: Heating demand (24h)
-        column_span: 2
-        cards:
-          - type: custom:apexcharts-card
-            header:
-              show: true
-              title: Demand per zone (%)
-              show_states: false
-            graph_span: 24h
-            span:
-              end: minute
-            stacked: false
-            yaxis:
-              - min: 0
-                max: 100
-                decimals: 0
-            apex_config:
-              chart:
-                height: 320
-                type: area
-              stroke:
-                width: 1
-                curve: smooth
-              fill:
-                type: gradient
-                gradient:
-                  opacityFrom: 0.4
-                  opacityTo: 0.05
-              legend:
-                position: bottom
-              grid:
-                borderColor: rgba(255,255,255,0.08)
-            series:
-              - entity: sensor.wiser_lts_heating_demand_kitchen_dining_room
-                name: Kitchen
-              - entity: sensor.wiser_lts_heating_demand_sitting_room
-                name: Sitting
-              - entity: sensor.wiser_lts_heating_demand_bedroom
-                name: Bedroom
-              - entity: sensor.wiser_lts_heating_demand_hugh_s_office
-                name: H-Office
-              - entity: sensor.wiser_lts_heating_demand_marie_s_office
-                name: M-Office
-              - entity: sensor.wiser_lts_heating_demand_alexander_s_room
-                name: Alex
-              - entity: sensor.wiser_lts_heating_demand_lily_s_room
-                name: Lily
-              - entity: sensor.wiser_lts_heating_demand_attic
-                name: Attic
-      - title: iTRV health — needs attention
-        column_span: 2
-        cards:
-          - type: custom:auto-entities
-            card:
-              type: entities
-              title: Batteries < 30%, poor signal, unavailable
-              show_header_toggle: false
-            filter:
-              include:
-                - entity_id: "/^sensor\\.wiser_itrv_.*_battery$/"
-                  state: "< 30"
-                  options:
-                    secondary_info: last-changed
-                - entity_id: "/^sensor\\.wiser_roomstat_.*_battery$/"
-                  state: "< 30"
-                - entity_id: "/^sensor\\.wiser_itrv_.*_signal$/"
-                  state: Poor
-                - entity_id: "/^sensor\\.wiser_itrv_.*_signal$/"
-                  state: NoSignal
-                - entity_id: "/^sensor\\.wiser_itrv_.*_signal$/"
-                  state: unavailable
-              exclude:
-                - state: unknown
-            sort:
-              method: state
-              numeric: true
-            show_empty: true
-      - title: Hub & cloud
-        column_span: 2
-        cards:
-          - type: entities
-            show_header_toggle: false
-            entities:
-              - sensor.wiser_cloud
-              - sensor.wiser_heathub_signal
-              - sensor.wiser_heating_operation_mode
-              - sensor.wiser_hot_water_operation_mode
-              - switch.wiser_daylight_saving
-              - switch.wiser_eco_mode
-              - switch.wiser_comfort_mode
-      - title: All iTRV telemetry
+      # ===========================================================
+      # tabbed-card: Temperatures | Heating demand | Schedule
+      # (previously three separate sections — now collapsed)
+      # ===========================================================
+      - title: Trends & schedule
         column_span: 4
         cards:
-          - type: custom:auto-entities
-            card:
-              type: entities
-              title: All iTRV + RoomStat batteries & signals
-              show_header_toggle: false
-            filter:
-              include:
-                - entity_id: "/^sensor\\.wiser_itrv_.*_battery$/"
-                - entity_id: "/^sensor\\.wiser_itrv_.*_signal$/"
-                - entity_id: "/^sensor\\.wiser_roomstat_.*_battery$/"
-                - entity_id: "/^sensor\\.wiser_roomstat_.*_signal$/"
-            sort:
-              method: friendly_name
+          - type: custom:tabbed-card
+            tabs:
+              - attributes:
+                  label: Temperatures (24h)
+                  icon: mdi:thermometer
+                card:
+                  type: custom:apexcharts-card
+                  header:
+                    show: true
+                    title: Measured room temperatures
+                    show_states: false
+                  graph_span: 24h
+                  span:
+                    end: minute
+                  yaxis:
+                    - min: 12
+                      max: 26
+                      decimals: 1
+                  apex_config:
+                    chart:
+                      height: 320
+                    stroke:
+                      width: 2
+                      curve: smooth
+                    legend:
+                      position: bottom
+                    grid:
+                      borderColor: rgba(255,255,255,0.08)
+                  series:
+                    - entity: sensor.wiser_lts_temperature_kitchen_dining_room
+                      name: Kitchen
+                    - entity: sensor.wiser_lts_temperature_sitting_room
+                      name: Sitting
+                    - entity: sensor.wiser_lts_temperature_bedroom
+                      name: Bedroom
+                    - entity: sensor.wiser_lts_temperature_hugh_s_office
+                      name: H-Office
+                    - entity: sensor.wiser_lts_temperature_marie_s_office
+                      name: M-Office
+                    - entity: sensor.wiser_lts_temperature_alexander_s_room
+                      name: Alex
+                    - entity: sensor.wiser_lts_temperature_lily_s_room
+                      name: Lily
+                    - entity: sensor.wiser_lts_temperature_attic
+                      name: Attic
+              - attributes:
+                  label: Heating demand (24h)
+                  icon: mdi:fire
+                card:
+                  type: custom:apexcharts-card
+                  header:
+                    show: true
+                    title: Demand per zone (%)
+                    show_states: false
+                  graph_span: 24h
+                  span:
+                    end: minute
+                  yaxis:
+                    - min: 0
+                      max: 100
+                      decimals: 0
+                  apex_config:
+                    chart:
+                      height: 320
+                      type: area
+                    stroke:
+                      width: 1
+                      curve: smooth
+                    fill:
+                      type: gradient
+                      gradient:
+                        opacityFrom: 0.4
+                        opacityTo: 0.05
+                    legend:
+                      position: bottom
+                    grid:
+                      borderColor: rgba(255,255,255,0.08)
+                  series:
+                    - entity: sensor.wiser_lts_heating_demand_kitchen_dining_room
+                      name: Kitchen
+                    - entity: sensor.wiser_lts_heating_demand_sitting_room
+                      name: Sitting
+                    - entity: sensor.wiser_lts_heating_demand_bedroom
+                      name: Bedroom
+                    - entity: sensor.wiser_lts_heating_demand_hugh_s_office
+                      name: H-Office
+                    - entity: sensor.wiser_lts_heating_demand_marie_s_office
+                      name: M-Office
+                    - entity: sensor.wiser_lts_heating_demand_alexander_s_room
+                      name: Alex
+                    - entity: sensor.wiser_lts_heating_demand_lily_s_room
+                      name: Lily
+                    - entity: sensor.wiser_lts_heating_demand_attic
+                      name: Attic
+              - attributes:
+                  label: Schedule
+                  icon: mdi:calendar-clock
+                card:
+                  type: custom:scheduler-card
+                  title: Heating schedules
+                  include:
+                    - climate.wiser_kitchen_dining_room
+                    - climate.wiser_sitting_room
+                    - climate.wiser_bedroom
+                    - climate.wiser_hugh_s_office
+                    - climate.wiser_marie_s_office
+                    - climate.wiser_alexander_s_room
+                    - climate.wiser_lily_s_room
+                    - climate.wiser_attic
+                  discover_existing: true
+                  show_header_toggle: false

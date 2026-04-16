@@ -5,6 +5,34 @@ views:
     icon: mdi:tools
     max_columns: 4
     sections:
+      # ===========================================================
+      # Bubble Card pop-ups consolidated into ONE vertical-stack
+      # (only one pop-up on this dashboard: printer)
+      # ===========================================================
+      - type: grid
+        column_span: 4
+        cards:
+          - type: vertical-stack
+            cards:
+              - type: custom:bubble-card
+                card_type: pop-up
+                hash: "#printer"
+                name: Brother DCP-L3550CDW
+                icon: mdi:printer
+              - type: entities
+                title: Toner / drum / status
+                show_header_toggle: false
+                entities:
+                  - sensor.dcp_l3550cdw_status
+                  - sensor.dcp_l3550cdw_black_toner_remaining
+                  - sensor.dcp_l3550cdw_cyan_toner_remaining
+                  - sensor.dcp_l3550cdw_magenta_toner_remaining
+                  - sensor.dcp_l3550cdw_yellow_toner_remaining
+                  - sensor.dcp_l3550cdw_drum_remaining_life
+                  - sensor.dcp_l3550cdw_duplex_unit_page_counter
+                  - sensor.dcp_l3550cdw_page_counter
+                  - sensor.dcp_l3550cdw_color_counter
+                  - sensor.dcp_l3550cdw_b_w_counter
       - title: Health summary
         column_span: 4
         cards:
@@ -21,26 +49,21 @@ views:
                 icon_color: red
                 content: >-
                   {{ states.sensor
-                  | selectattr('attributes.device_class','defined')
-                  | selectattr('attributes.device_class','eq','battery')
-                  | rejectattr('state','in',['unknown','unavailable'])
-                  | selectattr('state','lt','25')
-                  | list | count }} low batteries
+                     | selectattr('attributes.device_class','defined')
+                     | selectattr('attributes.device_class','eq','battery')
+                     | rejectattr('state','in',['unknown','unavailable'])
+                     | selectattr('state','lt','25')
+                     | list | count }} low batteries
+                tap_action:
+                  action: navigate
+                  navigation_path: /entity-health
               - type: template
                 icon: mdi:help-network-outline
                 icon_color: grey
                 content: >-
                   {{ states
-                  | selectattr('state','eq','unavailable')
-                  | list | count }} unavailable
-              - type: template
-                icon: mdi:zigbee
-                icon_color: purple
-                content: >-
-                  {{ states.binary_sensor
-                  | selectattr('entity_id','search','signal|interview')
-                  | rejectattr('state','in',['unknown','unavailable','off'])
-                  | list | count }} z-issues
+                     | selectattr('state','eq','unavailable')
+                     | list | count }} unavailable
               - type: entity
                 entity: sensor.backup_backup_manager_state
                 icon: mdi:backup-restore
@@ -53,6 +76,13 @@ views:
                 tap_action:
                   action: perform-action
                   perform_action: backup.create_automatic
+              - type: template
+                icon: mdi:heart-pulse
+                icon_color: pink
+                content: Entity health
+                tap_action:
+                  action: navigate
+                  navigation_path: /entity-health
       - title: Updates available
         column_span: 2
         cards:
@@ -67,27 +97,6 @@ views:
                   state: "on"
             sort:
               method: friendly_name
-            show_empty: true
-      - title: Batteries low
-        column_span: 2
-        cards:
-          - type: custom:auto-entities
-            card:
-              type: entities
-              title: < 25%
-              show_header_toggle: false
-            filter:
-              include:
-                - domain: sensor
-                  attributes:
-                    device_class: battery
-                  state: "< 25"
-              exclude:
-                - state: unknown
-                - state: unavailable
-            sort:
-              method: state
-              numeric: true
             show_empty: true
       - title: Unavailable entities
         column_span: 2
@@ -104,27 +113,6 @@ views:
                     secondary_info: last-changed
             sort:
               method: last_changed
-            show_empty: true
-      - title: Zigbee / Wiser health
-        column_span: 2
-        cards:
-          - type: custom:auto-entities
-            card:
-              type: entities
-              title: Poor signal / restart needed
-              show_header_toggle: false
-            filter:
-              include:
-                - entity_id: "/^sensor\\.wiser_itrv_.*_signal$/"
-                  state: Poor
-                - entity_id: "/^sensor\\.wiser_itrv_.*_signal$/"
-                  state: NoSignal
-                - entity_id: "/^sensor\\.wiser_roomstat_.*_signal$/"
-                  state: Poor
-                - entity_id: "/^binary_sensor\\.slzb_mr3u_internet$/"
-                  state: "off"
-                - entity_id: "/^binary_sensor\\.zigbee2mqtt_bridge_connection_state$/"
-                  state: "off"
             show_empty: true
       - title: Backups
         column_span: 2
@@ -146,9 +134,14 @@ views:
             icon: mdi:cloud-upload-outline
             icon_color: green
             fill_container: true
+            layout: vertical
             tap_action:
               action: perform-action
               perform_action: backup.create_automatic
+      # ===========================================================
+      # HA host — only entities that actually exist on this install
+      # (HA runs as a container: no update.home_assistant_* entities)
+      # ===========================================================
       - title: HA host
         column_span: 2
         cards:
@@ -157,10 +150,21 @@ views:
             entities:
               - sun.sun
               - zone.home
-              - update.home_assistant_core_update
-              - update.home_assistant_supervisor_update
-              - update.home_assistant_operating_system_update
-              - update.hacs_update
+              - entity: device_tracker.homeassistant
+                name: Home Assistant host
+              - entity: update.hacs_update
+                name: HACS
+              - entity: update.drayton_wiser_integration_for_home_assistant_update
+                name: Drayton Wiser integration
+              - entity: update.myenergi_update
+                name: myenergi integration
+              - entity: update.openid_connect_update
+                name: OpenID Connect
+              - entity: update.node_red_companion_update
+                name: Node-RED Companion
+      # ===========================================================
+      # Printer tile (tap opens #printer pop-up at top of view)
+      # ===========================================================
       - title: Printer
         column_span: 4
         cards:
@@ -172,28 +176,8 @@ views:
                 icon: mdi:printer
                 icon_color: blue
                 fill_container: true
+                layout: vertical
                 tap_action:
                   action: navigate
                   navigation_path: "#printer"
-      - type: grid
-        column_span: 4
-        cards:
-          - type: custom:bubble-card
-            card_type: pop-up
-            hash: "#printer"
-            name: Brother DCP-L3550CDW
-            icon: mdi:printer
-          - type: entities
-            title: Toner / drum / status
-            show_header_toggle: false
-            entities:
-              - sensor.dcp_l3550cdw_status
-              - sensor.dcp_l3550cdw_black_toner_remaining
-              - sensor.dcp_l3550cdw_cyan_toner_remaining
-              - sensor.dcp_l3550cdw_magenta_toner_remaining
-              - sensor.dcp_l3550cdw_yellow_toner_remaining
-              - sensor.dcp_l3550cdw_drum_remaining_life
-              - sensor.dcp_l3550cdw_duplex_unit_page_counter
-              - sensor.dcp_l3550cdw_page_counter
-              - sensor.dcp_l3550cdw_color_counter
-              - sensor.dcp_l3550cdw_b_w_counter
+      # Zigbee / Wiser health and battery detail moved to entity-health.
