@@ -1,251 +1,199 @@
 views:
-  - title: System & Maintenance
+  - title: System
     path: default_view
     type: sections
-    icon: mdi:cog-sync
+    icon: mdi:tools
+    max_columns: 4
     sections:
-      - title: Backups
+      - title: Health summary
+        column_span: 4
         cards:
-          - type: heading
-            heading: Home Assistant backups
-            icon: mdi:backup-restore
-          - type: tile
-            entity: sensor.backup_backup_manager_state
-            name: Backup Manager
-          - type: tile
-            entity: sensor.backup_last_successful_automatic_backup
-            name: Last successful
-          - type: tile
-            entity: sensor.backup_last_attempted_automatic_backup
-            name: Last attempted
-          - type: tile
-            entity: sensor.backup_next_scheduled_automatic_backup
-            name: Next scheduled
-          - type: tile
-            entity: event.backup_automatic_backup
-            name: Backup event
-          - show_name: true
-            show_icon: true
-            type: button
-            name: Run automatic backup now
-            icon: mdi:cloud-upload
-            tap_action:
-              action: call-service
-              service: backup.create_automatic
-      - title: Platform health
-        cards:
-          - type: heading
-            heading: Integration health
-            icon: mdi:heart-pulse
-          - type: tile
-            entity: binary_sensor.zigbee2mqtt_bridge_connection_state
-            name: Zigbee2MQTT bridge
-          - type: tile
-            entity: switch.zigbee2mqtt_bridge_permit_join
-            name: Z2M permit join
-          - type: tile
-            entity: sensor.wiser_cloud
-            name: Wiser Cloud
-          - type: tile
-            entity: sensor.wiser_heathub_signal
-            name: Wiser HeatHub Signal
-          - type: tile
-            entity: binary_sensor.slzb_mr3u_internet
-            name: SLZB Internet
-          - type: tile
-            entity: binary_sensor.slzb_mr3u_ethernet
-            name: SLZB Ethernet
-          - type: tile
-            entity: sensor.slzb_mr3u_connection_mode
-            name: SLZB connection mode
-          - type: tile
-            entity: sensor.slzb_mr3u_core_chip_temp
-            name: SLZB core temp
-          - type: tile
-            entity: sensor.slzb_mr3u_zigbee_chip_temp
-            name: SLZB zigbee temp
-          - type: tile
-            entity: sensor.slzb_mr3u_zigbee_chip_temp_2
-            name: SLZB zigbee temp 2
-          - type: tile
-            entity: sensor.slzb_mr3u_firmware_channel
-            name: SLZB firmware channel
-          - type: tile
-            entity: switch.slzb_mr3u_disable_leds
-            name: SLZB disable LEDs
-          - type: tile
-            entity: switch.slzb_mr3u_led_night_mode
-            name: SLZB LED night mode
-          - type: tile
-            entity: button.slzb_mr3u_core_restart
-            name: SLZB core restart
-          - type: tile
-            entity: button.slzb_mr3u_zigbee_restart
-            name: SLZB zigbee restart
-          - type: tile
-            entity: button.slzb_mr3u_zigbee_restart_2
-            name: SLZB zigbee restart 2
+          - type: custom:mushroom-chips-card
+            alignment: start
+            chips:
+              - type: template
+                icon: mdi:package-up
+                icon_color: orange
+                content: >-
+                  {{ states.update | selectattr('state','eq','on') | list | count }} updates
+              - type: template
+                icon: mdi:battery-alert-variant-outline
+                icon_color: red
+                content: >-
+                  {{ states.sensor
+                  | selectattr('attributes.device_class','defined')
+                  | selectattr('attributes.device_class','eq','battery')
+                  | rejectattr('state','in',['unknown','unavailable'])
+                  | selectattr('state','lt','25')
+                  | list | count }} low batteries
+              - type: template
+                icon: mdi:help-network-outline
+                icon_color: grey
+                content: >-
+                  {{ states
+                  | selectattr('state','eq','unavailable')
+                  | list | count }} unavailable
+              - type: template
+                icon: mdi:zigbee
+                icon_color: purple
+                content: >-
+                  {{ states.binary_sensor
+                  | selectattr('entity_id','search','signal|interview')
+                  | rejectattr('state','in',['unknown','unavailable','off'])
+                  | list | count }} z-issues
+              - type: entity
+                entity: sensor.backup_backup_manager_state
+                icon: mdi:backup-restore
+                icon_color: blue
+                content_info: state
+              - type: action
+                icon: mdi:cloud-upload-outline
+                icon_color: green
+                content: Run backup
+                tap_action:
+                  action: perform-action
+                  perform_action: backup.create_automatic
       - title: Updates available
+        column_span: 2
         cards:
-          - type: heading
-            heading: Firmware & integration updates
-            icon: mdi:package-up
+          - type: custom:auto-entities
+            card:
+              type: entities
+              title: Update entities
+              show_header_toggle: false
+            filter:
+              include:
+                - domain: update
+                  state: "on"
+            sort:
+              method: friendly_name
+            show_empty: true
+      - title: Batteries low
+        column_span: 2
+        cards:
+          - type: custom:auto-entities
+            card:
+              type: entities
+              title: < 25%
+              show_header_toggle: false
+            filter:
+              include:
+                - domain: sensor
+                  attributes:
+                    device_class: battery
+                  state: "< 25"
+              exclude:
+                - state: unknown
+                - state: unavailable
+            sort:
+              method: state
+              numeric: true
+            show_empty: true
+      - title: Unavailable entities
+        column_span: 2
+        cards:
+          - type: custom:auto-entities
+            card:
+              type: entities
+              title: State = unavailable
+              show_header_toggle: false
+            filter:
+              include:
+                - state: unavailable
+                  options:
+                    secondary_info: last-changed
+            sort:
+              method: last_changed
+            show_empty: true
+      - title: Zigbee / Wiser health
+        column_span: 2
+        cards:
+          - type: custom:auto-entities
+            card:
+              type: entities
+              title: Poor signal / restart needed
+              show_header_toggle: false
+            filter:
+              include:
+                - entity_id: "/^sensor\\.wiser_itrv_.*_signal$/"
+                  state: Poor
+                - entity_id: "/^sensor\\.wiser_itrv_.*_signal$/"
+                  state: NoSignal
+                - entity_id: "/^sensor\\.wiser_roomstat_.*_signal$/"
+                  state: Poor
+                - entity_id: "/^binary_sensor\\.slzb_mr3u_internet$/"
+                  state: "off"
+                - entity_id: "/^binary_sensor\\.zigbee2mqtt_bridge_connection_state$/"
+                  state: "off"
+            show_empty: true
+      - title: Backups
+        column_span: 2
+        cards:
           - type: entities
-            title: Infrastructure
             show_header_toggle: false
             entities:
-              - update.slzb_mr3u_core_firmware
-              - update.slzb_mr3u_zigbee_firmware
-              - update.slzb_mr3u_zigbee_firmware_2
-              - update.myenergi_update
-              - update.drayton_wiser_integration_for_home_assistant_update
-              - update.openid_connect_update
-              - update.node_red_companion_update
+              - entity: sensor.backup_backup_manager_state
+                name: Manager state
+              - entity: sensor.backup_last_attempted_automatic_backup
+                name: Last attempted
+              - entity: sensor.backup_last_successful_automatic_backup
+                name: Last successful
+              - entity: sensor.backup_next_scheduled_automatic_backup
+                name: Next scheduled
+          - type: custom:mushroom-template-card
+            primary: Run backup now
+            secondary: backup.create_automatic
+            icon: mdi:cloud-upload-outline
+            icon_color: green
+            fill_container: true
+            tap_action:
+              action: perform-action
+              perform_action: backup.create_automatic
+      - title: HA host
+        column_span: 2
+        cards:
+          - type: entities
+            show_header_toggle: false
+            entities:
+              - sun.sun
+              - zone.home
+              - update.home_assistant_core_update
+              - update.home_assistant_supervisor_update
+              - update.home_assistant_operating_system_update
               - update.hacs_update
-              - update.bubble_card_update
-          - type: entities
-            title: Zigbee devices
-            show_header_toggle: false
-            entities:
-              - update.kitchen_switch_2_firmware
-              - update.myggspray_wrlss_mtn_sensor_firmware
-              - update.myggbett_door_window_sensor_firmware
-              - update.kitchen_spot_1_firmware
-              - update.kitchen_spot_2_firmware
-              - update.kitchen_spot_3_firmware
-              - update.kitchen_spot_4_firmware
-          - type: entities
-            title: Shelly / Zigbee lamps & switches
-            show_header_toggle: false
-            entities:
-              - update.marie_lamp
-              - update.hugh_s_lamp
-              - update.switch_sitting_room
-              - update.switch_bedroom
-              - update.sitting_room_lamp
-              - update.attic_clothes_rail
-              - update.office_light
-              - update.office_cabinet
-              - update.office_bar_right
-              - update.office_bar_left
-              - update.office_switch
-              - update.office_motion_sensor
-              - update.office_switch_2
-              - update.hall_light_kitchen
-              - update.hall_light_door
-              - update.kitchen_cabinet
-              - update.kitchen_switch
-              - update.hall_motion_sensor
-              - update.bedroom_switch_2
-              - update.landing_light
-              - update.landing_motion_sensor
-      - title: Batteries
+      - title: Printer
+        column_span: 4
         cards:
-          - type: heading
-            heading: Low battery watch
-            icon: mdi:battery-alert
-          - type: entities
-            title: Wiser iTRVs
-            show_header_toggle: false
-            entities:
-              - sensor.wiser_itrv_kitchen_dining_room_1_battery
-              - sensor.wiser_itrv_kitchen_dining_room_2_battery
-              - sensor.wiser_itrv_alexander_s_room_battery
-              - sensor.wiser_itrv_hugh_s_office_battery
-              - sensor.wiser_itrv_lily_s_room_battery
-              - sensor.wiser_itrv_marie_s_office_battery
-              - sensor.wiser_itrv_attic_battery
-              - sensor.wiser_roomstat_bedroom_battery
-              - sensor.wiser_roomstat_sitting_room_battery
-          - type: entities
-            title: Motion & door sensors
-            show_header_toggle: false
-            entities:
-              - sensor.hall_motion_sensor_battery
-              - sensor.hall_front_door_sensor_battery
-              - sensor.office_motion_sensor_battery
-              - sensor.landing_motion_sensor_battery
-              - sensor.myggspray_wrlss_mtn_sensor_battery
-              - sensor.myggbett_door_window_sensor_battery
-          - type: entities
-            title: Switches
-            show_header_toggle: false
-            entities:
-              - sensor.kitchen_switch_battery
-              - sensor.kitchen_switch_2_battery
-              - sensor.office_switch_battery
-              - sensor.office_switch_2_battery
-              - sensor.bedroom_switch_2_battery
-              - sensor.switch_bedroom_battery
-              - sensor.switch_sitting_room_battery
-          - type: entities
-            title: Temperature/humidity sensors
-            show_header_toggle: false
-            entities:
-              - sensor.ensuite_temperature_humidity_sensor_battery
-              - sensor.main_bathroom_temperature_humidity_sensor_battery
-              - sensor.ams_temperature_humidity_sensor_battery
-          - type: entities
-            title: Mobile devices
-            show_header_toggle: false
-            entities:
-              - sensor.hugh_mobile_battery_level
-              - sensor.work_phone_battery_level
-              - sensor.hugh_tablet_battery_level
-      - title: Printer (Brother DCP-L3550CDW)
+          - type: horizontal-stack
+            cards:
+              - type: custom:mushroom-template-card
+                primary: DCP-L3550CDW
+                secondary: "{{ states('sensor.dcp_l3550cdw_status') }}"
+                icon: mdi:printer
+                icon_color: blue
+                fill_container: true
+                tap_action:
+                  action: navigate
+                  navigation_path: "#printer"
+      - type: grid
+        column_span: 4
         cards:
-          - type: heading
-            heading: Printer status
+          - type: custom:bubble-card
+            card_type: pop-up
+            hash: "#printer"
+            name: Brother DCP-L3550CDW
             icon: mdi:printer
-          - type: tile
-            entity: sensor.dcp_l3550cdw_status
-            name: Printer status
-          - type: tile
-            entity: sensor.dcp_l3550cdw_page_counter
-            name: Total pages
-          - type: tile
-            entity: sensor.dcp_l3550cdw_b_w_pages
-            name: B/W pages
-          - type: tile
-            entity: sensor.dcp_l3550cdw_color_pages
-            name: Colour pages
           - type: entities
-            title: Toner remaining (%)
+            title: Toner / drum / status
             show_header_toggle: false
             entities:
+              - sensor.dcp_l3550cdw_status
               - sensor.dcp_l3550cdw_black_toner_remaining
               - sensor.dcp_l3550cdw_cyan_toner_remaining
               - sensor.dcp_l3550cdw_magenta_toner_remaining
               - sensor.dcp_l3550cdw_yellow_toner_remaining
-          - type: entities
-            title: Drum remaining (%)
-            show_header_toggle: false
-            entities:
-              - sensor.dcp_l3550cdw_black_drum_remaining_lifetime
-              - sensor.dcp_l3550cdw_cyan_drum_remaining_lifetime
-              - sensor.dcp_l3550cdw_magenta_drum_remaining_lifetime
-              - sensor.dcp_l3550cdw_yellow_drum_remaining_lifetime
-              - sensor.dcp_l3550cdw_belt_unit_remaining_lifetime
-              - sensor.dcp_l3550cdw_fuser_remaining_lifetime
-              - sensor.dcp_l3550cdw_pf_kit_1_remaining_lifetime
-      - title: Persistent notifications
-        cards:
-          - type: heading
-            heading: Notifications & logs
-            icon: mdi:bell-ring
-          - show_name: true
-            show_icon: true
-            type: button
-            name: Dismiss all notifications
-            icon: mdi:bell-off
-            tap_action:
-              action: call-service
-              service: persistent_notification.dismiss_all
-          - type: logbook
-            title: Recent events (6h)
-            hours_to_show: 6
-            entities:
-              - sensor.backup_backup_manager_state
-              - binary_sensor.zigbee2mqtt_bridge_connection_state
-              - sensor.wiser_cloud
-              - binary_sensor.slzb_mr3u_internet
+              - sensor.dcp_l3550cdw_drum_remaining_life
+              - sensor.dcp_l3550cdw_duplex_unit_page_counter
+              - sensor.dcp_l3550cdw_page_counter
+              - sensor.dcp_l3550cdw_color_counter
+              - sensor.dcp_l3550cdw_b_w_counter

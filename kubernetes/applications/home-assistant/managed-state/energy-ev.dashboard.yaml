@@ -3,182 +3,262 @@ views:
     path: default_view
     type: sections
     icon: mdi:ev-station
+    max_columns: 4
     sections:
-      - title: Zappi — live
+      - title: At a glance
+        column_span: 4
         cards:
-          - type: heading
-            heading: Zappi status
-            icon: mdi:ev-plug-type2
-          - type: tile
-            entity: sensor.myenergi_zappi_25608214_status
-            name: Status
-          - type: tile
-            entity: sensor.myenergi_zappi_25608214_plug_status
-            name: Plug
-          - type: tile
-            entity: sensor.myenergi_zappi_25608214_pwm
-            name: PWM
-          - type: tile
-            entity: sensor.myenergi_zappi_25608214_charge_added_session
-            name: Charge added this session
-          - type: tile
-            entity: sensor.myenergi_zappi_power_charging
-            name: Power charging
-            icon: mdi:flash
-          - type: tile
-            entity: sensor.myenergi_zappi_home_consumption
-            name: Home consumption
-          - type: tile
-            entity: sensor.myenergi_zappi_power_grid
-            name: Power grid
-          - type: tile
-            entity: sensor.myenergi_zappi_power_import
-            name: Power import
-          - type: tile
-            entity: sensor.myenergi_zappi_power_export
-            name: Power export
-          - type: tile
-            entity: sensor.myenergi_zappi_power_generation
-            name: Power generation
-          - type: tile
-            entity: sensor.myenergi_zappi_voltage_grid
-            name: Voltage
-          - type: tile
-            entity: sensor.myenergi_zappi_frequency_grid
-            name: Frequency
-      - title: Zappi — controls
+          - type: custom:mushroom-chips-card
+            alignment: start
+            chips:
+              - type: entity
+                entity: sensor.myenergi_zappi_25608214_status
+                icon: mdi:ev-station
+                icon_color: green
+                content_info: state
+              - type: entity
+                entity: sensor.myenergi_zappi_25608214_plug_status
+                icon: mdi:ev-plug-type2
+                icon_color: teal
+                content_info: state
+              - type: entity
+                entity: select.myenergi_zappi_25608214_charge_mode
+                icon: mdi:speedometer
+                icon_color: amber
+                content_info: state
+              - type: entity
+                entity: sensor.myenergi_zappi_25608214_pwm
+                icon: mdi:sine-wave
+                icon_color: purple
+                content_info: state
+              - type: entity
+                entity: sensor.myenergi_zappi_25608214_charge_added_session
+                icon: mdi:battery-charging-high
+                icon_color: green
+                content_info: state
+              - type: entity
+                entity: sensor.myenergi_zappi_home_consumption
+                icon: mdi:home-lightning-bolt
+                icon_color: orange
+                content_info: state
+              - type: entity
+                entity: sensor.myenergi_zappi_voltage_grid
+                icon: mdi:flash
+                icon_color: blue
+                content_info: state
+              - type: entity
+                entity: sensor.myenergi_zappi_frequency_grid
+                icon: mdi:sine-wave
+                icon_color: blue-grey
+                content_info: state
+      - title: Charge controls
+        column_span: 2
         cards:
-          - type: heading
-            heading: Charge controls
-            icon: mdi:cog
-          - type: tile
-            entity: select.myenergi_zappi_25608214_charge_mode
-            name: Charge Mode
-          - type: tile
-            entity: select.myenergi_zappi_25608214_phase_setting
-            name: Phase setting
-          - type: tile
-            entity: number.myenergi_zappi_25608214_minimum_green_level
-            name: Min green level
-          - type: tile
-            entity: number.myenergi_zappi_25608214_device_priority
-            name: Device priority
-          - type: tile
-            entity: binary_sensor.myenergi_zappi_25608214_locked
-            name: Locked
-          - type: tile
-            entity: binary_sensor.myenergi_zappi_25608214_charge_when_locked
-            name: Charge when locked
-          - type: tile
-            entity: binary_sensor.myenergi_zappi_25608214_lock_when_plugged_in
-            name: Lock when plugged in
-          - type: tile
-            entity: binary_sensor.myenergi_zappi_25608214_lock_when_unplugged
-            name: Lock when unplugged
-          - type: tile
-            entity: sensor.myenergi_zappi_25608214_number_of_phases
-            name: Phases
-      - title: Today totals
-        cards:
-          - type: heading
-            heading: Today (kWh)
-            icon: mdi:counter
-          - type: tile
-            entity: sensor.myenergi_zappi_grid_import_today
-            name: Grid import
-          - type: tile
-            entity: sensor.myenergi_zappi_grid_export_today
-            name: Grid export
-          - type: tile
-            entity: sensor.myenergi_zappi_green_energy_today
-            name: Zappi green
-          - type: tile
-            entity: sensor.myenergi_zappi_generated_today
-            name: Generated
-          - type: tile
-            entity: sensor.myenergi_zappi_25608214_energy_used_today
-            name: Charger energy used
-          - type: tile
-            entity: sensor.myenergi_zappi_25608214_green_energy_today
-            name: Charger green energy
-          - type: tile
-            entity: sensor.myenergi_zappi_25608214_ct_internal_load_today
-            name: Internal load CT
-          - type: tile
-            entity: sensor.myenergi_zappi_25608214_ct_grid_today
-            name: Grid CT
-      - title: History (24h)
-        cards:
-          - type: history-graph
-            hours_to_show: 24
-            title: Live power flows
+          - type: grid
+            columns: 4
+            square: false
+            cards:
+              - type: custom:mushroom-template-card
+                primary: Fast
+                secondary: Full power
+                icon: mdi:flash
+                icon_color: red
+                fill_container: true
+                badge_icon: "{{ 'mdi:check-bold' if is_state('select.myenergi_zappi_25608214_charge_mode','Fast') else '' }}"
+                tap_action:
+                  action: perform-action
+                  perform_action: select.select_option
+                  target:
+                    entity_id: select.myenergi_zappi_25608214_charge_mode
+                  data:
+                    option: Fast
+              - type: custom:mushroom-template-card
+                primary: Eco
+                secondary: Min green
+                icon: mdi:leaf
+                icon_color: green
+                fill_container: true
+                badge_icon: "{{ 'mdi:check-bold' if is_state('select.myenergi_zappi_25608214_charge_mode','Eco') else '' }}"
+                tap_action:
+                  action: perform-action
+                  perform_action: select.select_option
+                  target:
+                    entity_id: select.myenergi_zappi_25608214_charge_mode
+                  data:
+                    option: Eco
+              - type: custom:mushroom-template-card
+                primary: Eco+
+                secondary: Surplus only
+                icon: mdi:leaf-circle
+                icon_color: teal
+                fill_container: true
+                badge_icon: "{{ 'mdi:check-bold' if is_state('select.myenergi_zappi_25608214_charge_mode','Eco+') else '' }}"
+                tap_action:
+                  action: perform-action
+                  perform_action: select.select_option
+                  target:
+                    entity_id: select.myenergi_zappi_25608214_charge_mode
+                  data:
+                    option: Eco+
+              - type: custom:mushroom-template-card
+                primary: Stopped
+                secondary: Paused
+                icon: mdi:pause-circle
+                icon_color: grey
+                fill_container: true
+                badge_icon: "{{ 'mdi:check-bold' if is_state('select.myenergi_zappi_25608214_charge_mode','Stopped') else '' }}"
+                tap_action:
+                  action: perform-action
+                  perform_action: select.select_option
+                  target:
+                    entity_id: select.myenergi_zappi_25608214_charge_mode
+                  data:
+                    option: Stopped
+          - type: entities
+            show_header_toggle: false
             entities:
+              - entity: number.myenergi_zappi_25608214_minimum_green_level
+                name: Minimum green (%)
+              - entity: number.myenergi_zappi_25608214_device_priority
+                name: Device priority
+              - entity: select.myenergi_zappi_25608214_phase_setting
+                name: Phase setting
+              - entity: binary_sensor.myenergi_zappi_25608214_locked
+                name: Locked
+              - entity: binary_sensor.myenergi_zappi_25608214_charge_when_locked
+                name: Charge when locked
+              - entity: binary_sensor.myenergi_zappi_25608214_lock_when_plugged_in
+                name: Lock when plugged in
+              - entity: binary_sensor.myenergi_zappi_25608214_lock_when_unplugged
+                name: Lock when unplugged
+      - title: Today totals (kWh)
+        column_span: 2
+        cards:
+          - type: grid
+            columns: 2
+            square: false
+            cards:
+              - type: tile
+                entity: sensor.myenergi_zappi_grid_import_today
+                name: Grid import
+                color: red
+              - type: tile
+                entity: sensor.myenergi_zappi_grid_export_today
+                name: Grid export
+                color: green
+              - type: tile
+                entity: sensor.myenergi_zappi_green_energy_today
+                name: Zappi green
+                color: teal
+              - type: tile
+                entity: sensor.myenergi_zappi_generated_today
+                name: Generated
+                color: amber
+              - type: tile
+                entity: sensor.myenergi_zappi_25608214_energy_used_today
+                name: Charger energy
+                color: blue
+              - type: tile
+                entity: sensor.myenergi_zappi_25608214_green_energy_today
+                name: Charger green
+                color: light-green
+      - title: Live power (24h)
+        column_span: 2
+        cards:
+          - type: custom:apexcharts-card
+            header:
+              show: true
+              title: Home consumption, grid, charging
+              show_states: false
+            graph_span: 24h
+            span:
+              end: minute
+            apex_config:
+              chart:
+                height: 320
+              stroke:
+                width: 2
+                curve: smooth
+              legend:
+                position: bottom
+              grid:
+                borderColor: rgba(255,255,255,0.08)
+            series:
               - entity: sensor.myenergi_zappi_home_consumption
-                name: Home consumption
+                name: Home
+                color: "#ffa726"
               - entity: sensor.myenergi_zappi_power_import
                 name: Import
+                color: "#ef5350"
               - entity: sensor.myenergi_zappi_power_export
                 name: Export
+                color: "#66bb6a"
               - entity: sensor.myenergi_zappi_power_charging
                 name: Charging
+                color: "#42a5f5"
               - entity: sensor.myenergi_zappi_power_generation
-                name: Generation
-          - type: history-graph
-            hours_to_show: 48
-            title: Daily totals (48h)
-            entities:
+                name: Generated
+                color: "#26a69a"
+      - title: Daily totals (48h)
+        column_span: 2
+        cards:
+          - type: custom:apexcharts-card
+            header:
+              show: true
+              title: Import / export / charger
+              show_states: false
+            graph_span: 48h
+            span:
+              end: minute
+            apex_config:
+              chart:
+                height: 320
+              stroke:
+                width: 2
+              legend:
+                position: bottom
+              grid:
+                borderColor: rgba(255,255,255,0.08)
+            series:
               - entity: sensor.myenergi_zappi_grid_import_today
                 name: Grid import today
+                color: "#ef5350"
+                curve: stepline
               - entity: sensor.myenergi_zappi_grid_export_today
                 name: Grid export today
+                color: "#66bb6a"
+                curve: stepline
               - entity: sensor.myenergi_zappi_25608214_energy_used_today
                 name: Charger energy used
+                color: "#42a5f5"
+                curve: stepline
       - title: Harvi / CTs
+        column_span: 2
         cards:
-          - type: heading
-            heading: Harvi CTs
-            icon: mdi:transmission-tower
-          - type: tile
-            entity: sensor.myenergi_harvi_2239208_power_ct_grid
-            name: Power CT grid
-          - type: tile
-            entity: sensor.myenergi_harvi_2239208_power_ct_grid_inverted
-            name: Power CT grid (inverted)
-          - type: tile
-            entity: sensor.myenergi_harvi_2239208_grid_ct1
-            name: Grid CT1
-          - type: tile
-            entity: sensor.myenergi_harvi_2239208_none_ct2
-            name: CT2
-          - type: tile
-            entity: sensor.myenergi_harvi_2239208_none_ct3
-            name: CT3
+          - type: entities
+            show_header_toggle: false
+            entities:
+              - entity: sensor.myenergi_harvi_2239208_power_ct_grid
+                name: Power CT grid
+              - entity: sensor.myenergi_harvi_2239208_power_ct_grid_inverted
+                name: Power CT grid (inverted)
+              - entity: sensor.myenergi_harvi_2239208_grid_ct1
+                name: Grid CT1
+              - entity: sensor.myenergi_harvi_2239208_none_ct2
+                name: CT2
+              - entity: sensor.myenergi_harvi_2239208_none_ct3
+                name: CT3
       - title: Hardware
+        column_span: 2
         cards:
-          - type: heading
-            heading: Firmware & serials
-            icon: mdi:chip
-          - type: tile
-            entity: sensor.myenergi_zappi_hub_firmware
-            name: Hub firmware
-          - type: tile
-            entity: sensor.myenergi_zappi_25608214_firmware
-            name: Zappi firmware
-          - type: tile
-            entity: sensor.myenergi_harvi_2239208_firmware
-            name: Harvi firmware
-          - type: tile
-            entity: sensor.myenergi_zappi_hub_serial_number
-            name: Hub serial
-          - type: tile
-            entity: sensor.myenergi_zappi_25608214_serial_number
-            name: Zappi serial
-          - type: tile
-            entity: sensor.myenergi_harvi_2239208_serial_number
-            name: Harvi serial
-          - type: tile
-            entity: update.myenergi_update
-            name: myenergi integration update
-          - type: tile
-            entity: binary_sensor.myenergi_zappi_25608214_update_available
-            name: Zappi update available
+          - type: entities
+            show_header_toggle: false
+            entities:
+              - sensor.myenergi_zappi_hub_firmware
+              - sensor.myenergi_zappi_25608214_firmware
+              - sensor.myenergi_harvi_2239208_firmware
+              - sensor.myenergi_zappi_hub_serial_number
+              - sensor.myenergi_zappi_25608214_serial_number
+              - sensor.myenergi_harvi_2239208_serial_number
+              - update.myenergi_update
+              - binary_sensor.myenergi_zappi_25608214_update_available

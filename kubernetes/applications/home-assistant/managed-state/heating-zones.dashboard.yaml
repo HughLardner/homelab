@@ -3,220 +3,346 @@ views:
     path: default_view
     type: sections
     icon: mdi:radiator
+    max_columns: 4
     sections:
       - title: Global controls
+        column_span: 2
         cards:
-          - type: heading
-            heading: Global heating controls
-            icon: mdi:home-thermometer
-          - type: tile
-            entity: sensor.wiser_heating_operation_mode
-            name: Operation mode
-          - type: tile
-            entity: sensor.wiser_heating_channel_1
-            name: Channel 1
-          - type: tile
-            entity: sensor.wiser_heating_channel_3
-            name: Channel 3
-          - type: tile
-            entity: switch.wiser_eco_mode
-            name: Eco mode
-          - type: tile
-            entity: switch.wiser_comfort_mode
-            name: Comfort mode
-          - type: tile
-            entity: switch.wiser_away_mode
-            name: Away mode
-          - type: tile
-            entity: switch.wiser_away_mode_affects_hot_water
-            name: Away affects hot water
-          - type: tile
-            entity: number.wiser_away_mode_target_temperature
-            name: Away target temp
-          - type: tile
-            entity: switch.wiser_valve_protection
-            name: Valve protection
-          - type: tile
-            entity: switch.wiser_daylight_saving
-            name: Daylight saving
-          - type: tile
-            entity: button.wiser_boost_all_heating
-            name: Boost all
-            icon: mdi:fire
-          - type: tile
-            entity: button.wiser_cancel_all_heating_overrides
-            name: Cancel all overrides
-            icon: mdi:cancel
-          - type: tile
-            entity: button.wiser_moments_heating_off
-            name: Moment — Heating off
-          - type: tile
-            entity: button.wiser_moments_boost_downstairs
-            name: Moment — Boost downstairs
-      - title: Hot water
-        cards:
-          - type: heading
-            heading: Hot water
-            icon: mdi:water-boiler
-          - type: tile
-            entity: sensor.wiser_hot_water
-            name: Hot water state
-          - type: tile
-            entity: sensor.wiser_hot_water_operation_mode
-            name: Operation mode
-          - type: tile
-            entity: select.wiser_hot_water_mode
-            name: Hot water mode
-          - type: tile
-            entity: button.wiser_boost_hot_water
-            name: Boost hot water
-            icon: mdi:water-plus
-          - type: tile
-            entity: button.wiser_toggle_hot_water
-            name: Toggle hot water
-          - type: tile
-            entity: button.wiser_cancel_hot_water_overrides
-            name: Cancel hot water overrides
-          - type: tile
-            entity: sensor.wiser_lts_hot_water_demand
-            name: Hot water demand (LTS)
-      - title: Zones
-        cards:
-          - type: heading
-            heading: Zones
-            icon: mdi:thermostat
-          - type: thermostat
-            entity: climate.wiser_kitchen_dining_room
-            name: Kitchen/Dining
-          - type: thermostat
-            entity: climate.wiser_sitting_room
-            name: Sitting Room
-          - type: thermostat
-            entity: climate.wiser_bedroom
-            name: Bedroom
-          - type: thermostat
-            entity: climate.wiser_hugh_s_office
-            name: Hugh's Office
-          - type: thermostat
-            entity: climate.wiser_marie_s_office
-            name: Marie's Office
-          - type: thermostat
-            entity: climate.wiser_alexander_s_room
-            name: Alex's Room
-          - type: thermostat
-            entity: climate.wiser_lily_s_room
-            name: Lily's Room
-          - type: thermostat
-            entity: climate.wiser_attic
-            name: Attic
-      - title: Room temperatures (24h)
-        cards:
-          - type: history-graph
-            hours_to_show: 24
-            title: Measured room temperatures
+          - type: custom:mushroom-chips-card
+            alignment: start
+            chips:
+              - type: entity
+                entity: sensor.wiser_heating_operation_mode
+                icon: mdi:home-thermometer
+                icon_color: red
+                content_info: state
+              - type: entity
+                entity: switch.wiser_comfort_mode
+                icon: mdi:home-heart
+                icon_color: amber
+                content_info: state
+              - type: entity
+                entity: switch.wiser_eco_mode
+                icon: mdi:leaf
+                icon_color: green
+                content_info: state
+              - type: entity
+                entity: switch.wiser_away_mode
+                icon: mdi:airplane
+                icon_color: deep-orange
+                content_info: state
+              - type: entity
+                entity: switch.wiser_valve_protection
+                icon: mdi:valve
+                icon_color: blue-grey
+                content_info: state
+          - type: grid
+            columns: 2
+            square: false
+            cards:
+              - type: custom:mushroom-template-card
+                primary: Boost all heating
+                secondary: 30 min boost
+                icon: mdi:fire
+                icon_color: red
+                fill_container: true
+                tap_action:
+                  action: perform-action
+                  perform_action: button.press
+                  target:
+                    entity_id: button.wiser_boost_all_heating
+              - type: custom:mushroom-template-card
+                primary: Cancel overrides
+                secondary: Return to schedule
+                icon: mdi:close-circle
+                icon_color: blue-grey
+                fill_container: true
+                tap_action:
+                  action: perform-action
+                  perform_action: button.press
+                  target:
+                    entity_id: button.wiser_cancel_all_heating_overrides
+              - type: custom:mushroom-template-card
+                primary: Heating off
+                secondary: Moment
+                icon: mdi:fire-off
+                icon_color: grey
+                fill_container: true
+                tap_action:
+                  action: perform-action
+                  perform_action: button.press
+                  target:
+                    entity_id: button.wiser_moments_heating_off
+              - type: custom:mushroom-template-card
+                primary: Boost downstairs
+                secondary: Moment
+                icon: mdi:arrow-down-bold-hexagon-outline
+                icon_color: orange
+                fill_container: true
+                tap_action:
+                  action: perform-action
+                  perform_action: button.press
+                  target:
+                    entity_id: button.wiser_moments_boost_downstairs
+          - type: entities
+            title: Away settings
+            show_header_toggle: false
             entities:
-              - entity: sensor.wiser_lts_temperature_kitchen_dining_room
-                name: Kitchen/Dining
-              - entity: sensor.wiser_lts_temperature_sitting_room
+              - switch.wiser_away_mode_affects_hot_water
+              - number.wiser_away_mode_target_temperature
+              - switch.wiser_daylight_saving
+      - title: Hot water
+        column_span: 2
+        cards:
+          - type: custom:mushroom-chips-card
+            alignment: start
+            chips:
+              - type: entity
+                entity: sensor.wiser_hot_water_operation_mode
+                icon: mdi:water-boiler
+                icon_color: blue
+                content_info: state
+              - type: entity
+                entity: binary_sensor.wiser_hot_water
+                icon: mdi:water
+                icon_color: cyan
+                content_info: state
+              - type: entity
+                entity: select.wiser_hot_water_mode
+                icon: mdi:auto-mode
+                icon_color: indigo
+                content_info: state
+          - type: grid
+            columns: 2
+            square: false
+            cards:
+              - type: custom:mushroom-template-card
+                primary: Boost hot water
+                secondary: 30 min
+                icon: mdi:water-plus
+                icon_color: blue
+                fill_container: true
+                tap_action:
+                  action: perform-action
+                  perform_action: button.press
+                  target:
+                    entity_id: button.wiser_boost_hot_water
+              - type: custom:mushroom-template-card
+                primary: Toggle HW
+                secondary: On/off flip
+                icon: mdi:water-percent-alert
+                icon_color: amber
+                fill_container: true
+                tap_action:
+                  action: perform-action
+                  perform_action: button.press
+                  target:
+                    entity_id: button.wiser_toggle_hot_water
+              - type: custom:mushroom-template-card
+                primary: Cancel HW overrides
+                secondary: Return to schedule
+                icon: mdi:close-circle
+                icon_color: blue-grey
+                fill_container: true
+                tap_action:
+                  action: perform-action
+                  perform_action: button.press
+                  target:
+                    entity_id: button.wiser_cancel_hot_water_overrides
+          - type: custom:mini-graph-card
+            name: Hot water demand (24h)
+            hours_to_show: 24
+            points_per_hour: 2
+            line_width: 2
+            entities:
+              - entity: sensor.wiser_lts_hot_water_demand
+                name: HW demand
+              - entity: sensor.wiser_lts_heating_demand_channel_1
+                name: Ch1
+              - entity: sensor.wiser_lts_heating_demand_channel_3
+                name: Ch3
+            show:
+              labels: true
+              legend: true
+              icon: false
+              state: false
+      - title: Zones
+        column_span: 4
+        cards:
+          - type: grid
+            columns: 4
+            square: false
+            cards:
+              - type: thermostat
+                entity: climate.wiser_kitchen_dining_room
+                name: Kitchen / Dining
+              - type: thermostat
+                entity: climate.wiser_sitting_room
                 name: Sitting Room
+              - type: thermostat
+                entity: climate.wiser_bedroom
+                name: Bedroom
+              - type: thermostat
+                entity: climate.wiser_hugh_s_office
+                name: Hugh's Office
+              - type: thermostat
+                entity: climate.wiser_marie_s_office
+                name: Marie's Office
+              - type: thermostat
+                entity: climate.wiser_alexander_s_room
+                name: Alex's Room
+              - type: thermostat
+                entity: climate.wiser_lily_s_room
+                name: Lily's Room
+              - type: thermostat
+                entity: climate.wiser_attic
+                name: Attic
+      - title: Room temperatures (24h)
+        column_span: 2
+        cards:
+          - type: custom:apexcharts-card
+            header:
+              show: true
+              title: Measured vs target
+              show_states: false
+            graph_span: 24h
+            span:
+              end: minute
+            yaxis:
+              - min: 12
+                max: 26
+                decimals: 1
+            apex_config:
+              chart:
+                height: 320
+              stroke:
+                width: 2
+                curve: smooth
+              legend:
+                position: bottom
+              grid:
+                borderColor: rgba(255,255,255,0.08)
+            series:
+              - entity: sensor.wiser_lts_temperature_kitchen_dining_room
+                name: Kitchen
+                stroke_width: 2
+              - entity: sensor.wiser_lts_temperature_sitting_room
+                name: Sitting
               - entity: sensor.wiser_lts_temperature_bedroom
                 name: Bedroom
               - entity: sensor.wiser_lts_temperature_hugh_s_office
-                name: Hugh's Office
+                name: H-Office
               - entity: sensor.wiser_lts_temperature_marie_s_office
-                name: Marie's Office
+                name: M-Office
               - entity: sensor.wiser_lts_temperature_alexander_s_room
-                name: Alex's Room
+                name: Alex
               - entity: sensor.wiser_lts_temperature_lily_s_room
-                name: Lily's Room
+                name: Lily
               - entity: sensor.wiser_lts_temperature_attic
                 name: Attic
       - title: Heating demand (24h)
+        column_span: 2
         cards:
-          - type: history-graph
-            hours_to_show: 24
-            title: Heating demand per zone
-            entities:
+          - type: custom:apexcharts-card
+            header:
+              show: true
+              title: Demand per zone (%)
+              show_states: false
+            graph_span: 24h
+            span:
+              end: minute
+            stacked: false
+            yaxis:
+              - min: 0
+                max: 100
+                decimals: 0
+            apex_config:
+              chart:
+                height: 320
+                type: area
+              stroke:
+                width: 1
+                curve: smooth
+              fill:
+                type: gradient
+                gradient:
+                  opacityFrom: 0.4
+                  opacityTo: 0.05
+              legend:
+                position: bottom
+              grid:
+                borderColor: rgba(255,255,255,0.08)
+            series:
               - entity: sensor.wiser_lts_heating_demand_kitchen_dining_room
-                name: Kitchen/Dining
+                name: Kitchen
               - entity: sensor.wiser_lts_heating_demand_sitting_room
-                name: Sitting Room
+                name: Sitting
               - entity: sensor.wiser_lts_heating_demand_bedroom
                 name: Bedroom
               - entity: sensor.wiser_lts_heating_demand_hugh_s_office
-                name: Hugh's Office
+                name: H-Office
               - entity: sensor.wiser_lts_heating_demand_marie_s_office
-                name: Marie's Office
+                name: M-Office
               - entity: sensor.wiser_lts_heating_demand_alexander_s_room
-                name: Alex's Room
+                name: Alex
               - entity: sensor.wiser_lts_heating_demand_lily_s_room
-                name: Lily's Room
+                name: Lily
               - entity: sensor.wiser_lts_heating_demand_attic
                 name: Attic
-              - entity: sensor.wiser_lts_hot_water_demand
-                name: Hot water
-      - title: iTRV health
+      - title: iTRV health — needs attention
+        column_span: 2
         cards:
-          - type: heading
-            heading: iTRV batteries & signal
-            icon: mdi:battery-heart-variant
-          - type: tile
-            entity: sensor.wiser_itrv_kitchen_dining_room_1_battery
-            name: Kitchen iTRV 1 battery
-          - type: tile
-            entity: sensor.wiser_itrv_kitchen_dining_room_1_signal
-            name: Kitchen iTRV 1 signal
-          - type: tile
-            entity: sensor.wiser_itrv_kitchen_dining_room_2_battery
-            name: Kitchen iTRV 2 battery
-          - type: tile
-            entity: sensor.wiser_itrv_kitchen_dining_room_2_signal
-            name: Kitchen iTRV 2 signal
-          - type: tile
-            entity: sensor.wiser_itrv_hugh_s_office_battery
-            name: Hugh Office battery
-          - type: tile
-            entity: sensor.wiser_itrv_hugh_s_office_signal
-            name: Hugh Office signal
-          - type: tile
-            entity: sensor.wiser_itrv_marie_s_office_battery
-            name: Marie Office battery
-          - type: tile
-            entity: sensor.wiser_itrv_marie_s_office_signal
-            name: Marie Office signal
-          - type: tile
-            entity: sensor.wiser_itrv_alexander_s_room_battery
-            name: Alex battery
-          - type: tile
-            entity: sensor.wiser_itrv_alexander_s_room_signal
-            name: Alex signal
-          - type: tile
-            entity: sensor.wiser_itrv_lily_s_room_battery
-            name: Lily battery
-          - type: tile
-            entity: sensor.wiser_itrv_lily_s_room_signal
-            name: Lily signal
-          - type: tile
-            entity: sensor.wiser_itrv_attic_battery
-            name: Attic battery
-          - type: tile
-            entity: sensor.wiser_itrv_attic_signal
-            name: Attic signal
-          - type: tile
-            entity: sensor.wiser_roomstat_bedroom_battery
-            name: Bedroom RoomStat battery
-          - type: tile
-            entity: sensor.wiser_roomstat_bedroom_signal
-            name: Bedroom RoomStat signal
-          - type: tile
-            entity: sensor.wiser_roomstat_sitting_room_battery
-            name: Sitting Room RoomStat battery
-          - type: tile
-            entity: sensor.wiser_roomstat_sitting_room_signal
-            name: Sitting Room RoomStat signal
-          - type: tile
-            entity: sensor.wiser_heathub_signal
-            name: HeatHub signal
-          - type: tile
-            entity: sensor.wiser_cloud
-            name: Wiser Cloud
+          - type: custom:auto-entities
+            card:
+              type: entities
+              title: Batteries < 30%, poor signal, unavailable
+              show_header_toggle: false
+            filter:
+              include:
+                - entity_id: "/^sensor\\.wiser_itrv_.*_battery$/"
+                  state: "< 30"
+                  options:
+                    secondary_info: last-changed
+                - entity_id: "/^sensor\\.wiser_roomstat_.*_battery$/"
+                  state: "< 30"
+                - entity_id: "/^sensor\\.wiser_itrv_.*_signal$/"
+                  state: Poor
+                - entity_id: "/^sensor\\.wiser_itrv_.*_signal$/"
+                  state: NoSignal
+                - entity_id: "/^sensor\\.wiser_itrv_.*_signal$/"
+                  state: unavailable
+              exclude:
+                - state: unknown
+            sort:
+              method: state
+              numeric: true
+            show_empty: true
+      - title: Hub & cloud
+        column_span: 2
+        cards:
+          - type: entities
+            show_header_toggle: false
+            entities:
+              - sensor.wiser_cloud
+              - sensor.wiser_heathub_signal
+              - sensor.wiser_heating_operation_mode
+              - sensor.wiser_hot_water_operation_mode
+              - switch.wiser_daylight_saving
+              - switch.wiser_eco_mode
+              - switch.wiser_comfort_mode
+      - title: All iTRV telemetry
+        column_span: 4
+        cards:
+          - type: custom:auto-entities
+            card:
+              type: entities
+              title: All iTRV + RoomStat batteries & signals
+              show_header_toggle: false
+            filter:
+              include:
+                - entity_id: "/^sensor\\.wiser_itrv_.*_battery$/"
+                - entity_id: "/^sensor\\.wiser_itrv_.*_signal$/"
+                - entity_id: "/^sensor\\.wiser_roomstat_.*_battery$/"
+                - entity_id: "/^sensor\\.wiser_roomstat_.*_signal$/"
+            sort:
+              method: friendly_name

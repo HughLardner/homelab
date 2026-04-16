@@ -3,200 +3,473 @@ views:
     path: default_view
     type: sections
     icon: mdi:home
+    max_columns: 4
     sections:
-      - title: At a glance
+      - type: grid
+        column_span: 4
         cards:
-          - type: weather-forecast
-            entity: weather.home
-            forecast_type: daily
-            show_current: true
-            show_forecast: true
-          - type: tile
-            entity: sun.sun
-            name: Sun
-          - type: tile
-            entity: zone.home
-            name: People home
+          - type: horizontal-stack
+            cards:
+              - type: custom:mushroom-chips-card
+                alignment: start
+                chips:
+                  - type: weather
+                    entity: weather.home
+                    show_conditions: true
+                    show_temperature: true
+                  - type: template
+                    icon: mdi:account-multiple
+                    icon_color: blue
+                    content: "{{ states('sensor.home_person_count') if states('sensor.home_person_count') not in ['unknown','unavailable'] else (expand('zone.home') | selectattr('domain','eq','person') | list | length) }} home"
+                    tap_action:
+                      action: navigate
+                      navigation_path: "#people"
+                  - type: template
+                    icon: mdi:battery-alert-variant-outline
+                    icon_color: red
+                    content: >-
+                      {{ states.sensor | selectattr('attributes.device_class','defined')
+                      | selectattr('attributes.device_class','eq','battery')
+                      | rejectattr('state','in',['unknown','unavailable'])
+                      | selectattr('state','lt','25')
+                      | list | count }} low
+                    tap_action:
+                      action: navigate
+                      navigation_path: /system-maintenance
+                  - type: template
+                    icon: mdi:package-up
+                    icon_color: orange
+                    content: >-
+                      {{ states.update | selectattr('state','eq','on') | list | count }} updates
+                    tap_action:
+                      action: navigate
+                      navigation_path: /system-maintenance
+                  - type: template
+                    icon: mdi:ev-station
+                    icon_color: green
+                    content: "{{ states('sensor.myenergi_zappi_25608214_status') }}"
+                    tap_action:
+                      action: navigate
+                      navigation_path: /energy-ev
+                  - type: template
+                    icon: mdi:script-text-play
+                    icon_color: purple
+                    content: Scenes
+                    tap_action:
+                      action: navigate
+                      navigation_path: "#scenes"
+                  - type: template
+                    icon: mdi:robot
+                    icon_color: teal
+                    content: Automations
+                    tap_action:
+                      action: navigate
+                      navigation_path: "#automations"
       - title: People
+        column_span: 2
         cards:
-          - type: tile
-            entity: person.hugh
-            name: Hugh
-          - type: tile
-            entity: person.marie
-            name: Marie
-          - type: tile
-            entity: sensor.hugh_mobile_battery_level
-            name: Hugh phone battery
-          - type: tile
-            entity: sensor.hugh_mobile_battery_state
-            name: Hugh phone state
-      - title: Lights (quick)
+          - type: custom:stack-in-card
+            cards:
+              - type: custom:mushroom-person-card
+                entity: person.hugh
+                primary_info: name
+                secondary_info: state
+                icon_type: entity-picture
+              - type: custom:mushroom-person-card
+                entity: person.marie
+                primary_info: name
+                secondary_info: state
+                icon_type: entity-picture
+              - type: custom:mushroom-person-card
+                entity: person.admin
+                primary_info: name
+                secondary_info: state
+          - type: custom:mushroom-chips-card
+            alignment: center
+            chips:
+              - type: entity
+                entity: sensor.hugh_mobile_battery_level
+                icon: mdi:cellphone
+                content_info: state
+              - type: entity
+                entity: sensor.work_phone_battery_level
+                icon: mdi:cellphone-wireless
+                content_info: state
+              - type: entity
+                entity: sensor.hugh_tablet_battery_level
+                icon: mdi:tablet
+                content_info: state
+      - title: Quick actions
+        column_span: 2
         cards:
-          - type: tile
-            entity: light.hall
-            name: Hall
-            icon: mdi:door-open
-            features:
-              - type: light-brightness
-          - type: tile
-            entity: light.kitchen_cabinet
-            name: Kitchen
-            icon: mdi:silverware-fork-knife
-            features:
-              - type: light-brightness
-          - type: tile
-            entity: switch.sitting_room_lamp
-            name: Sitting Room Lamp
-            icon: mdi:sofa
-          - type: tile
-            entity: light.office
-            name: Office
-            icon: mdi:monitor-dashboard
-            features:
-              - type: light-brightness
-          - type: tile
-            entity: light.bedroom_lamps
-            name: Bedroom Lamps
-            icon: mdi:bed-queen
-            features:
-              - type: light-brightness
-          - type: tile
-            entity: light.landing_light
-            name: Landing
-            icon: mdi:stairs
-            features:
-              - type: light-brightness
-          - type: tile
-            entity: light.attic_landing_light
-            name: Attic Landing
-            icon: mdi:home-roof
+          - type: custom:mushroom-chips-card
+            alignment: center
+            chips:
+              - type: action
+                icon: mdi:weather-night
+                icon_color: indigo
+                content: Bedtime
+                tap_action:
+                  action: perform-action
+                  perform_action: scene.turn_on
+                  target:
+                    entity_id: scene.bedroom_lamps_bed_time
+              - type: action
+                icon: mdi:lightbulb-off-outline
+                icon_color: grey
+                content: Lights off
+                tap_action:
+                  action: perform-action
+                  perform_action: light.turn_off
+                  target:
+                    entity_id: all
+              - type: action
+                icon: mdi:kettle-steam
+                icon_color: deep-orange
+                content: Brighten kitchen
+                tap_action:
+                  action: perform-action
+                  perform_action: automation.trigger
+                  target:
+                    entity_id: automation.brighten_kitchen
+              - type: action
+                icon: mdi:flash
+                icon_color: amber
+                content: Boost heat
+                tap_action:
+                  action: perform-action
+                  perform_action: button.press
+                  target:
+                    entity_id: button.wiser_boost_all_heating
+              - type: action
+                icon: mdi:fire-off
+                icon_color: blue-grey
+                content: Heat off
+                tap_action:
+                  action: perform-action
+                  perform_action: button.press
+                  target:
+                    entity_id: button.wiser_moments_heating_off
+      - title: Lights & switches
+        column_span: 2
+        cards:
+          - type: custom:auto-entities
+            card:
+              type: custom:mushroom-title-card
+              title: On right now
+              subtitle: Tap a tile to toggle
+            card_param: cards
+            filter:
+              include:
+                - domain: light
+                  state: "on"
+                  options:
+                    type: custom:mushroom-light-card
+                    show_brightness_control: true
+                    collapsible_controls: true
+                    icon_color: amber
+                - domain: switch
+                  state: "on"
+                  entity_id: "/^switch\\.(?!.*(permit_join|disable_leds|led_night_mode|device_lock|identify|window_detection|away_mode|comfort|eco_mode|valve_protection|daylight_saving|channel_)).*/"
+                  options:
+                    type: custom:mushroom-entity-card
+                    icon_color: amber
+              exclude:
+                - entity_id: "*permit_join*"
+                - entity_id: "*_led_*"
+                - entity_id: "*_identify*"
+            sort:
+              method: friendly_name
+            show_empty: true
       - title: Climate summary
+        column_span: 2
         cards:
-          - type: tile
-            entity: sensor.wiser_heating_operation_mode
-            name: Heating mode
-          - type: tile
-            entity: sensor.wiser_hot_water
-            name: Hot Water
-            icon: mdi:water-boiler
-          - type: tile
-            entity: switch.wiser_eco_mode
-            name: Eco mode
-          - type: tile
-            entity: switch.wiser_away_mode
-            name: Away mode
-          - type: tile
-            entity: button.wiser_boost_all_heating
-            name: Boost all heating
-            icon: mdi:fire
-          - type: tile
-            entity: button.wiser_boost_hot_water
-            name: Boost hot water
-            icon: mdi:water-plus
-          - type: tile
-            entity: button.wiser_moments_heating_off
-            name: Heating off
-            icon: mdi:power
-          - type: tile
-            entity: button.wiser_moments_boost_downstairs
-            name: Boost downstairs
-            icon: mdi:home-thermometer
-      - title: Security at a glance
+          - type: custom:mushroom-chips-card
+            alignment: start
+            chips:
+              - type: entity
+                entity: sensor.wiser_heating_operation_mode
+                icon: mdi:home-thermometer
+                icon_color: red
+                content_info: state
+              - type: entity
+                entity: sensor.wiser_hot_water_operation_mode
+                icon: mdi:water-boiler
+                icon_color: blue
+                content_info: state
+              - type: template
+                icon: mdi:fire
+                icon_color: orange
+                content: >-
+                  {{ states.climate
+                  | selectattr('attributes.hvac_action','eq','heating')
+                  | list | count }} heating
+                tap_action:
+                  action: navigate
+                  navigation_path: /heating-zones
+              - type: entity
+                entity: switch.wiser_away_mode
+                icon: mdi:airplane
+                icon_color: deep-orange
+                content_info: state
+              - type: entity
+                entity: switch.wiser_eco_mode
+                icon: mdi:leaf
+                icon_color: green
+                content_info: state
+          - type: custom:mini-graph-card
+            name: Measured room temperatures (24h)
+            hours_to_show: 24
+            points_per_hour: 2
+            line_width: 2
+            hour24: true
+            entities:
+              - entity: sensor.wiser_lts_temperature_kitchen_dining_room
+                name: Kitchen
+              - entity: sensor.wiser_lts_temperature_sitting_room
+                name: Sitting
+              - entity: sensor.wiser_lts_temperature_bedroom
+                name: Bedroom
+              - entity: sensor.wiser_lts_temperature_hugh_s_office
+                name: H-Office
+              - entity: sensor.wiser_lts_temperature_marie_s_office
+                name: M-Office
+              - entity: sensor.wiser_lts_temperature_alexander_s_room
+                name: Alex
+              - entity: sensor.wiser_lts_temperature_lily_s_room
+                name: Lily
+              - entity: sensor.wiser_lts_temperature_attic
+                name: Attic
+            show:
+              labels: true
+              legend: true
+              icon: false
+              name: true
+              state: false
+      - title: Energy flow
+        column_span: 2
         cards:
-          - type: tile
-            entity: binary_sensor.hall_front_door_sensor_contact
-            name: Front Door
-            icon: mdi:door
-          - type: tile
-            entity: binary_sensor.hall_motion_sensor_occupancy
-            name: Hall Motion
-            icon: mdi:motion-sensor
-          - type: tile
-            entity: binary_sensor.landing_motion_sensor_occupancy
-            name: Landing Motion
-            icon: mdi:motion-sensor
-          - type: tile
-            entity: binary_sensor.office_motion_sensor_occupancy
-            name: Office Motion
-            icon: mdi:motion-sensor
-      - title: Cameras
-        cards:
-          - type: picture-entity
-            entity: camera.front_door
-            name: Front Door
-            camera_view: auto
-          - type: picture-entity
-            entity: camera.back_garden
-            name: Back Garden
-            camera_view: auto
-          - type: picture-entity
-            entity: camera.side_gate
-            name: Side Gate
-            camera_view: auto
+          - type: custom:mushroom-chips-card
+            alignment: start
+            chips:
+              - type: entity
+                entity: sensor.myenergi_zappi_25608214_status
+                icon: mdi:ev-station
+                icon_color: green
+                content_info: state
+              - type: entity
+                entity: sensor.myenergi_zappi_25608214_plug_status
+                icon: mdi:ev-plug-type2
+                icon_color: teal
+                content_info: state
+              - type: entity
+                entity: select.myenergi_zappi_25608214_charge_mode
+                icon: mdi:speedometer
+                icon_color: amber
+                content_info: state
+                tap_action:
+                  action: navigate
+                  navigation_path: /energy-ev
+              - type: entity
+                entity: sensor.myenergi_zappi_home_consumption
+                icon: mdi:home-lightning-bolt
+                icon_color: orange
+                content_info: state
+              - type: entity
+                entity: sensor.myenergi_zappi_grid_import_today
+                icon: mdi:transmission-tower-import
+                icon_color: red
+                content_info: state
+              - type: entity
+                entity: sensor.myenergi_zappi_grid_export_today
+                icon: mdi:transmission-tower-export
+                icon_color: green
+                content_info: state
+          - type: custom:mini-graph-card
+            name: Power flow (24h)
+            hours_to_show: 24
+            points_per_hour: 4
+            line_width: 2
+            hour24: true
+            aggregate_func: avg
+            entities:
+              - entity: sensor.myenergi_zappi_home_consumption
+                name: Home
+              - entity: sensor.myenergi_zappi_power_import
+                name: Import
+                color: "#ef5350"
+              - entity: sensor.myenergi_zappi_power_export
+                name: Export
+                color: "#66bb6a"
+              - entity: sensor.myenergi_zappi_power_charging
+                name: Charging
+                color: "#ffa726"
+            show:
+              labels: true
+              legend: true
+              icon: false
+              state: false
       - title: Media
+        column_span: 2
         cards:
-          - type: media-control
+          - type: custom:mushroom-media-player-card
             entity: media_player.living_room
-          - type: media-control
+            use_media_info: true
+            show_volume_level: true
+            media_controls:
+              - on_off
+              - play_pause_stop
+              - previous
+              - next
+            volume_controls:
+              - volume_mute
+              - volume_set
+              - volume_buttons
+            fill_container: true
+          - type: custom:mushroom-media-player-card
             entity: media_player.kitchen
-      - title: Energy & EV
+            use_media_info: true
+            show_volume_level: true
+            media_controls:
+              - on_off
+              - play_pause_stop
+              - previous
+              - next
+            volume_controls:
+              - volume_mute
+              - volume_set
+              - volume_buttons
+            fill_container: true
+      - title: Cameras
+        column_span: 2
         cards:
-          - type: tile
-            entity: sensor.myenergi_zappi_25608214_status
-            name: Zappi status
-          - type: tile
-            entity: sensor.myenergi_zappi_25608214_plug_status
-            name: Plug status
-          - type: tile
-            entity: sensor.myenergi_zappi_home_consumption
-            name: Home now
-            icon: mdi:home-lightning-bolt
-          - type: tile
-            entity: sensor.myenergi_zappi_grid_import_today
-            name: Grid import today
-          - type: tile
-            entity: sensor.myenergi_zappi_grid_export_today
-            name: Grid export today
-          - type: tile
-            entity: select.myenergi_zappi_25608214_charge_mode
-            name: Charge mode
-      - title: Quick scenes
+          - type: picture-glance
+            entity: camera.front_door
+            camera_view: live
+            title: Front Door
+            entities:
+              - entity: event.front_door_motion
+                icon: mdi:motion-sensor
+              - entity: event.front_door_chime
+                icon: mdi:bell-ring
+          - type: picture-glance
+            entity: camera.back_garden
+            camera_view: live
+            title: Back Garden
+            entities:
+              - entity: event.back_garden_motion
+                icon: mdi:motion-sensor
+          - type: picture-glance
+            entity: camera.side_gate
+            camera_view: live
+            title: Side Gate
+            entities:
+              - entity: event.side_gate_motion
+                icon: mdi:motion-sensor
+      - title: Recent activity
+        column_span: 4
         cards:
-          - show_name: true
-            show_icon: true
-            type: button
-            name: Bedtime
-            icon: mdi:moon-waning-crescent
-            tap_action:
-              action: call-service
-              service: scene.turn_on
-              target:
-                entity_id: scene.bedroom_lamps_bed_time
-          - type: tile
-            entity: automation.bedtime_scene_wind_down
-            name: Bedtime automation
-      - title: Shopping
+          - type: logbook
+            title: Last 6 hours
+            hours_to_show: 6
+            entities:
+              - event.front_door_motion
+              - event.front_door_chime
+              - event.back_garden_motion
+              - event.side_gate_motion
+              - binary_sensor.hall_front_door_sensor_contact
+              - binary_sensor.hall_motion_sensor_occupancy
+              - binary_sensor.landing_motion_sensor_occupancy
+              - binary_sensor.office_motion_sensor_occupancy
+              - person.hugh
+              - person.marie
+      # Bubble Card pop-ups (hidden until #-link is hit)
+      - type: grid
+        column_span: 4
         cards:
-          - type: todo-list
-            entity: todo.shopping_list
-      - title: Platform health
+          - type: custom:bubble-card
+            card_type: pop-up
+            hash: "#scenes"
+            name: Scenes
+            icon: mdi:palette
+            bg_color: var(--primary-background-color)
+          - type: custom:mushroom-chips-card
+            chips:
+              - type: action
+                icon: mdi:moon-waning-crescent
+                icon_color: indigo
+                content: Bedroom bedtime
+                tap_action:
+                  action: perform-action
+                  perform_action: scene.turn_on
+                  target:
+                    entity_id: scene.bedroom_lamps_bed_time
+              - type: action
+                icon: mdi:palette
+                icon_color: red
+                content: Office red
+                tap_action:
+                  action: perform-action
+                  perform_action: scene.turn_on
+                  target:
+                    entity_id: scene.office_1_red
+              - type: action
+                icon: mdi:palette-outline
+                icon_color: deep-orange
+                content: Office red v2
+                tap_action:
+                  action: perform-action
+                  perform_action: scene.turn_on
+                  target:
+                    entity_id: scene.office_2_red2
+              - type: action
+                icon: mdi:test-tube
+                icon_color: cyan
+                content: Office test
+                tap_action:
+                  action: perform-action
+                  perform_action: scene.turn_on
+                  target:
+                    entity_id: scene.office_0_test
+      - type: grid
+        column_span: 4
         cards:
-          - type: tile
-            entity: binary_sensor.zigbee2mqtt_bridge_connection_state
-            name: Zigbee2MQTT
-          - type: tile
-            entity: sensor.wiser_cloud
-            name: Wiser Cloud
-          - type: tile
-            entity: sensor.wiser_heathub_signal
-            name: Wiser Hub Signal
-          - type: tile
-            entity: binary_sensor.slzb_mr3u_internet
-            name: SLZB Internet
-          - type: tile
-            entity: sensor.backup_backup_manager_state
-            name: Backup Manager
-          - type: tile
-            entity: sensor.backup_last_successful_automatic_backup
-            name: Last Backup
+          - type: custom:bubble-card
+            card_type: pop-up
+            hash: "#automations"
+            name: Automations
+            icon: mdi:robot
+            bg_color: var(--primary-background-color)
+          - type: custom:auto-entities
+            card:
+              type: entities
+              show_header_toggle: false
+              title: All automations
+            card_param: entities
+            filter:
+              include:
+                - domain: automation
+            sort:
+              method: friendly_name
+      - type: grid
+        column_span: 4
+        cards:
+          - type: custom:bubble-card
+            card_type: pop-up
+            hash: "#people"
+            name: Presence detail
+            icon: mdi:account-multiple
+            bg_color: var(--primary-background-color)
+          - type: entities
+            title: People, phones, devices
+            entities:
+              - person.hugh
+              - person.marie
+              - person.admin
+              - device_tracker.hugh_mobile
+              - device_tracker.work_phone
+              - device_tracker.hugh_tablet
+              - sensor.hugh_mobile_battery_level
+              - sensor.hugh_mobile_battery_state
+              - sensor.work_phone_battery_level
+              - sensor.hugh_tablet_battery_level

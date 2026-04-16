@@ -1,0 +1,247 @@
+views:
+  - title: Security & Network
+    path: default_view
+    type: sections
+    icon: mdi:shield-home
+    max_columns: 4
+    sections:
+      - title: At a glance
+        column_span: 4
+        cards:
+          - type: custom:mushroom-chips-card
+            alignment: start
+            chips:
+              - type: entity
+                entity: binary_sensor.hall_front_door_sensor_contact
+                icon: mdi:door
+                icon_color: red
+                content_info: state
+              - type: template
+                icon: mdi:motion-sensor
+                icon_color: amber
+                content: >-
+                  {{ states.binary_sensor
+                  | selectattr('entity_id','search','motion|occupancy')
+                  | selectattr('state','eq','on')
+                  | list | count }} motion
+              - type: entity
+                entity: person.hugh
+                icon: mdi:account
+                icon_color: blue
+                content_info: state
+              - type: entity
+                entity: person.marie
+                icon: mdi:account-outline
+                icon_color: pink
+                content_info: state
+              - type: entity
+                entity: binary_sensor.zigbee2mqtt_bridge_connection_state
+                icon: mdi:zigbee
+                icon_color: green
+                content_info: state
+              - type: entity
+                entity: binary_sensor.slzb_mr3u_internet
+                icon: mdi:web
+                icon_color: blue
+                content_info: state
+              - type: entity
+                entity: sensor.wiser_cloud
+                icon: mdi:cloud
+                icon_color: cyan
+                content_info: state
+      - title: Cameras
+        column_span: 4
+        cards:
+          - type: grid
+            columns: 3
+            square: false
+            cards:
+              - type: picture-glance
+                entity: camera.front_door
+                camera_view: live
+                title: Front Door
+                entities:
+                  - entity: event.front_door_motion
+                    icon: mdi:motion-sensor
+                  - entity: event.front_door_chime
+                    icon: mdi:bell-ring
+              - type: picture-glance
+                entity: camera.back_garden
+                camera_view: live
+                title: Back Garden
+                entities:
+                  - entity: event.back_garden_motion
+                    icon: mdi:motion-sensor
+              - type: picture-glance
+                entity: camera.side_gate
+                camera_view: live
+                title: Side Gate
+                entities:
+                  - entity: event.side_gate_motion
+                    icon: mdi:motion-sensor
+      - title: People & phones
+        column_span: 2
+        cards:
+          - type: custom:stack-in-card
+            cards:
+              - type: custom:mushroom-person-card
+                entity: person.hugh
+                primary_info: name
+                secondary_info: state
+                icon_type: entity-picture
+              - type: custom:mushroom-person-card
+                entity: person.marie
+                primary_info: name
+                secondary_info: state
+                icon_type: entity-picture
+              - type: custom:mushroom-person-card
+                entity: person.admin
+                primary_info: name
+                secondary_info: state
+          - type: entities
+            title: Tracked devices
+            show_header_toggle: false
+            entities:
+              - entity: device_tracker.hugh_mobile
+                name: Hugh Mobile
+              - entity: device_tracker.work_phone
+                name: Work phone
+              - entity: device_tracker.hugh_tablet
+                name: Hugh Tablet
+              - entity: sensor.hugh_mobile_battery_level
+                name: Hugh Mobile battery
+              - entity: sensor.hugh_mobile_battery_state
+                name: Hugh Mobile battery state
+              - entity: sensor.work_phone_battery_level
+                name: Work phone battery
+              - entity: sensor.hugh_tablet_battery_level
+                name: Hugh Tablet battery
+      - title: Door & motion events (24h)
+        column_span: 2
+        cards:
+          - type: logbook
+            title: Security log
+            hours_to_show: 24
+            entities:
+              - event.front_door_motion
+              - event.front_door_chime
+              - event.back_garden_motion
+              - event.side_gate_motion
+              - binary_sensor.hall_front_door_sensor_contact
+              - binary_sensor.hall_motion_sensor_occupancy
+              - binary_sensor.landing_motion_sensor_occupancy
+              - binary_sensor.office_motion_sensor_occupancy
+              - binary_sensor.myggspray_wrlss_mtn_sensor_occupancy
+              - binary_sensor.myggbett_door_window_sensor_door
+          - type: custom:mini-graph-card
+            name: Motion activity (24h)
+            hours_to_show: 24
+            points_per_hour: 4
+            aggregate_func: max
+            entities:
+              - entity: binary_sensor.hall_motion_sensor_occupancy
+                name: Hall
+              - entity: binary_sensor.landing_motion_sensor_occupancy
+                name: Landing
+              - entity: binary_sensor.office_motion_sensor_occupancy
+                name: Office
+              - entity: binary_sensor.myggspray_wrlss_mtn_sensor_occupancy
+                name: Aux
+            show:
+              labels: false
+              legend: true
+              icon: false
+              state: false
+      - title: Doors & sensors
+        column_span: 2
+        cards:
+          - type: entities
+            show_header_toggle: false
+            entities:
+              - type: section
+                label: Contacts
+              - entity: binary_sensor.hall_front_door_sensor_contact
+                name: Hall front door
+              - entity: binary_sensor.myggbett_door_window_sensor_door
+                name: Aux door/window
+              - type: section
+                label: Motion
+              - entity: binary_sensor.hall_motion_sensor_occupancy
+                name: Hall motion
+              - entity: binary_sensor.landing_motion_sensor_occupancy
+                name: Landing motion
+              - entity: binary_sensor.office_motion_sensor_occupancy
+                name: Office motion
+              - entity: binary_sensor.myggspray_wrlss_mtn_sensor_occupancy
+                name: Aux motion
+      - title: Sensor batteries
+        column_span: 2
+        cards:
+          - type: custom:auto-entities
+            card:
+              type: entities
+              title: Batteries on security sensors
+              show_header_toggle: false
+            filter:
+              include:
+                - entity_id: sensor.hall_motion_sensor_battery
+                - entity_id: sensor.hall_front_door_sensor_battery
+                - entity_id: sensor.office_motion_sensor_battery
+                - entity_id: sensor.landing_motion_sensor_battery
+                - entity_id: sensor.myggspray_wrlss_mtn_sensor_battery
+                - entity_id: sensor.myggbett_door_window_sensor_battery
+            sort:
+              method: state
+              numeric: true
+      - title: Network — SLZB coordinator
+        column_span: 2
+        cards:
+          - type: entities
+            show_header_toggle: false
+            entities:
+              - type: section
+                label: Connectivity
+              - binary_sensor.slzb_mr3u_internet
+              - binary_sensor.slzb_mr3u_ethernet
+              - sensor.slzb_mr3u_connection_mode
+              - type: section
+                label: Radio temps
+              - sensor.slzb_mr3u_core_chip_temp
+              - sensor.slzb_mr3u_zigbee_chip_temp
+              - sensor.slzb_mr3u_zigbee_chip_temp_2
+              - type: section
+                label: Controls
+              - sensor.slzb_mr3u_firmware_channel
+              - switch.slzb_mr3u_disable_leds
+              - switch.slzb_mr3u_led_night_mode
+              - button.slzb_mr3u_core_restart
+              - button.slzb_mr3u_zigbee_restart
+              - button.slzb_mr3u_zigbee_restart_2
+      - title: Platform health
+        column_span: 2
+        cards:
+          - type: entities
+            show_header_toggle: false
+            entities:
+              - binary_sensor.zigbee2mqtt_bridge_connection_state
+              - switch.zigbee2mqtt_bridge_permit_join
+              - sensor.wiser_cloud
+              - sensor.wiser_heathub_signal
+              - sensor.backup_backup_manager_state
+              - sensor.backup_last_successful_automatic_backup
+              - sensor.backup_next_scheduled_automatic_backup
+      - title: Security automations
+        column_span: 4
+        cards:
+          - type: entities
+            show_header_toggle: false
+            title: Door / night alerts
+            entities:
+              - entity: automation.hall_front_door_opened_turn_on_light
+                name: Front door → light on
+              - entity: automation.hall_front_door_opened_night_alert
+                name: Front door → night alert
+              - entity: automation.hall_lights_on_motion_night
+                name: Hall lights on motion (night)
+              - entity: automation.hall_lights_off_no_motion_2_min
+                name: Hall lights off (2 min no motion)
