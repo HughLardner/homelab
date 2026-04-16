@@ -1,0 +1,125 @@
+views:
+  - title: Media
+    path: default_view
+    type: sections
+    icon: mdi:speaker-multiple
+    sections:
+      - title: Now playing
+        cards:
+          - type: heading
+            heading: Sonos players
+            icon: mdi:speaker
+          - type: media-control
+            entity: media_player.living_room
+          - type: media-control
+            entity: media_player.kitchen
+      - title: Group & room controls
+        cards:
+          - type: heading
+            heading: Group controls
+            icon: mdi:speaker-wireless
+          - show_name: true
+            show_icon: true
+            type: button
+            name: Group Kitchen → Living Room
+            icon: mdi:link-plus
+            tap_action:
+              action: call-service
+              service: media_player.join
+              data:
+                group_members:
+                  - media_player.kitchen
+              target:
+                entity_id: media_player.living_room
+          - show_name: true
+            show_icon: true
+            type: button
+            name: Ungroup all
+            icon: mdi:link-off
+            tap_action:
+              action: call-service
+              service: media_player.unjoin
+              target:
+                entity_id:
+                  - media_player.living_room
+                  - media_player.kitchen
+          - show_name: true
+            show_icon: true
+            type: button
+            name: Pause all
+            icon: mdi:pause
+            tap_action:
+              action: call-service
+              service: media_player.media_pause
+              target:
+                entity_id:
+                  - media_player.living_room
+                  - media_player.kitchen
+          - show_name: true
+            show_icon: true
+            type: button
+            name: Stop all
+            icon: mdi:stop
+            tap_action:
+              action: call-service
+              service: media_player.media_stop
+              target:
+                entity_id:
+                  - media_player.living_room
+                  - media_player.kitchen
+      - title: Living Room tuning
+        cards:
+          - type: heading
+            heading: Living Room
+            icon: mdi:sofa
+          - type: tile
+            entity: switch.living_room_crossfade
+            name: Crossfade
+          - type: tile
+            entity: switch.living_room_loudness
+            name: Loudness
+          - type: tile
+            entity: switch.living_room_night_sound
+            name: Night sound
+          - type: tile
+            entity: switch.living_room_speech_enhancement
+            name: Speech enhancement
+          - type: tile
+            entity: switch.living_room_subwoofer_enabled
+            name: Subwoofer
+          - type: tile
+            entity: switch.living_room_surround_enabled
+            name: Surround
+          - type: tile
+            entity: switch.living_room_surround_music_full_volume
+            name: Surround music full volume
+          - type: tile
+            entity: binary_sensor.living_room_microphone
+            name: Microphone
+            icon: mdi:microphone
+      - title: Kitchen tuning
+        cards:
+          - type: heading
+            heading: Kitchen
+            icon: mdi:silverware-fork-knife
+          - type: tile
+            entity: switch.kitchen_crossfade
+            name: Crossfade
+          - type: tile
+            entity: switch.kitchen_loudness
+            name: Loudness
+          - type: tile
+            entity: binary_sensor.kitchen_microphone
+            name: Microphone
+            icon: mdi:microphone
+      - title: TTS & Assist
+        cards:
+          - type: heading
+            heading: Voice
+            icon: mdi:assistant
+          - type: tile
+            entity: conversation.home_assistant
+            name: Home Assistant voice
+          - type: tile
+            entity: tts.google_translate_en_com
+            name: Google TTS

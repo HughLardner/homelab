@@ -1,0 +1,290 @@
+views:
+  - title: First Floor
+    path: default_view
+    type: sections
+    icon: mdi:home-floor-1
+    sections:
+      - title: Bedroom
+        cards:
+          - type: heading
+            heading: Bedroom
+            icon: mdi:bed-queen
+          - type: thermostat
+            entity: climate.wiser_bedroom
+            name: Bedroom thermostat
+          - type: tile
+            entity: light.bedroom_lamps
+            name: All lamps
+            features:
+              - type: light-brightness
+          - type: tile
+            entity: light.hugh_s_lamp
+            name: Hugh's lamp
+            features:
+              - type: light-brightness
+          - type: tile
+            entity: light.marie_lamp
+            name: Marie's lamp
+            features:
+              - type: light-brightness
+          - show_name: true
+            show_icon: true
+            type: button
+            name: Bedtime scene
+            icon: mdi:moon-waning-crescent
+            tap_action:
+              action: call-service
+              service: scene.turn_on
+              target:
+                entity_id: scene.bedroom_lamps_bed_time
+          - type: tile
+            entity: switch.wiser_bedroom_window_detection
+            name: Window detection
+          - type: tile
+            entity: sensor.wiser_lts_temperature_bedroom
+            name: Room temp
+          - type: tile
+            entity: sensor.wiser_lts_humidity_bedroom
+            name: Humidity
+          - type: tile
+            entity: sensor.wiser_lts_heating_demand_bedroom
+            name: Heating demand
+          - type: tile
+            entity: sensor.wiser_roomstat_bedroom_battery
+            name: RoomStat battery
+          - type: tile
+            entity: sensor.wiser_roomstat_bedroom_signal
+            name: RoomStat signal
+          - type: tile
+            entity: sensor.switch_bedroom_battery
+            name: Switch battery
+          - type: tile
+            entity: sensor.bedroom_switch_2_battery
+            name: Switch 2 battery
+          - type: tile
+            entity: automation.bedtime_scene_wind_down
+            name: Bedtime at 22:30
+          - type: tile
+            entity: automation.bedroom_lamps_on
+            name: Bedroom lamps on
+          - type: tile
+            entity: automation.bedroom_lights_off
+            name: Bedroom lights off
+      - title: Landing
+        cards:
+          - type: heading
+            heading: Landing
+            icon: mdi:stairs
+          - type: tile
+            entity: light.landing_light
+            name: Landing Light
+            features:
+              - type: light-brightness
+          - type: tile
+            entity: binary_sensor.landing_motion_sensor_occupancy
+            name: Motion
+            icon: mdi:motion-sensor
+          - type: tile
+            entity: sensor.landing_motion_sensor_illuminance
+            name: Illuminance
+          - type: tile
+            entity: sensor.landing_motion_sensor_temperature
+            name: Temperature
+          - type: tile
+            entity: sensor.landing_motion_sensor_battery
+            name: Motion battery
+          - type: tile
+            entity: automation.landing_lights_on_motion
+            name: Motion On
+          - type: tile
+            entity: automation.landing_lights_off_no_motion
+            name: Motion Off
+      - title: Office
+        cards:
+          - type: heading
+            heading: Office (Hugh's)
+            icon: mdi:monitor-dashboard
+          - type: thermostat
+            entity: climate.wiser_hugh_s_office
+            name: Office thermostat
+          - type: tile
+            entity: light.office
+            name: All lights
+            features:
+              - type: light-brightness
+          - type: tile
+            entity: light.office_light
+            name: Main light
+            features:
+              - type: light-brightness
+          - type: tile
+            entity: light.office_cabinet
+            name: Cabinet
+            features:
+              - type: light-brightness
+          - type: tile
+            entity: light.office_bar_right
+            name: Bar right
+            features:
+              - type: light-brightness
+          - type: tile
+            entity: light.office_bar_left
+            name: Bar left
+            features:
+              - type: light-brightness
+          - show_name: true
+            show_icon: true
+            type: button
+            name: Office red
+            icon: mdi:palette
+            tap_action:
+              action: call-service
+              service: scene.turn_on
+              target:
+                entity_id: scene.office_1_red
+          - show_name: true
+            show_icon: true
+            type: button
+            name: Office red v2
+            icon: mdi:palette-outline
+            tap_action:
+              action: call-service
+              service: scene.turn_on
+              target:
+                entity_id: scene.office_2_red2
+          - show_name: true
+            show_icon: true
+            type: button
+            name: Office test
+            icon: mdi:test-tube
+            tap_action:
+              action: call-service
+              service: scene.turn_on
+              target:
+                entity_id: scene.office_0_test
+          - type: tile
+            entity: binary_sensor.office_motion_sensor_occupancy
+            name: Occupancy
+            icon: mdi:motion-sensor
+          - type: tile
+            entity: sensor.office_motion_sensor_temperature
+            name: Temperature
+          - type: tile
+            entity: sensor.office_motion_sensor_illuminance
+            name: Illuminance
+          - type: tile
+            entity: sensor.office_motion_sensor_battery
+            name: Motion battery
+          - type: tile
+            entity: sensor.office_switch_battery
+            name: Switch battery
+          - type: tile
+            entity: sensor.office_switch_2_battery
+            name: Switch 2 battery
+          - type: tile
+            entity: switch.wiser_hugh_s_office_window_detection
+            name: Window detection
+          - type: tile
+            entity: sensor.wiser_lts_temperature_hugh_s_office
+            name: Room temp
+          - type: tile
+            entity: sensor.wiser_lts_heating_demand_hugh_s_office
+            name: Heating demand
+          - type: tile
+            entity: sensor.wiser_itrv_hugh_s_office_battery
+            name: iTRV battery
+          - type: tile
+            entity: sensor.wiser_itrv_hugh_s_office_signal
+            name: iTRV signal
+          - type: tile
+            entity: automation.office_on
+            name: Office On
+          - type: tile
+            entity: automation.office_off
+            name: Office Off
+          - type: tile
+            entity: automation.office_lights_on_motion
+            name: Motion On
+          - type: tile
+            entity: automation.office_lights_off_no_motion_5_min
+            name: Motion Off (5 min)
+      - title: Lily's Room
+        cards:
+          - type: heading
+            heading: Lily's Room
+            icon: mdi:bed-single
+          - type: thermostat
+            entity: climate.wiser_lily_s_room
+            name: Lily's thermostat
+          - type: tile
+            entity: switch.wiser_lily_s_room_window_detection
+            name: Window detection
+          - type: tile
+            entity: sensor.wiser_lts_temperature_lily_s_room
+            name: Room temp
+          - type: tile
+            entity: sensor.wiser_lts_heating_demand_lily_s_room
+            name: Heating demand
+          - type: tile
+            entity: sensor.wiser_itrv_lily_s_room_battery
+            name: iTRV battery
+          - type: tile
+            entity: sensor.wiser_itrv_lily_s_room_signal
+            name: iTRV signal
+      - title: Alex's Room
+        cards:
+          - type: heading
+            heading: Alex's Room
+            icon: mdi:bed-single
+          - type: thermostat
+            entity: climate.wiser_alexander_s_room
+            name: Alex's thermostat
+          - type: tile
+            entity: switch.wiser_alexander_s_room_window_detection
+            name: Window detection
+          - type: tile
+            entity: sensor.wiser_lts_temperature_alexander_s_room
+            name: Room temp
+          - type: tile
+            entity: sensor.wiser_lts_heating_demand_alexander_s_room
+            name: Heating demand
+          - type: tile
+            entity: sensor.wiser_itrv_alexander_s_room_battery
+            name: iTRV battery
+          - type: tile
+            entity: sensor.wiser_itrv_alexander_s_room_signal
+            name: iTRV signal
+      - title: Main Bathroom
+        cards:
+          - type: heading
+            heading: Main Bathroom
+            icon: mdi:bathtub
+          - type: tile
+            entity: sensor.main_bathroom_temperature_humidity_sensor_temperature
+            name: Temperature
+          - type: tile
+            entity: sensor.main_bathroom_temperature_humidity_sensor_humidity
+            name: Humidity
+          - type: tile
+            entity: sensor.main_bathroom_temperature_humidity_sensor_pressure
+            name: Pressure
+          - type: tile
+            entity: sensor.main_bathroom_temperature_humidity_sensor_battery
+            name: Sensor battery
+      - title: Ensuite
+        cards:
+          - type: heading
+            heading: Ensuite
+            icon: mdi:shower-head
+          - type: tile
+            entity: sensor.ensuite_temperature_humidity_sensor_temperature
+            name: Temperature
+          - type: tile
+            entity: sensor.ensuite_temperature_humidity_sensor_humidity
+            name: Humidity
+          - type: tile
+            entity: sensor.ensuite_temperature_humidity_sensor_pressure
+            name: Pressure
+          - type: tile
+            entity: sensor.ensuite_temperature_humidity_sensor_battery
+            name: Sensor battery

@@ -1,0 +1,222 @@
+views:
+  - title: Heating
+    path: default_view
+    type: sections
+    icon: mdi:radiator
+    sections:
+      - title: Global controls
+        cards:
+          - type: heading
+            heading: Global heating controls
+            icon: mdi:home-thermometer
+          - type: tile
+            entity: sensor.wiser_heating_operation_mode
+            name: Operation mode
+          - type: tile
+            entity: sensor.wiser_heating_channel_1
+            name: Channel 1
+          - type: tile
+            entity: sensor.wiser_heating_channel_3
+            name: Channel 3
+          - type: tile
+            entity: switch.wiser_eco_mode
+            name: Eco mode
+          - type: tile
+            entity: switch.wiser_comfort_mode
+            name: Comfort mode
+          - type: tile
+            entity: switch.wiser_away_mode
+            name: Away mode
+          - type: tile
+            entity: switch.wiser_away_mode_affects_hot_water
+            name: Away affects hot water
+          - type: tile
+            entity: number.wiser_away_mode_target_temperature
+            name: Away target temp
+          - type: tile
+            entity: switch.wiser_valve_protection
+            name: Valve protection
+          - type: tile
+            entity: switch.wiser_daylight_saving
+            name: Daylight saving
+          - type: tile
+            entity: button.wiser_boost_all_heating
+            name: Boost all
+            icon: mdi:fire
+          - type: tile
+            entity: button.wiser_cancel_all_heating_overrides
+            name: Cancel all overrides
+            icon: mdi:cancel
+          - type: tile
+            entity: button.wiser_moments_heating_off
+            name: Moment — Heating off
+          - type: tile
+            entity: button.wiser_moments_boost_downstairs
+            name: Moment — Boost downstairs
+      - title: Hot water
+        cards:
+          - type: heading
+            heading: Hot water
+            icon: mdi:water-boiler
+          - type: tile
+            entity: sensor.wiser_hot_water
+            name: Hot water state
+          - type: tile
+            entity: sensor.wiser_hot_water_operation_mode
+            name: Operation mode
+          - type: tile
+            entity: select.wiser_hot_water_mode
+            name: Hot water mode
+          - type: tile
+            entity: button.wiser_boost_hot_water
+            name: Boost hot water
+            icon: mdi:water-plus
+          - type: tile
+            entity: button.wiser_toggle_hot_water
+            name: Toggle hot water
+          - type: tile
+            entity: button.wiser_cancel_hot_water_overrides
+            name: Cancel hot water overrides
+          - type: tile
+            entity: sensor.wiser_lts_hot_water_demand
+            name: Hot water demand (LTS)
+      - title: Zones
+        cards:
+          - type: heading
+            heading: Zones
+            icon: mdi:thermostat
+          - type: thermostat
+            entity: climate.wiser_kitchen_dining_room
+            name: Kitchen/Dining
+          - type: thermostat
+            entity: climate.wiser_sitting_room
+            name: Sitting Room
+          - type: thermostat
+            entity: climate.wiser_bedroom
+            name: Bedroom
+          - type: thermostat
+            entity: climate.wiser_hugh_s_office
+            name: Hugh's Office
+          - type: thermostat
+            entity: climate.wiser_marie_s_office
+            name: Marie's Office
+          - type: thermostat
+            entity: climate.wiser_alexander_s_room
+            name: Alex's Room
+          - type: thermostat
+            entity: climate.wiser_lily_s_room
+            name: Lily's Room
+          - type: thermostat
+            entity: climate.wiser_attic
+            name: Attic
+      - title: Room temperatures (24h)
+        cards:
+          - type: history-graph
+            hours_to_show: 24
+            title: Measured room temperatures
+            entities:
+              - entity: sensor.wiser_lts_temperature_kitchen_dining_room
+                name: Kitchen/Dining
+              - entity: sensor.wiser_lts_temperature_sitting_room
+                name: Sitting Room
+              - entity: sensor.wiser_lts_temperature_bedroom
+                name: Bedroom
+              - entity: sensor.wiser_lts_temperature_hugh_s_office
+                name: Hugh's Office
+              - entity: sensor.wiser_lts_temperature_marie_s_office
+                name: Marie's Office
+              - entity: sensor.wiser_lts_temperature_alexander_s_room
+                name: Alex's Room
+              - entity: sensor.wiser_lts_temperature_lily_s_room
+                name: Lily's Room
+              - entity: sensor.wiser_lts_temperature_attic
+                name: Attic
+      - title: Heating demand (24h)
+        cards:
+          - type: history-graph
+            hours_to_show: 24
+            title: Heating demand per zone
+            entities:
+              - entity: sensor.wiser_lts_heating_demand_kitchen_dining_room
+                name: Kitchen/Dining
+              - entity: sensor.wiser_lts_heating_demand_sitting_room
+                name: Sitting Room
+              - entity: sensor.wiser_lts_heating_demand_bedroom
+                name: Bedroom
+              - entity: sensor.wiser_lts_heating_demand_hugh_s_office
+                name: Hugh's Office
+              - entity: sensor.wiser_lts_heating_demand_marie_s_office
+                name: Marie's Office
+              - entity: sensor.wiser_lts_heating_demand_alexander_s_room
+                name: Alex's Room
+              - entity: sensor.wiser_lts_heating_demand_lily_s_room
+                name: Lily's Room
+              - entity: sensor.wiser_lts_heating_demand_attic
+                name: Attic
+              - entity: sensor.wiser_lts_hot_water_demand
+                name: Hot water
+      - title: iTRV health
+        cards:
+          - type: heading
+            heading: iTRV batteries & signal
+            icon: mdi:battery-heart-variant
+          - type: tile
+            entity: sensor.wiser_itrv_kitchen_dining_room_1_battery
+            name: Kitchen iTRV 1 battery
+          - type: tile
+            entity: sensor.wiser_itrv_kitchen_dining_room_1_signal
+            name: Kitchen iTRV 1 signal
+          - type: tile
+            entity: sensor.wiser_itrv_kitchen_dining_room_2_battery
+            name: Kitchen iTRV 2 battery
+          - type: tile
+            entity: sensor.wiser_itrv_kitchen_dining_room_2_signal
+            name: Kitchen iTRV 2 signal
+          - type: tile
+            entity: sensor.wiser_itrv_hugh_s_office_battery
+            name: Hugh Office battery
+          - type: tile
+            entity: sensor.wiser_itrv_hugh_s_office_signal
+            name: Hugh Office signal
+          - type: tile
+            entity: sensor.wiser_itrv_marie_s_office_battery
+            name: Marie Office battery
+          - type: tile
+            entity: sensor.wiser_itrv_marie_s_office_signal
+            name: Marie Office signal
+          - type: tile
+            entity: sensor.wiser_itrv_alexander_s_room_battery
+            name: Alex battery
+          - type: tile
+            entity: sensor.wiser_itrv_alexander_s_room_signal
+            name: Alex signal
+          - type: tile
+            entity: sensor.wiser_itrv_lily_s_room_battery
+            name: Lily battery
+          - type: tile
+            entity: sensor.wiser_itrv_lily_s_room_signal
+            name: Lily signal
+          - type: tile
+            entity: sensor.wiser_itrv_attic_battery
+            name: Attic battery
+          - type: tile
+            entity: sensor.wiser_itrv_attic_signal
+            name: Attic signal
+          - type: tile
+            entity: sensor.wiser_roomstat_bedroom_battery
+            name: Bedroom RoomStat battery
+          - type: tile
+            entity: sensor.wiser_roomstat_bedroom_signal
+            name: Bedroom RoomStat signal
+          - type: tile
+            entity: sensor.wiser_roomstat_sitting_room_battery
+            name: Sitting Room RoomStat battery
+          - type: tile
+            entity: sensor.wiser_roomstat_sitting_room_signal
+            name: Sitting Room RoomStat signal
+          - type: tile
+            entity: sensor.wiser_heathub_signal
+            name: HeatHub signal
+          - type: tile
+            entity: sensor.wiser_cloud
+            name: Wiser Cloud

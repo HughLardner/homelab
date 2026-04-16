@@ -1,0 +1,202 @@
+views:
+  - title: Home
+    path: default_view
+    type: sections
+    icon: mdi:home
+    sections:
+      - title: At a glance
+        cards:
+          - type: weather-forecast
+            entity: weather.home
+            forecast_type: daily
+            show_current: true
+            show_forecast: true
+          - type: tile
+            entity: sun.sun
+            name: Sun
+          - type: tile
+            entity: zone.home
+            name: People home
+      - title: People
+        cards:
+          - type: tile
+            entity: person.hugh
+            name: Hugh
+          - type: tile
+            entity: person.marie
+            name: Marie
+          - type: tile
+            entity: sensor.hugh_mobile_battery_level
+            name: Hugh phone battery
+          - type: tile
+            entity: sensor.hugh_mobile_battery_state
+            name: Hugh phone state
+      - title: Lights (quick)
+        cards:
+          - type: tile
+            entity: light.hall
+            name: Hall
+            icon: mdi:door-open
+            features:
+              - type: light-brightness
+          - type: tile
+            entity: light.kitchen_cabinet
+            name: Kitchen
+            icon: mdi:silverware-fork-knife
+            features:
+              - type: light-brightness
+          - type: tile
+            entity: switch.sitting_room_lamp
+            name: Sitting Room Lamp
+            icon: mdi:sofa
+          - type: tile
+            entity: light.office
+            name: Office
+            icon: mdi:monitor-dashboard
+            features:
+              - type: light-brightness
+          - type: tile
+            entity: light.bedroom_lamps
+            name: Bedroom Lamps
+            icon: mdi:bed-queen
+            features:
+              - type: light-brightness
+          - type: tile
+            entity: light.landing_light
+            name: Landing
+            icon: mdi:stairs
+            features:
+              - type: light-brightness
+          - type: tile
+            entity: light.attic_landing_light
+            name: Attic Landing
+            icon: mdi:home-roof
+      - title: Climate summary
+        cards:
+          - type: tile
+            entity: sensor.wiser_heating_operation_mode
+            name: Heating mode
+          - type: tile
+            entity: sensor.wiser_hot_water
+            name: Hot Water
+            icon: mdi:water-boiler
+          - type: tile
+            entity: switch.wiser_eco_mode
+            name: Eco mode
+          - type: tile
+            entity: switch.wiser_away_mode
+            name: Away mode
+          - type: tile
+            entity: button.wiser_boost_all_heating
+            name: Boost all heating
+            icon: mdi:fire
+          - type: tile
+            entity: button.wiser_boost_hot_water
+            name: Boost hot water
+            icon: mdi:water-plus
+          - type: tile
+            entity: button.wiser_moments_heating_off
+            name: Heating off
+            icon: mdi:power
+          - type: tile
+            entity: button.wiser_moments_boost_downstairs
+            name: Boost downstairs
+            icon: mdi:home-thermometer
+      - title: Security at a glance
+        cards:
+          - type: tile
+            entity: binary_sensor.hall_front_door_sensor_contact
+            name: Front Door
+            icon: mdi:door
+          - type: tile
+            entity: binary_sensor.hall_motion_sensor_occupancy
+            name: Hall Motion
+            icon: mdi:motion-sensor
+          - type: tile
+            entity: binary_sensor.landing_motion_sensor_occupancy
+            name: Landing Motion
+            icon: mdi:motion-sensor
+          - type: tile
+            entity: binary_sensor.office_motion_sensor_occupancy
+            name: Office Motion
+            icon: mdi:motion-sensor
+      - title: Cameras
+        cards:
+          - type: picture-entity
+            entity: camera.front_door
+            name: Front Door
+            camera_view: auto
+          - type: picture-entity
+            entity: camera.back_garden
+            name: Back Garden
+            camera_view: auto
+          - type: picture-entity
+            entity: camera.side_gate
+            name: Side Gate
+            camera_view: auto
+      - title: Media
+        cards:
+          - type: media-control
+            entity: media_player.living_room
+          - type: media-control
+            entity: media_player.kitchen
+      - title: Energy & EV
+        cards:
+          - type: tile
+            entity: sensor.myenergi_zappi_25608214_status
+            name: Zappi status
+          - type: tile
+            entity: sensor.myenergi_zappi_25608214_plug_status
+            name: Plug status
+          - type: tile
+            entity: sensor.myenergi_zappi_home_consumption
+            name: Home now
+            icon: mdi:home-lightning-bolt
+          - type: tile
+            entity: sensor.myenergi_zappi_grid_import_today
+            name: Grid import today
+          - type: tile
+            entity: sensor.myenergi_zappi_grid_export_today
+            name: Grid export today
+          - type: tile
+            entity: select.myenergi_zappi_25608214_charge_mode
+            name: Charge mode
+      - title: Quick scenes
+        cards:
+          - show_name: true
+            show_icon: true
+            type: button
+            name: Bedtime
+            icon: mdi:moon-waning-crescent
+            tap_action:
+              action: call-service
+              service: scene.turn_on
+              target:
+                entity_id: scene.bedroom_lamps_bed_time
+          - type: tile
+            entity: automation.bedtime_scene_wind_down
+            name: Bedtime automation
+      - title: Shopping
+        cards:
+          - type: todo-list
+            entity: todo.shopping_list
+      - title: Platform health
+        cards:
+          - type: tile
+            entity: binary_sensor.zigbee2mqtt_bridge_connection_state
+            name: Zigbee2MQTT
+          - type: tile
+            entity: sensor.wiser_cloud
+            name: Wiser Cloud
+          - type: tile
+            entity: sensor.wiser_heathub_signal
+            name: Wiser Hub Signal
+          - type: tile
+            entity: binary_sensor.slzb_mr3u_internet
+            name: SLZB Internet
+          - type: tile
+            entity: sensor.backup_backup_manager_state
+            name: Backup Manager
+          - type: tile
+            entity: sensor.backup_last_successful_automatic_backup
+            name: Last Backup

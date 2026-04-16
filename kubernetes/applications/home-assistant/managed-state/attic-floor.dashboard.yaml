@@ -1,0 +1,96 @@
+views:
+  - title: Attic
+    path: default_view
+    type: sections
+    icon: mdi:home-roof
+    sections:
+      - title: Attic Landing
+        cards:
+          - type: heading
+            heading: Attic Landing
+            icon: mdi:stairs
+          - type: tile
+            entity: light.attic_landing_light
+            name: Landing Light
+          - type: tile
+            entity: binary_sensor.attic_landing_light_overheating
+            name: Overheating
+            icon: mdi:thermometer-alert
+          - type: tile
+            entity: binary_sensor.attic_landing_light_overpowering
+            name: Overpowering
+            icon: mdi:flash-alert
+          - type: tile
+            entity: binary_sensor.attic_landing_light_input
+            name: Input
+          - type: tile
+            entity: binary_sensor.attic_landing_light_input_2
+            name: Input 2
+      - title: Attic
+        cards:
+          - type: heading
+            heading: Attic
+            icon: mdi:home-roof
+          - type: thermostat
+            entity: climate.wiser_attic
+            name: Attic thermostat
+          - type: tile
+            entity: switch.attic_clothes_rail
+            name: Clothes Rail
+            icon: mdi:hanger
+          - type: tile
+            entity: automation.clothes_rail_timer
+            name: Clothes rail timer
+          - type: tile
+            entity: switch.wiser_attic_window_detection
+            name: Window detection
+          - type: tile
+            entity: sensor.wiser_lts_temperature_attic
+            name: Room temp (Wiser)
+          - type: tile
+            entity: sensor.wiser_lts_heating_demand_attic
+            name: Heating demand
+          - type: tile
+            entity: sensor.wiser_itrv_attic_battery
+            name: iTRV battery
+          - type: tile
+            entity: sensor.wiser_itrv_attic_signal
+            name: iTRV signal
+          - type: tile
+            entity: sensor.ams_temperature_humidity_sensor_temperature
+            name: Ambient temperature
+          - type: tile
+            entity: sensor.ams_temperature_humidity_sensor_humidity
+            name: Humidity
+          - type: tile
+            entity: sensor.ams_temperature_humidity_sensor_pressure
+            name: Pressure
+          - type: tile
+            entity: sensor.ams_temperature_humidity_sensor_battery
+            name: Sensor battery
+      - title: Litter Tray (Attic)
+        cards:
+          - type: heading
+            heading: Cats — Litter Tray
+            icon: mdi:cat
+          - type: tile
+            entity: switch.wiser_litter_tray_switch
+            name: Litter tray
+          - type: tile
+            entity: select.wiser_litter_tray_mode
+            name: Mode
+          - type: tile
+            entity: switch.wiser_litter_tray_away_mode_turns_off
+            name: Away mode turns off
+          - type: tile
+            entity: switch.wiser_litter_tray_device_lock
+            name: Device lock
+          - type: tile
+            entity: sensor.wiser_litter_tray_power
+            name: Power now
+          - type: tile
+            entity: sensor.wiser_litter_tray_total_power
+            name: Total energy
+          - type: tile
+            entity: sensor.wiser_litter_tray_signal
+            name: Signal
