@@ -33,7 +33,7 @@ spec:
               protocol: TCP
           env:
             - name: NODE_OPTIONS
-              value: "--max-old-space-size=384"
+              value: "--max-old-space-size=640"
             - name: TZ
               value: {{ .Values.env.TZ | quote }}
             - name: COUCHDB_HOST
