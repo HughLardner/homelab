@@ -68,9 +68,31 @@ data:
       });
     }
 
+    // Fetch documents in batches to avoid loading entire vault into memory.
+    // CouchDB's _all_docs endpoint supports skip/limit pagination.
     function fetchAllDocs() {
-      return couchFetch('/' + COUCHDB_DATABASE + '/_all_docs?include_docs=true')
-        .then(function(data) { return (data.rows || []).map(function(r) { return r.doc; }).filter(Boolean); });
+      var BATCH_SIZE = 100;
+      var allDocs = [];
+
+      function fetchBatch(skip) {
+        var url = '/' + COUCHDB_DATABASE + '/_all_docs?include_docs=true&limit=' + BATCH_SIZE + '&skip=' + skip;
+        return couchFetch(url).then(function(data) {
+          var docs = (data.rows || []).map(function(r) { return r.doc; }).filter(Boolean);
+          allDocs = allDocs.concat(docs);
+
+          var total = data.total_rows || 0;
+          var fetched = skip + docs.length;
+          console.log('Fetched ' + fetched + ' / ' + total + ' documents...');
+
+          // If we got a full batch, there might be more
+          if (docs.length === BATCH_SIZE && fetched < total) {
+            return fetchBatch(skip + BATCH_SIZE);
+          }
+          return allDocs;
+        });
+      }
+
+      return fetchBatch(0);
     }
 
     function getDbInfo() {
