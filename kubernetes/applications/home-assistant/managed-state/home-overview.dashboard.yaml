@@ -3,15 +3,17 @@ views:
     path: default_view
     type: sections
     icon: mdi:home
-    max_columns: 4
+    # max_columns:2 means phones get 1 col, tablets in portrait get 2.
+    # Sections use column_span to force full-width rows where needed.
+    max_columns: 2
     sections:
-      # ===========================================================
-      # Bubble Card pop-ups MUST all live inside one vertical-stack
-      # so Bubble Card registers them as overlays, not inline cards.
-      # (v1 bug: one pop-up per section rendered them inline.)
-      # ===========================================================
+      # =======================================================
+      # Pop-ups: one vertical-stack per pop-up (invisible until
+      # hash activated). Kept identical to the (wide) dashboard so
+      # chips/tiles can trigger the same overlays.
+      # =======================================================
       - type: grid
-        column_span: 4
+        column_span: 2
         cards:
           - type: vertical-stack
             cards:
@@ -26,7 +28,7 @@ views:
                   - type: action
                     icon: mdi:moon-waning-crescent
                     icon_color: indigo
-                    content: Bedroom bedtime
+                    content: Bedtime
                     tap_action:
                       action: perform-action
                       perform_action: scene.turn_on
@@ -59,6 +61,8 @@ views:
                       perform_action: scene.turn_on
                       target:
                         entity_id: scene.office_0_test
+          - type: vertical-stack
+            cards:
               - type: custom:bubble-card
                 card_type: pop-up
                 hash: "#automations"
@@ -76,6 +80,8 @@ views:
                     - domain: automation
                 sort:
                   method: friendly_name
+          - type: vertical-stack
+            cards:
               - type: custom:bubble-card
                 card_type: pop-up
                 hash: "#people"
@@ -83,9 +89,8 @@ views:
                 icon: mdi:account-multiple
                 bg_color: var(--primary-background-color)
               - type: entities
-                title: People, phones, devices
+                title: People & phones
                 entities:
-                  - person.admin
                   - person.hugh
                   - person.marie
                   - device_tracker.hugh_mobile
@@ -95,11 +100,12 @@ views:
                   - sensor.hugh_mobile_battery_state
                   - sensor.hugh_tablet_battery_level
                   - sensor.work_phone_battery_level
-      # ===========================================================
-      # Hero row: summary chips (navigation + status at a glance)
-      # ===========================================================
+
+      # =======================================================
+      # Hero row: status chips (same as wide, full width)
+      # =======================================================
       - type: grid
-        column_span: 4
+        column_span: 2
         cards:
           - type: custom:mushroom-chips-card
             alignment: start
@@ -115,6 +121,54 @@ views:
                 tap_action:
                   action: navigate
                   navigation_path: "#people"
+              - type: template
+                icon: mdi:lightbulb-on
+                icon_color: amber
+                content: >-
+                  {{ states.light
+                     | rejectattr('state','in',['unknown','unavailable'])
+                     | selectattr('state','eq','on')
+                     | list | count }} lights
+              - type: template
+                icon: mdi:fire
+                icon_color: orange
+                content: >-
+                  {{ states.climate
+                     | selectattr('attributes.hvac_action','eq','heating')
+                     | list | count }} heating
+                tap_action:
+                  action: navigate
+                  navigation_path: /heating-zones
+              - type: template
+                icon: mdi:door
+                icon_color: red
+                content: >-
+                  {{ (states.binary_sensor
+                      | selectattr('attributes.device_class','defined')
+                      | selectattr('attributes.device_class','in',['door','opening','window'])
+                      | selectattr('state','eq','on')
+                      | list | count) }} open
+              - type: template
+                icon: mdi:transmission-tower
+                icon_color: |-
+                  {% set g = states('sensor.myenergi_harvi_2239208_grid_ct1') | float(0) %}
+                  {% if g < -100 %}green{% elif g > 100 %}red{% else %}grey{% endif %}
+                content: >-
+                  {% set g = states('sensor.myenergi_harvi_2239208_grid_ct1') | float(0) %}
+                  {% if g < 0 %}Export {{ (g * -1) | round(0) }}W
+                  {% elif g > 0 %}Import {{ g | round(0) }}W
+                  {% else %}Grid idle{% endif %}
+                tap_action:
+                  action: navigate
+                  navigation_path: /energy-ev
+              - type: template
+                icon: mdi:ev-station
+                icon_color: green
+                content: >-
+                  {{ states('sensor.myenergi_zappi_25608214_status') }}
+                tap_action:
+                  action: navigate
+                  navigation_path: /energy-ev
               - type: template
                 icon: mdi:battery-alert-variant-outline
                 icon_color: red
@@ -136,14 +190,16 @@ views:
                 tap_action:
                   action: navigate
                   navigation_path: /system-maintenance
-              - type: template
-                icon: mdi:ev-station
+              - type: entity
+                entity: switch.wiser_away_mode
+                icon: mdi:airplane
+                icon_color: deep-orange
+                content_info: state
+              - type: entity
+                entity: switch.wiser_eco_mode
+                icon: mdi:leaf
                 icon_color: green
-                content: >-
-                  {{ states('sensor.myenergi_zappi_25608214_status') }}
-                tap_action:
-                  action: navigate
-                  navigation_path: /energy-ev
+                content_info: state
               - type: template
                 icon: mdi:script-text-play
                 icon_color: purple
@@ -158,86 +214,40 @@ views:
                 tap_action:
                   action: navigate
                   navigation_path: "#automations"
-      # ===========================================================
-      # Weather (simple-weather-card) + Climate chips
-      # ===========================================================
-      - title: Weather & climate
-        column_span: 2
+
+      # =======================================================
+      # Weather (1 col on tablet / full on phone)
+      # =======================================================
+      - title: Weather
         cards:
           - type: custom:simple-weather-card
             entity: weather.home
             backdrop:
               day: "#1e3c72"
               night: "#0f1e3c"
-          - type: custom:mushroom-chips-card
-            alignment: start
-            chips:
-              - type: entity
-                entity: sensor.wiser_heating_operation_mode
-                icon: mdi:home-thermometer
-                icon_color: red
-                content_info: state
-              - type: entity
-                entity: sensor.wiser_hot_water_operation_mode
-                icon: mdi:water-boiler
-                icon_color: blue
-                content_info: state
-              - type: template
-                icon: mdi:fire
-                icon_color: orange
-                content: >-
-                  {{ states.climate
-                     | selectattr('attributes.hvac_action','eq','heating')
-                     | list | count }} heating
-                tap_action:
-                  action: navigate
-                  navigation_path: /heating-zones
-              - type: entity
-                entity: switch.wiser_away_mode
-                icon: mdi:airplane
-                icon_color: deep-orange
-                content_info: state
-              - type: entity
-                entity: switch.wiser_eco_mode
-                icon: mdi:leaf
-                icon_color: green
-                content_info: state
-      # ===========================================================
-      # People (person.admin always shown; hugh/marie gated on availability)
-      # ===========================================================
-      - title: People
-        column_span: 2
+          - type: weather-forecast
+            entity: weather.home
+            forecast_type: daily
+            show_current: false
+            show_forecast: true
+
+      # =======================================================
+      # Presence & devices
+      # =======================================================
+      - title: Presence & devices
         cards:
           - type: custom:stack-in-card
             cards:
-              - type: conditional
-                conditions:
-                  - entity: person.hugh
-                    state_not: unknown
-                  - entity: person.hugh
-                    state_not: unavailable
-                card:
-                  type: custom:mushroom-person-card
-                  entity: person.hugh
-                  primary_info: name
-                  secondary_info: state
-                  icon_type: entity-picture
-              - type: conditional
-                conditions:
-                  - entity: person.marie
-                    state_not: unknown
-                  - entity: person.marie
-                    state_not: unavailable
-                card:
-                  type: custom:mushroom-person-card
-                  entity: person.marie
-                  primary_info: name
-                  secondary_info: state
-                  icon_type: entity-picture
               - type: custom:mushroom-person-card
-                entity: person.admin
+                entity: person.hugh
                 primary_info: name
                 secondary_info: state
+                icon_type: entity-picture
+              - type: custom:mushroom-person-card
+                entity: person.marie
+                primary_info: name
+                secondary_info: state
+                icon_type: entity-picture
           - type: custom:mushroom-chips-card
             alignment: center
             chips:
@@ -260,223 +270,507 @@ views:
                 entity: sensor.hugh_tablet_battery_level
                 icon: mdi:tablet
                 content_info: state
-      # ===========================================================
-      # Quick actions
-      # ===========================================================
-      - title: Quick actions
+
+      # =======================================================
+      # Media playing — auto-hides when nothing active
+      # =======================================================
+      - title: Media playing
         column_span: 2
         cards:
-          - type: custom:mushroom-chips-card
-            alignment: center
-            chips:
-              - type: action
-                icon: mdi:weather-night
-                icon_color: indigo
-                content: Bedtime
-                tap_action:
-                  action: perform-action
-                  perform_action: scene.turn_on
-                  target:
-                    entity_id: scene.bedroom_lamps_bed_time
-              - type: action
-                icon: mdi:lightbulb-off-outline
-                icon_color: grey
-                content: Lights off
-                tap_action:
-                  action: perform-action
-                  perform_action: light.turn_off
-                  target:
-                    entity_id: all
-              - type: action
-                icon: mdi:kettle-steam
-                icon_color: deep-orange
-                content: Brighten kitchen
-                tap_action:
-                  action: perform-action
-                  perform_action: automation.trigger
-                  target:
-                    entity_id: automation.brighten_kitchen
-              - type: action
-                icon: mdi:flash
-                icon_color: amber
-                content: Boost heat
-                tap_action:
-                  action: perform-action
-                  perform_action: button.press
-                  target:
-                    entity_id: button.wiser_boost_all_heating
-              - type: action
-                icon: mdi:fire-off
-                icon_color: blue-grey
-                content: Heat off
-                tap_action:
-                  action: perform-action
-                  perform_action: button.press
-                  target:
-                    entity_id: button.wiser_moments_heating_off
-      # ===========================================================
-      # Room temperatures graph (home-overview keeps the at-a-glance
-      # 24h trend; heating-zones holds full detail & demand).
-      # ===========================================================
-      - title: Room temperatures (24h)
+          - type: custom:auto-entities
+            card:
+              type: entities
+              show_header_toggle: false
+            card_param: entities
+            filter:
+              include:
+                - domain: media_player
+                  state: playing
+                  options:
+                    type: custom:mushroom-media-player-card
+                    use_media_info: true
+                    show_volume_level: true
+                    media_controls:
+                      - play_pause_stop
+                      - previous
+                      - next
+                    volume_controls:
+                      - volume_mute
+                      - volume_set
+                    fill_container: true
+                - domain: media_player
+                  state: paused
+                  options:
+                    type: custom:mushroom-media-player-card
+                    use_media_info: true
+                    show_volume_level: true
+                    media_controls:
+                      - play_pause_stop
+                    fill_container: true
+            show_empty: true
+
+      # =======================================================
+      # Room temperatures (2-col grid of 12 tiles)
+      # Each tile: mini-graph (temp + 6h sparkline) + chips
+      # showing lights X/Y and heating On/Off for that room.
+      # Tap navigates to the mobile Rooms dashboard pop-up.
+      # =======================================================
+      - title: Room temperatures (6h)
         column_span: 2
         cards:
-          - type: custom:mini-graph-card
-            name: Measured room temperatures
-            hours_to_show: 24
-            points_per_hour: 2
-            line_width: 2
-            hour24: true
+          - type: grid
+            columns: 2
+            square: false
+            cards:
+              # --- Kitchen ---
+              - type: custom:stack-in-card
+                keep:
+                  background: false
+                  box_shadow: false
+                  margin: true
+                  outer_padding: false
+                cards:
+                  - type: custom:mini-graph-card
+                    name: Kitchen
+                    entities:
+                      - sensor.wiser_lts_temperature_kitchen_dining_room
+                    hours_to_show: 6
+                    points_per_hour: 4
+                    line_color: orange
+                    height: 70
+                    show:
+                      state: true
+                      name: true
+                      icon: false
+                      labels: false
+                    tap_action:
+                      action: navigate
+                      navigation_path: /rooms-overview/default_view#kitchen
+                  - type: custom:mushroom-chips-card
+                    alignment: center
+                    chips:
+                      - type: template
+                        icon: mdi:lightbulb
+                        icon_color: >-
+                          {% set e = states.light | selectattr('entity_id','in', area_entities('kitchen')) | list %}
+                          {{ 'amber' if e | selectattr('state','eq','on') | list | count > 0 else 'grey' }}
+                        content: >-
+                          {% set e = states.light | selectattr('entity_id','in', area_entities('kitchen')) | list %}
+                          {{ e | selectattr('state','eq','on') | list | count }}/{{ e | count }}
+                      - type: template
+                        icon: mdi:fire
+                        icon_color: >-
+                          {{ 'orange' if state_attr('climate.wiser_kitchen_dining_room','hvac_action') == 'heating' else 'grey' }}
+                        content: >-
+                          {{ 'On' if state_attr('climate.wiser_kitchen_dining_room','hvac_action') == 'heating' else 'Off' }}
+
+              # --- Sitting (switch-as-light) ---
+              - type: custom:stack-in-card
+                keep:
+                  background: false
+                  box_shadow: false
+                  margin: true
+                  outer_padding: false
+                cards:
+                  - type: custom:mini-graph-card
+                    name: Sitting
+                    entities:
+                      - sensor.wiser_lts_temperature_sitting_room
+                    hours_to_show: 6
+                    points_per_hour: 4
+                    line_color: orange
+                    height: 70
+                    show:
+                      state: true
+                      name: true
+                      icon: false
+                      labels: false
+                    tap_action:
+                      action: navigate
+                      navigation_path: /rooms-overview/default_view#sitting_room
+                  - type: custom:mushroom-chips-card
+                    alignment: center
+                    chips:
+                      - type: template
+                        icon: mdi:lightbulb
+                        icon_color: >-
+                          {{ 'amber' if is_state('switch.sitting_room_lamp','on') else 'grey' }}
+                        content: >-
+                          {{ '1/1' if is_state('switch.sitting_room_lamp','on') else '0/1' }}
+                      - type: template
+                        icon: mdi:fire
+                        icon_color: >-
+                          {{ 'orange' if state_attr('climate.wiser_sitting_room','hvac_action') == 'heating' else 'grey' }}
+                        content: >-
+                          {{ 'On' if state_attr('climate.wiser_sitting_room','hvac_action') == 'heating' else 'Off' }}
+
+              # --- Hall (lights only) ---
+              - type: custom:stack-in-card
+                keep:
+                  background: false
+                  box_shadow: false
+                  margin: true
+                  outer_padding: false
+                cards:
+                  - type: custom:mini-graph-card
+                    name: Hall
+                    entities:
+                      - sensor.hall_motion_sensor_temperature
+                    hours_to_show: 6
+                    points_per_hour: 4
+                    line_color: teal
+                    height: 70
+                    show:
+                      state: true
+                      name: true
+                      icon: false
+                      labels: false
+                    tap_action:
+                      action: navigate
+                      navigation_path: /rooms-overview/default_view#hall
+                  - type: custom:mushroom-chips-card
+                    alignment: center
+                    chips:
+                      - type: template
+                        icon: mdi:lightbulb
+                        icon_color: >-
+                          {% set e = states.light | selectattr('entity_id','in', area_entities('hall')) | list %}
+                          {{ 'amber' if e | selectattr('state','eq','on') | list | count > 0 else 'grey' }}
+                        content: >-
+                          {% set e = states.light | selectattr('entity_id','in', area_entities('hall')) | list %}
+                          {{ e | selectattr('state','eq','on') | list | count }}/{{ e | count }}
+
+              # --- Marie Office ---
+              - type: custom:stack-in-card
+                keep:
+                  background: false
+                  box_shadow: false
+                  margin: true
+                  outer_padding: false
+                cards:
+                  - type: custom:mini-graph-card
+                    name: Marie Office
+                    entities:
+                      - sensor.wiser_lts_temperature_marie_s_office
+                    hours_to_show: 6
+                    points_per_hour: 4
+                    line_color: purple
+                    height: 70
+                    show:
+                      state: true
+                      name: true
+                      icon: false
+                      labels: false
+                    tap_action:
+                      action: navigate
+                      navigation_path: /rooms-overview/default_view#marie_office
+                  - type: custom:mushroom-chips-card
+                    alignment: center
+                    chips:
+                      - type: template
+                        icon: mdi:lightbulb
+                        icon_color: >-
+                          {% set e = states.light | selectattr('entity_id','in', area_entities('marie_s_office')) | list %}
+                          {{ 'amber' if e | selectattr('state','eq','on') | list | count > 0 else 'grey' }}
+                        content: >-
+                          {% set e = states.light | selectattr('entity_id','in', area_entities('marie_s_office')) | list %}
+                          {{ e | selectattr('state','eq','on') | list | count }}/{{ e | count }}
+                      - type: template
+                        icon: mdi:fire
+                        icon_color: >-
+                          {{ 'orange' if state_attr('climate.wiser_marie_s_office','hvac_action') == 'heating' else 'grey' }}
+                        content: >-
+                          {{ 'On' if state_attr('climate.wiser_marie_s_office','hvac_action') == 'heating' else 'Off' }}
+
+              # --- Bedroom ---
+              - type: custom:stack-in-card
+                keep:
+                  background: false
+                  box_shadow: false
+                  margin: true
+                  outer_padding: false
+                cards:
+                  - type: custom:mini-graph-card
+                    name: Bedroom
+                    entities:
+                      - sensor.wiser_lts_temperature_bedroom
+                    hours_to_show: 6
+                    points_per_hour: 4
+                    line_color: indigo
+                    height: 70
+                    show:
+                      state: true
+                      name: true
+                      icon: false
+                      labels: false
+                    tap_action:
+                      action: navigate
+                      navigation_path: /rooms-overview/default_view#bedroom
+                  - type: custom:mushroom-chips-card
+                    alignment: center
+                    chips:
+                      - type: template
+                        icon: mdi:lightbulb
+                        icon_color: >-
+                          {% set e = states.light | selectattr('entity_id','in', area_entities('bedroom')) | list %}
+                          {{ 'amber' if e | selectattr('state','eq','on') | list | count > 0 else 'grey' }}
+                        content: >-
+                          {% set e = states.light | selectattr('entity_id','in', area_entities('bedroom')) | list %}
+                          {{ e | selectattr('state','eq','on') | list | count }}/{{ e | count }}
+                      - type: template
+                        icon: mdi:fire
+                        icon_color: >-
+                          {{ 'orange' if state_attr('climate.wiser_bedroom','hvac_action') == 'heating' else 'grey' }}
+                        content: >-
+                          {{ 'On' if state_attr('climate.wiser_bedroom','hvac_action') == 'heating' else 'Off' }}
+
+              # --- Hugh Office ---
+              - type: custom:stack-in-card
+                keep:
+                  background: false
+                  box_shadow: false
+                  margin: true
+                  outer_padding: false
+                cards:
+                  - type: custom:mini-graph-card
+                    name: Hugh Office
+                    entities:
+                      - sensor.wiser_lts_temperature_hugh_s_office
+                    hours_to_show: 6
+                    points_per_hour: 4
+                    line_color: pink
+                    height: 70
+                    show:
+                      state: true
+                      name: true
+                      icon: false
+                      labels: false
+                    tap_action:
+                      action: navigate
+                      navigation_path: /rooms-overview/default_view#office
+                  - type: custom:mushroom-chips-card
+                    alignment: center
+                    chips:
+                      - type: template
+                        icon: mdi:lightbulb
+                        icon_color: >-
+                          {% set e = states.light | selectattr('entity_id','in', area_entities('office')) | list %}
+                          {{ 'amber' if e | selectattr('state','eq','on') | list | count > 0 else 'grey' }}
+                        content: >-
+                          {% set e = states.light | selectattr('entity_id','in', area_entities('office')) | list %}
+                          {{ e | selectattr('state','eq','on') | list | count }}/{{ e | count }}
+                      - type: template
+                        icon: mdi:fire
+                        icon_color: >-
+                          {{ 'orange' if state_attr('climate.wiser_hugh_s_office','hvac_action') == 'heating' else 'grey' }}
+                        content: >-
+                          {{ 'On' if state_attr('climate.wiser_hugh_s_office','hvac_action') == 'heating' else 'Off' }}
+
+              # --- Alex (heating only) ---
+              - type: custom:stack-in-card
+                keep:
+                  background: false
+                  box_shadow: false
+                  margin: true
+                  outer_padding: false
+                cards:
+                  - type: custom:mini-graph-card
+                    name: Alex
+                    entities:
+                      - sensor.wiser_lts_temperature_alexander_s_room
+                    hours_to_show: 6
+                    points_per_hour: 4
+                    line_color: cyan
+                    height: 70
+                    show:
+                      state: true
+                      name: true
+                      icon: false
+                      labels: false
+                    tap_action:
+                      action: navigate
+                      navigation_path: /rooms-overview/default_view#alex_room
+                  - type: custom:mushroom-chips-card
+                    alignment: center
+                    chips:
+                      - type: template
+                        icon: mdi:fire
+                        icon_color: >-
+                          {{ 'orange' if state_attr('climate.wiser_alexander_s_room','hvac_action') == 'heating' else 'grey' }}
+                        content: >-
+                          {{ 'On' if state_attr('climate.wiser_alexander_s_room','hvac_action') == 'heating' else 'Off' }}
+
+              # --- Lily (heating only) ---
+              - type: custom:stack-in-card
+                keep:
+                  background: false
+                  box_shadow: false
+                  margin: true
+                  outer_padding: false
+                cards:
+                  - type: custom:mini-graph-card
+                    name: Lily
+                    entities:
+                      - sensor.wiser_lts_temperature_lily_s_room
+                    hours_to_show: 6
+                    points_per_hour: 4
+                    line_color: pink
+                    height: 70
+                    show:
+                      state: true
+                      name: true
+                      icon: false
+                      labels: false
+                    tap_action:
+                      action: navigate
+                      navigation_path: /rooms-overview/default_view#lily_room
+                  - type: custom:mushroom-chips-card
+                    alignment: center
+                    chips:
+                      - type: template
+                        icon: mdi:fire
+                        icon_color: >-
+                          {{ 'orange' if state_attr('climate.wiser_lily_s_room','hvac_action') == 'heating' else 'grey' }}
+                        content: >-
+                          {{ 'On' if state_attr('climate.wiser_lily_s_room','hvac_action') == 'heating' else 'Off' }}
+
+              # --- Landing (lights only) ---
+              - type: custom:stack-in-card
+                keep:
+                  background: false
+                  box_shadow: false
+                  margin: true
+                  outer_padding: false
+                cards:
+                  - type: custom:mini-graph-card
+                    name: Landing
+                    entities:
+                      - sensor.landing_motion_sensor_temperature
+                    hours_to_show: 6
+                    points_per_hour: 4
+                    line_color: grey
+                    height: 70
+                    show:
+                      state: true
+                      name: true
+                      icon: false
+                      labels: false
+                    tap_action:
+                      action: navigate
+                      navigation_path: /rooms-overview/default_view#landing
+                  - type: custom:mushroom-chips-card
+                    alignment: center
+                    chips:
+                      - type: template
+                        icon: mdi:lightbulb
+                        icon_color: >-
+                          {% set e = states.light | selectattr('entity_id','in', area_entities('landing')) | list %}
+                          {{ 'amber' if e | selectattr('state','eq','on') | list | count > 0 else 'grey' }}
+                        content: >-
+                          {% set e = states.light | selectattr('entity_id','in', area_entities('landing')) | list %}
+                          {{ e | selectattr('state','eq','on') | list | count }}/{{ e | count }}
+
+              # --- Main Bath (temp only) ---
+              - type: custom:stack-in-card
+                keep:
+                  background: false
+                  box_shadow: false
+                  margin: true
+                  outer_padding: false
+                cards:
+                  - type: custom:mini-graph-card
+                    name: Main Bath
+                    entities:
+                      - sensor.main_bathroom_temperature_humidity_sensor_temperature
+                    hours_to_show: 6
+                    points_per_hour: 4
+                    line_color: blue
+                    height: 70
+                    show:
+                      state: true
+                      name: true
+                      icon: false
+                      labels: false
+                    tap_action:
+                      action: navigate
+                      navigation_path: /rooms-overview/default_view#main_bathroom
+
+              # --- Ensuite (temp only) ---
+              - type: custom:stack-in-card
+                keep:
+                  background: false
+                  box_shadow: false
+                  margin: true
+                  outer_padding: false
+                cards:
+                  - type: custom:mini-graph-card
+                    name: Ensuite
+                    entities:
+                      - sensor.ensuite_temperature_humidity_sensor_temperature
+                    hours_to_show: 6
+                    points_per_hour: 4
+                    line_color: blue
+                    height: 70
+                    show:
+                      state: true
+                      name: true
+                      icon: false
+                      labels: false
+                    tap_action:
+                      action: navigate
+                      navigation_path: /rooms-overview/default_view#ensuite
+
+              # --- Attic (switch-as-light + heating) ---
+              - type: custom:stack-in-card
+                keep:
+                  background: false
+                  box_shadow: false
+                  margin: true
+                  outer_padding: false
+                cards:
+                  - type: custom:mini-graph-card
+                    name: Attic
+                    entities:
+                      - sensor.wiser_lts_temperature_attic
+                    hours_to_show: 6
+                    points_per_hour: 4
+                    line_color: brown
+                    height: 70
+                    show:
+                      state: true
+                      name: true
+                      icon: false
+                      labels: false
+                    tap_action:
+                      action: navigate
+                      navigation_path: /rooms-overview/default_view#attic
+                  - type: custom:mushroom-chips-card
+                    alignment: center
+                    chips:
+                      - type: template
+                        icon: mdi:lightbulb
+                        icon_color: >-
+                          {{ 'amber' if is_state('switch.attic_clothes_rail','on') else 'grey' }}
+                        content: >-
+                          {{ '1/1' if is_state('switch.attic_clothes_rail','on') else '0/1' }}
+                      - type: template
+                        icon: mdi:fire
+                        icon_color: >-
+                          {{ 'orange' if state_attr('climate.wiser_attic','hvac_action') == 'heating' else 'grey' }}
+                        content: >-
+                          {{ 'On' if state_attr('climate.wiser_attic','hvac_action') == 'heating' else 'Off' }}
+
+      # =======================================================
+      # Calendar — listWeek is the right fit for narrow screens
+      # (dayGridMonth is unreadable on a phone).
+      # =======================================================
+      - title: Calendar
+        column_span: 2
+        cards:
+          - type: calendar
+            initial_view: listWeek
             entities:
-              - entity: sensor.wiser_lts_temperature_kitchen_dining_room
-                name: Kitchen
-              - entity: sensor.wiser_lts_temperature_sitting_room
-                name: Sitting
-              - entity: sensor.wiser_lts_temperature_bedroom
-                name: Bedroom
-              - entity: sensor.wiser_lts_temperature_hugh_s_office
-                name: H-Office
-              - entity: sensor.wiser_lts_temperature_marie_s_office
-                name: M-Office
-              - entity: sensor.wiser_lts_temperature_alexander_s_room
-                name: Alex
-              - entity: sensor.wiser_lts_temperature_lily_s_room
-                name: Lily
-              - entity: sensor.wiser_lts_temperature_attic
-                name: Attic
-            show:
-              labels: true
-              legend: true
-              icon: false
-              name: true
-              state: false
-      # ===========================================================
-      # Energy flow hero — power-flow-card-plus replaces v1 mini-graph.
-      # ===========================================================
-      - title: Energy flow
-        column_span: 2
-        cards:
-          - type: custom:power-flow-card-plus
-            title: Live power flow
-            clickable_entities: true
-            display_zero_lines:
-              mode: show
-              transparency: 50
-            use_new_flow_rate_model: true
-            grid:
-              entity:
-                consumption: sensor.myenergi_zappi_power_import
-                production: sensor.myenergi_zappi_power_export
-              name: Grid
-            home:
-              entity: sensor.myenergi_zappi_home_consumption
-              override_state: false
-            individual:
-              - entity: sensor.myenergi_zappi_power_charging
-                name: EV Charger
-                icon: mdi:ev-station
-                color:
-                  r: 255
-                  g: 167
-                  b: 38
-      - title: Energy at a glance
-        column_span: 2
-        cards:
-          - type: custom:mushroom-chips-card
-            alignment: start
-            chips:
-              - type: entity
-                entity: sensor.myenergi_zappi_25608214_status
-                icon: mdi:ev-station
-                icon_color: green
-                content_info: state
-              - type: entity
-                entity: sensor.myenergi_zappi_25608214_plug_status
-                icon: mdi:ev-plug-type2
-                icon_color: teal
-                content_info: state
-              - type: entity
-                entity: select.myenergi_zappi_25608214_charge_mode
-                icon: mdi:speedometer
-                icon_color: amber
-                content_info: state
-                tap_action:
-                  action: navigate
-                  navigation_path: /energy-ev
-              - type: entity
-                entity: sensor.myenergi_zappi_home_consumption
-                icon: mdi:home-lightning-bolt
-                icon_color: orange
-                content_info: state
-              - type: entity
-                entity: sensor.myenergi_zappi_grid_import_today
-                icon: mdi:transmission-tower-import
-                icon_color: red
-                content_info: state
-              - type: entity
-                entity: sensor.myenergi_zappi_grid_export_today
-                icon: mdi:transmission-tower-export
-                icon_color: green
-                content_info: state
-      # ===========================================================
-      # Media
-      # ===========================================================
-      - title: Media
-        column_span: 2
-        cards:
-          - type: custom:mushroom-media-player-card
-            entity: media_player.living_room
-            use_media_info: true
-            show_volume_level: true
-            media_controls:
-              - on_off
-              - play_pause_stop
-              - previous
-              - next
-            volume_controls:
-              - volume_mute
-              - volume_set
-              - volume_buttons
-            fill_container: true
-          - type: custom:mushroom-media-player-card
-            entity: media_player.kitchen
-            use_media_info: true
-            show_volume_level: true
-            media_controls:
-              - on_off
-              - play_pause_stop
-              - previous
-              - next
-            volume_controls:
-              - volume_mute
-              - volume_set
-              - volume_buttons
-            fill_container: true
-      # ===========================================================
-      # Recent activity — logbook-card (HACS) replaces stock logbook
-      # ===========================================================
-      - title: Recent activity
-        column_span: 4
-        cards:
-          - type: custom:logbook-card
-            title: Last 6 hours
-            hours_to_show: 6
-            collapse: 8
-            entities:
-              - entity: event.front_door_motion
-              - entity: event.front_door_chime
-              - entity: event.back_garden_motion
-              - entity: event.side_gate_motion
-              - entity: binary_sensor.hall_front_door_sensor_contact
-              - entity: binary_sensor.hall_motion_sensor_occupancy
-              - entity: binary_sensor.landing_motion_sensor_occupancy
-              - entity: binary_sensor.office_motion_sensor_occupancy
-              - entity: person.hugh
-              - entity: person.marie
-            show:
-              state: true
-              duration: true
-              start_date: true
-              end_date: false
-              icon: true
-              separator: true
+              - calendar.hughlardner_gmail_com
+              - calendar.family
+              - calendar.birthdays
+              - calendar.holidays_in_ireland

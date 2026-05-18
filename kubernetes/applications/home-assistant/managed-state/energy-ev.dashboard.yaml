@@ -6,41 +6,35 @@ views:
     max_columns: 4
     sections:
       # ===========================================================
-      # Hero: power-flow-card-plus replaces v1 Live power chart
+      # Hero: power-flow-card-plus fed by the Harvi CT1
+      # (Zappi power_import/export was always 0 — Harvi is the
+      # actual meter tail CT and reports signed net power).
       # ===========================================================
       - title: Live power flow
         column_span: 4
         cards:
+          # power-flow-card-plus v0.3.x requires `entities:` wrapper.
+          # Harvi CT1 = signed net grid power (+ import / − export).
           - type: custom:power-flow-card-plus
             title: Grid • Home • EV
             clickable_entities: true
-            display_zero_lines:
-              mode: show
-              transparency: 50
-            use_new_flow_rate_model: true
-            grid:
-              entity:
-                consumption: sensor.myenergi_zappi_power_import
-                production: sensor.myenergi_zappi_power_export
-              name: Grid
-            home:
-              entity: sensor.myenergi_zappi_home_consumption
-              override_state: false
-            individual:
-              - entity: sensor.myenergi_zappi_power_charging
-                name: EV Charger
-                icon: mdi:ev-station
+            entities:
+              grid:
+                entity: sensor.myenergi_harvi_2239208_grid_ct1
+                name: Grid
                 color:
-                  r: 66
-                  g: 165
-                  b: 245
-              - entity: sensor.myenergi_zappi_power_generation
-                name: Generation
-                icon: mdi:solar-power
-                color:
-                  r: 38
-                  g: 166
-                  b: 154
+                  consumption: "#ef5350"
+                  production: "#66bb6a"
+              home:
+                entity: sensor.myenergi_zappi_home_consumption
+              individual:
+                - entity: sensor.myenergi_zappi_power_charging
+                  name: EV Charger
+                  icon: mdi:ev-station
+                  color: "#42a5f5"
+      # ===========================================================
+      # Status chips (dense, single row)
+      # ===========================================================
       - title: At a glance
         column_span: 4
         cards:
@@ -73,6 +67,11 @@ views:
                 icon_color: orange
                 content_info: state
               - type: entity
+                entity: sensor.myenergi_harvi_2239208_grid_ct1
+                icon: mdi:transmission-tower
+                icon_color: red
+                content_info: state
+              - type: entity
                 entity: sensor.myenergi_zappi_voltage_grid
                 icon: mdi:flash
                 icon_color: blue
@@ -83,7 +82,7 @@ views:
                 icon_color: blue-grey
                 content_info: state
       # ===========================================================
-      # Charge mode quick switch (mushroom chips)
+      # Charge mode quick switch
       # ===========================================================
       - title: Charge mode
         column_span: 2
@@ -147,8 +146,8 @@ views:
               {% else %}grey{% endif %}
             fill_container: true
       # ===========================================================
-      # tabbed-card: Limits | Locks | Session (consolidates v1
-      # "Charge controls" sprawling entities list into tabs)
+      # Charge settings (tabbed) — density improved vs v2 where
+      # this took a whole row
       # ===========================================================
       - title: Charge settings
         column_span: 2
@@ -199,13 +198,13 @@ views:
                     - entity: sensor.myenergi_zappi_25608214_pwm
                       name: PWM
       # ===========================================================
-      # Today totals + 48h trends
+      # Today totals (dense 3-col grid of tiles)
       # ===========================================================
       - title: Today totals (kWh)
-        column_span: 2
+        column_span: 4
         cards:
           - type: grid
-            columns: 2
+            columns: 3
             square: false
             cards:
               - type: tile
@@ -232,20 +231,23 @@ views:
                 entity: sensor.myenergi_zappi_25608214_green_energy_today
                 name: Charger green
                 color: light-green
+      # ===========================================================
+      # Trends (single full-width chart)
+      # ===========================================================
       - title: Daily totals (48h)
-        column_span: 2
+        column_span: 4
         cards:
           - type: custom:apexcharts-card
             header:
               show: true
-              title: Import / export / charger
+              title: Import / export / charger (48h)
               show_states: false
             graph_span: 48h
             span:
               end: minute
             apex_config:
               chart:
-                height: 320
+                height: 300
               stroke:
                 width: 2
               legend:
@@ -265,4 +267,3 @@ views:
                 name: Charger energy used
                 color: "#42a5f5"
                 curve: stepline
-      # Harvi / CTs and Hardware moved to entity-health dashboard.

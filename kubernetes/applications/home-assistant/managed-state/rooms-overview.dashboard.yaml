@@ -1,6 +1,6 @@
 streamline_templates:
   # Room tile: mushroom-template-card with vertical layout so long names
-  # (e.g. "Downstairs Bathroom") never truncate on mobile.
+  # never truncate on mobile.
   room_tile:
     default:
       primary: Room
@@ -26,134 +26,131 @@ views:
     icon: mdi:floor-plan
     max_columns: 4
     sections:
-      # ===========================================================
-      # Bubble Card pop-ups: all 13 grouped into ONE vertical-stack
-      # so they render as overlays (not inline cards).
-      # ===========================================================
+      # =======================================================
+      # v3 pop-up fix: ONE vertical-stack per pop-up, all of
+      # them siblings inside a single grid section. This is
+      # the bubble-card documented pattern and fixes the v2
+      # bug where the first pop-up grabbed every subsequent
+      # card in the shared stack.
+      # =======================================================
       - type: grid
         column_span: 4
         cards:
+          # ---- Kitchen / Dining ----
           - type: vertical-stack
             cards:
-              # ---- Kitchen / Dining ----
               - type: custom:bubble-card
                 card_type: pop-up
                 hash: "#kitchen"
                 name: Kitchen / Dining
                 icon: mdi:silverware-fork-knife
-              - type: custom:mini-climate-card
+              - type: custom:mushroom-climate-card
                 entity: climate.wiser_kitchen_dining_room
-                name: Kitchen / Dining
-              - type: custom:auto-entities
-                card:
-                  type: entities
-                  title: Kitchen lights & switches
-                  show_header_toggle: false
-                filter:
-                  include:
-                    - area: kitchen
-                      domain: light
-                    - area: kitchen
-                      domain: switch
-                      entity_id: "/^switch\\.(?!.*(permit_join|led|identify|device_lock|window_detection|power_on|transition|color)).*/"
-              - type: custom:auto-entities
-                card:
-                  type: entities
-                  title: Kitchen sensors
-                  show_header_toggle: false
-                filter:
-                  include:
-                    - area: kitchen
-                      domain: binary_sensor
-                      entity_id: "/.*(motion|occupancy|door|contact|window).*/"
-                    - entity_id: sensor.wiser_lts_temperature_kitchen_dining_room
-                    - entity_id: sensor.wiser_lts_humidity_kitchen_dining_room
-              # ---- Sitting Room ----
+                name: Kitchen
+                hvac_modes:
+                  - "off"
+                  - heat
+                  - auto
+                show_temperature_control: true
+                fill_container: true
+              - type: entities
+                title: Lights
+                show_header_toggle: false
+                entities:
+                  - light.kitchen_cabinet
+                  - light.kitchen_spot_1
+                  - light.kitchen_spot_2
+                  - light.kitchen_spot_3
+                  - light.kitchen_spot_4
+              - type: entities
+                title: Environment
+                show_header_toggle: false
+                entities:
+                  - sensor.wiser_lts_temperature_kitchen_dining_room
+              - type: custom:mushroom-media-player-card
+                entity: media_player.kitchen
+                use_media_info: true
+                show_volume_level: true
+                fill_container: true
+          # ---- Sitting Room ----
+          - type: vertical-stack
+            cards:
               - type: custom:bubble-card
                 card_type: pop-up
                 hash: "#sitting_room"
                 name: Sitting Room
                 icon: mdi:sofa
-              - type: custom:mini-climate-card
+              - type: custom:mushroom-climate-card
                 entity: climate.wiser_sitting_room
                 name: Sitting Room
-              - type: custom:auto-entities
-                card:
-                  type: entities
-                  title: Sitting Room lights & switches
-                  show_header_toggle: false
-                filter:
-                  include:
-                    - area: sitting_room
-                      domain: light
-                    - area: sitting_room
-                      domain: switch
-                      entity_id: "/^switch\\.(?!.*(permit_join|led|identify|device_lock|window_detection|power_on|transition|color)).*/"
-              - type: custom:auto-entities
-                card:
-                  type: entities
-                  title: Sitting Room sensors
-                  show_header_toggle: false
-                filter:
-                  include:
-                    - area: sitting_room
-                      domain: binary_sensor
-                      entity_id: "/.*(motion|occupancy|window).*/"
-                    - entity_id: sensor.wiser_lts_temperature_sitting_room
-                    - entity_id: sensor.wiser_lts_humidity_sitting_room
-              # ---- Hall ----
+                hvac_modes:
+                  - "off"
+                  - heat
+                  - auto
+                fill_container: true
+              - type: entities
+                title: Switches
+                show_header_toggle: false
+                entities:
+                  - switch.sitting_room_lamp
+              - type: entities
+                title: Environment
+                show_header_toggle: false
+                entities:
+                  - sensor.wiser_lts_temperature_sitting_room
+                  - sensor.wiser_lts_humidity_sitting_room
+              - type: custom:mushroom-media-player-card
+                entity: media_player.living_room
+                use_media_info: true
+                show_volume_level: true
+                fill_container: true
+          # ---- Hall ----
+          - type: vertical-stack
+            cards:
               - type: custom:bubble-card
                 card_type: pop-up
                 hash: "#hall"
                 name: Hall
                 icon: mdi:door-open
-              - type: custom:auto-entities
-                card:
-                  type: entities
-                  title: Hall lights & door
-                  show_header_toggle: false
-                filter:
-                  include:
-                    - area: hall
-                      domain: light
-                    - entity_id: binary_sensor.hall_front_door_sensor_contact
-                    - entity_id: binary_sensor.hall_motion_sensor_occupancy
-                    - entity_id: sensor.hall_motion_sensor_temperature
-                    - entity_id: sensor.hall_motion_sensor_illuminance
-              # ---- Marie's Office ----
+              - type: entities
+                title: Lights
+                show_header_toggle: false
+                entities:
+                  - light.hall
+                  - light.hall_light_kitchen
+                  - light.hall_light_door
+              - type: entities
+                title: Doors & motion
+                show_header_toggle: false
+                entities:
+                  - binary_sensor.hall_front_door_sensor_contact
+                  - binary_sensor.hall_motion_sensor_occupancy
+                  - sensor.hall_motion_sensor_temperature
+                  - sensor.hall_motion_sensor_illuminance
+          # ---- Marie's Office ----
+          - type: vertical-stack
+            cards:
               - type: custom:bubble-card
                 card_type: pop-up
                 hash: "#marie_office"
                 name: Marie's Office
                 icon: mdi:desk
-              - type: custom:mini-climate-card
+              - type: custom:mushroom-climate-card
                 entity: climate.wiser_marie_s_office
                 name: Marie's Office
-              - type: custom:auto-entities
-                card:
-                  type: entities
-                  title: Lights & sensors
-                  show_header_toggle: false
-                filter:
-                  include:
-                    - area: marie_s_office
-                      domain: light
-                    - area: marie_s_office
-                      domain: switch
-                      entity_id: "/^switch\\.(?!.*(permit_join|led|identify|device_lock|window_detection|power_on|transition|color)).*/"
-                    - area: marie_s_office
-                      domain: binary_sensor
-              # ---- Downstairs Bathroom ----
-              - type: custom:bubble-card
-                card_type: pop-up
-                hash: "#downstairs_bathroom"
-                name: Downstairs Bathroom
-                icon: mdi:shower
-              - type: markdown
-                content: |
-                  No sensors or switches are currently assigned to this area.
-                  Add a temp/humidity sensor or smart plug to populate the pop-up.
-              # ---- Outside / Garden ----
+                hvac_modes:
+                  - "off"
+                  - heat
+                  - auto
+                fill_container: true
+              - type: entities
+                title: Environment
+                show_header_toggle: false
+                entities:
+                  - sensor.wiser_lts_temperature_marie_s_office
+          # ---- Outside / Garden (cameras) ----
+          - type: vertical-stack
+            cards:
               - type: custom:bubble-card
                 card_type: pop-up
                 hash: "#outside"
@@ -162,157 +159,148 @@ views:
               - type: weather-forecast
                 entity: weather.home
                 forecast_type: daily
-              - type: picture-glance
-                entity: camera.back_garden
-                camera_view: live
-                title: Back Garden
-                entities:
-                  - event.back_garden_motion
-              - type: picture-glance
-                entity: camera.side_gate
-                camera_view: live
-                title: Side Gate
-                entities:
-                  - event.side_gate_motion
-              - type: picture-glance
+              - type: picture-entity
                 entity: camera.front_door
-                camera_view: live
-                title: Front Door
-                entities:
-                  - event.front_door_motion
-                  - event.front_door_chime
-              # ---- Bedroom ----
+                name: Front Door
+                camera_view: auto
+                show_state: false
+              - type: picture-entity
+                entity: camera.back_garden
+                name: Back Garden
+                camera_view: auto
+                show_state: false
+              - type: picture-entity
+                entity: camera.side_gate
+                name: Side Gate
+                camera_view: auto
+                show_state: false
+          # ---- Bedroom ----
+          - type: vertical-stack
+            cards:
               - type: custom:bubble-card
                 card_type: pop-up
                 hash: "#bedroom"
                 name: Bedroom
                 icon: mdi:bed-queen
-              - type: custom:mini-climate-card
+              - type: custom:mushroom-climate-card
                 entity: climate.wiser_bedroom
                 name: Bedroom
-              - type: custom:auto-entities
-                card:
-                  type: entities
-                  title: Lights & scenes
-                  show_header_toggle: false
-                filter:
-                  include:
-                    - area: bedroom
-                      domain: light
-                    - area: bedroom
-                      domain: scene
-                    - area: bedroom
-                      domain: switch
-                      entity_id: "/^switch\\.(?!.*(permit_join|led|identify|device_lock|window_detection|power_on|transition|color)).*/"
-              - type: custom:auto-entities
-                card:
-                  type: entities
-                  title: Sensors
-                  show_header_toggle: false
-                filter:
-                  include:
-                    - entity_id: sensor.wiser_lts_temperature_bedroom
-                    - entity_id: sensor.wiser_lts_humidity_bedroom
-                    - area: bedroom
-                      domain: binary_sensor
-              # ---- Landing ----
+                hvac_modes:
+                  - "off"
+                  - heat
+                  - auto
+                fill_container: true
+              - type: entities
+                title: Lights & scenes
+                show_header_toggle: false
+                entities:
+                  - light.bedroom_lamps
+                  - light.marie_lamp
+                  - light.hugh_s_lamp
+                  - scene.bedroom_lamps_0_bed_time
+              - type: entities
+                title: Environment
+                show_header_toggle: false
+                entities:
+                  - sensor.wiser_lts_temperature_bedroom
+                  - sensor.wiser_lts_humidity_bedroom
+          # ---- Landing ----
+          - type: vertical-stack
+            cards:
               - type: custom:bubble-card
                 card_type: pop-up
                 hash: "#landing"
                 name: Landing
                 icon: mdi:stairs
-              - type: custom:auto-entities
-                card:
-                  type: entities
-                  title: Landing
-                  show_header_toggle: false
-                filter:
-                  include:
-                    - area: landing
-                      domain: light
-                    - entity_id: binary_sensor.landing_motion_sensor_occupancy
-                    - entity_id: sensor.landing_motion_sensor_temperature
-                    - entity_id: sensor.landing_motion_sensor_illuminance
-              # ---- Hugh's Office ----
+              - type: entities
+                title: Landing
+                show_header_toggle: false
+                entities:
+                  - light.landing_light
+                  - binary_sensor.landing_motion_sensor_occupancy
+                  - sensor.landing_motion_sensor_temperature
+                  - sensor.landing_motion_sensor_illuminance
+          # ---- Hugh's Office ----
+          - type: vertical-stack
+            cards:
               - type: custom:bubble-card
                 card_type: pop-up
                 hash: "#office"
                 name: Office (Hugh's)
                 icon: mdi:monitor-dashboard
-              - type: custom:mini-climate-card
+              - type: custom:mushroom-climate-card
                 entity: climate.wiser_hugh_s_office
                 name: Hugh's Office
-              - type: custom:auto-entities
-                card:
-                  type: entities
-                  title: Lights & scenes
-                  show_header_toggle: false
-                filter:
-                  include:
-                    - area: office
-                      domain: light
-                    - area: office
-                      domain: scene
-                    - area: office
-                      domain: switch
-                      entity_id: "/^switch\\.(?!.*(permit_join|led|identify|device_lock|window_detection|power_on|transition|color)).*/"
-              - type: custom:auto-entities
-                card:
-                  type: entities
-                  title: Sensors
-                  show_header_toggle: false
-                filter:
-                  include:
-                    - entity_id: binary_sensor.office_motion_sensor_occupancy
-                    - entity_id: sensor.wiser_lts_temperature_hugh_s_office
-                    - entity_id: sensor.office_motion_sensor_temperature
-                    - entity_id: sensor.office_motion_sensor_illuminance
-              # ---- Lily's Room ----
+                hvac_modes:
+                  - "off"
+                  - heat
+                  - auto
+                fill_container: true
+              - type: entities
+                title: Lights & scenes
+                show_header_toggle: false
+                entities:
+                  - light.office
+                  - light.office_light
+                  - light.office_cabinet
+                  - light.office_bar_right
+                  - light.office_bar_left
+                  - scene.office_0_test
+                  - scene.office_1_red
+                  - scene.office_2_red2
+              - type: entities
+                title: Environment
+                show_header_toggle: false
+                entities:
+                  - sensor.wiser_lts_temperature_hugh_s_office
+                  - sensor.office_motion_sensor_temperature
+                  - binary_sensor.office_motion_sensor_occupancy
+                  - sensor.office_motion_sensor_illuminance
+          # ---- Lily's Room ----
+          - type: vertical-stack
+            cards:
               - type: custom:bubble-card
                 card_type: pop-up
                 hash: "#lily_room"
                 name: Lily's Room
                 icon: mdi:bed-single
-              - type: custom:mini-climate-card
+              - type: custom:mushroom-climate-card
                 entity: climate.wiser_lily_s_room
                 name: Lily's Room
-              - type: custom:auto-entities
-                card:
-                  type: entities
-                  title: Room entities
-                  show_header_toggle: false
-                filter:
-                  include:
-                    - area: lily_s_room
-                      domain: light
-                    - area: lily_s_room
-                      domain: switch
-                      entity_id: "/^switch\\.(?!.*(permit_join|led|identify|device_lock|window_detection|power_on|transition|color)).*/"
-                    - entity_id: sensor.wiser_lts_temperature_lily_s_room
-                    - entity_id: sensor.wiser_lts_humidity_lily_s_room
-              # ---- Alex's Room ----
+                hvac_modes:
+                  - "off"
+                  - heat
+                  - auto
+                fill_container: true
+              - type: entities
+                title: Environment
+                show_header_toggle: false
+                entities:
+                  - sensor.wiser_lts_temperature_lily_s_room
+          # ---- Alex's Room ----
+          - type: vertical-stack
+            cards:
               - type: custom:bubble-card
                 card_type: pop-up
                 hash: "#alex_room"
                 name: Alex's Room
                 icon: mdi:bed-single
-              - type: custom:mini-climate-card
+              - type: custom:mushroom-climate-card
                 entity: climate.wiser_alexander_s_room
                 name: Alex's Room
-              - type: custom:auto-entities
-                card:
-                  type: entities
-                  title: Room entities
-                  show_header_toggle: false
-                filter:
-                  include:
-                    - area: alex_s_room
-                      domain: light
-                    - area: alex_s_room
-                      domain: switch
-                      entity_id: "/^switch\\.(?!.*(permit_join|led|identify|device_lock|window_detection|power_on|transition|color)).*/"
-                    - entity_id: sensor.wiser_lts_temperature_alexander_s_room
-              # ---- Main Bathroom ----
+                hvac_modes:
+                  - "off"
+                  - heat
+                  - auto
+                fill_container: true
+              - type: entities
+                title: Environment
+                show_header_toggle: false
+                entities:
+                  - sensor.wiser_lts_temperature_alexander_s_room
+          # ---- Main Bathroom ----
+          - type: vertical-stack
+            cards:
               - type: custom:bubble-card
                 card_type: pop-up
                 hash: "#main_bathroom"
@@ -325,7 +313,10 @@ views:
                   - sensor.main_bathroom_temperature_humidity_sensor_temperature
                   - sensor.main_bathroom_temperature_humidity_sensor_humidity
                   - sensor.main_bathroom_temperature_humidity_sensor_atmospheric_pressure
-              # ---- Ensuite ----
+                  - sensor.main_bathroom_temperature_humidity_sensor_battery
+          # ---- Ensuite ----
+          - type: vertical-stack
+            cards:
               - type: custom:bubble-card
                 card_type: pop-up
                 hash: "#ensuite"
@@ -338,67 +329,47 @@ views:
                   - sensor.ensuite_temperature_humidity_sensor_temperature
                   - sensor.ensuite_temperature_humidity_sensor_humidity
                   - sensor.ensuite_temperature_humidity_sensor_atmospheric_pressure
-              # ---- Attic Landing ----
-              - type: custom:bubble-card
-                card_type: pop-up
-                hash: "#attic_landing"
-                name: Attic Landing
-                icon: mdi:stairs
-              - type: custom:auto-entities
-                card:
-                  type: entities
-                  title: Lights & inputs
-                  show_header_toggle: false
-                filter:
-                  include:
-                    - area: attic_landing
-                      domain: light
-                    - area: attic_landing
-                      domain: switch
-                      entity_id: "/^switch\\.(?!.*(permit_join|led|identify|device_lock|window_detection|power_on|transition|color)).*/"
-              # ---- Attic (AMS sensors live here — NOT duplicated elsewhere) ----
+                  - sensor.ensuite_temperature_humidity_sensor_battery
+          # ---- Attic (AMS sensors live here, not on other dashboards) ----
+          - type: vertical-stack
+            cards:
               - type: custom:bubble-card
                 card_type: pop-up
                 hash: "#attic"
                 name: Attic
                 icon: mdi:home-roof
-              - type: custom:mini-climate-card
+              - type: custom:mushroom-climate-card
                 entity: climate.wiser_attic
                 name: Attic
-              - type: custom:auto-entities
-                card:
-                  type: entities
-                  title: Attic lights & switches
-                  show_header_toggle: false
-                filter:
-                  include:
-                    - area: attic
-                      domain: light
-                    - area: attic
-                      domain: switch
-                      entity_id: "/^switch\\.(?!.*(permit_join|led|identify|device_lock|window_detection|power_on|transition|color)).*/"
+                hvac_modes:
+                  - "off"
+                  - heat
+                  - auto
+                fill_container: true
               - type: entities
-                title: Attic environment (AMS)
+                title: Attic
                 show_header_toggle: false
                 entities:
+                  - switch.attic_clothes_rail
                   - sensor.wiser_lts_temperature_attic
                   - sensor.ams_temperature_humidity_sensor_temperature
                   - sensor.ams_temperature_humidity_sensor_humidity
                   - sensor.ams_temperature_humidity_sensor_pressure
-      # ===========================================================
-      # Room tiles — streamline-card template for DRY
-      # ===========================================================
+                  - sensor.ams_temperature_humidity_sensor_battery
+      # =======================================================
+      # Tiles — floor-grouped grids with columns:4 for density
+      # =======================================================
       - title: Ground floor
         column_span: 4
         cards:
           - type: grid
-            columns: 3
+            columns: 4
             square: false
             cards:
               - type: custom:streamline-card
                 template: room_tile
                 variables:
-                  primary: Kitchen / Dining
+                  primary: Kitchen
                   secondary: "{{ states('sensor.wiser_lts_temperature_kitchen_dining_room') }}°C"
                   icon: mdi:silverware-fork-knife
                   color: amber
@@ -406,7 +377,7 @@ views:
               - type: custom:streamline-card
                 template: room_tile
                 variables:
-                  primary: Sitting Room
+                  primary: Sitting
                   secondary: "{{ states('sensor.wiser_lts_temperature_sitting_room') }}°C"
                   icon: mdi:sofa
                   color: deep-orange
@@ -416,15 +387,14 @@ views:
                 variables:
                   primary: Hall
                   secondary: >-
-                    {{ states('sensor.hall_motion_sensor_temperature') }}°C ·
-                    {% if is_state('binary_sensor.hall_front_door_sensor_contact','on') %}Door open{% else %}Door closed{% endif %}
+                    {% if is_state('binary_sensor.hall_front_door_sensor_contact','on') %}Door open{% else %}{{ states('sensor.hall_motion_sensor_temperature') }}°C{% endif %}
                   icon: mdi:door-open
                   color: teal
                   hash: "#hall"
               - type: custom:streamline-card
                 template: room_tile
                 variables:
-                  primary: Marie's Office
+                  primary: Marie Office
                   secondary: "{{ states('sensor.wiser_lts_temperature_marie_s_office') }}°C"
                   icon: mdi:desk
                   color: purple
@@ -432,16 +402,8 @@ views:
               - type: custom:streamline-card
                 template: room_tile
                 variables:
-                  primary: Downstairs Bath
-                  secondary: No sensors
-                  icon: mdi:shower
-                  color: blue
-                  hash: "#downstairs_bathroom"
-              - type: custom:streamline-card
-                template: room_tile
-                variables:
                   primary: Outside
-                  secondary: "{{ states('weather.home') }} · {{ state_attr('weather.home','temperature') }}°C"
+                  secondary: "{{ state_attr('weather.home','temperature') }}°C"
                   icon: mdi:leaf
                   color: green
                   hash: "#outside"
@@ -449,14 +411,14 @@ views:
         column_span: 4
         cards:
           - type: grid
-            columns: 3
+            columns: 4
             square: false
             cards:
               - type: custom:streamline-card
                 template: room_tile
                 variables:
                   primary: Bedroom
-                  secondary: "{{ states('sensor.wiser_lts_temperature_bedroom') }}°C"
+                  secondary: "{{ states('sensor.wiser_lts_temperature_bedroom') }}°C · {{ states('sensor.wiser_lts_humidity_bedroom') }}%"
                   icon: mdi:bed-queen
                   color: indigo
                   hash: "#bedroom"
@@ -471,7 +433,7 @@ views:
               - type: custom:streamline-card
                 template: room_tile
                 variables:
-                  primary: Hugh's Office
+                  primary: Hugh Office
                   secondary: "{{ states('sensor.wiser_lts_temperature_hugh_s_office') }}°C"
                   icon: mdi:monitor-dashboard
                   color: pink
@@ -479,7 +441,7 @@ views:
               - type: custom:streamline-card
                 template: room_tile
                 variables:
-                  primary: Lily's Room
+                  primary: Lily
                   secondary: "{{ states('sensor.wiser_lts_temperature_lily_s_room') }}°C"
                   icon: mdi:bed-single
                   color: pink
@@ -487,7 +449,7 @@ views:
               - type: custom:streamline-card
                 template: room_tile
                 variables:
-                  primary: Alex's Room
+                  primary: Alex
                   secondary: "{{ states('sensor.wiser_lts_temperature_alexander_s_room') }}°C"
                   icon: mdi:bed-single
                   color: cyan
@@ -495,8 +457,8 @@ views:
               - type: custom:streamline-card
                 template: room_tile
                 variables:
-                  primary: Main Bathroom
-                  secondary: "{{ states('sensor.main_bathroom_temperature_humidity_sensor_temperature') }}°C · {{ states('sensor.main_bathroom_temperature_humidity_sensor_humidity') }}%"
+                  primary: Main Bath
+                  secondary: "{{ states('sensor.main_bathroom_temperature_humidity_sensor_temperature') }}°C"
                   icon: mdi:bathtub
                   color: blue
                   hash: "#main_bathroom"
@@ -504,7 +466,7 @@ views:
                 template: room_tile
                 variables:
                   primary: Ensuite
-                  secondary: "{{ states('sensor.ensuite_temperature_humidity_sensor_temperature') }}°C · {{ states('sensor.ensuite_temperature_humidity_sensor_humidity') }}%"
+                  secondary: "{{ states('sensor.ensuite_temperature_humidity_sensor_temperature') }}°C"
                   icon: mdi:shower-head
                   color: blue
                   hash: "#ensuite"
@@ -512,23 +474,14 @@ views:
         column_span: 4
         cards:
           - type: grid
-            columns: 3
+            columns: 4
             square: false
             cards:
               - type: custom:streamline-card
                 template: room_tile
                 variables:
-                  primary: Attic Landing
-                  secondary: >-
-                    {% if is_state('light.attic_landing_light','on') %}Light on{% else %}Light off{% endif %}
-                  icon: mdi:stairs
-                  color: grey
-                  hash: "#attic_landing"
-              - type: custom:streamline-card
-                template: room_tile
-                variables:
                   primary: Attic
-                  secondary: "{{ states('sensor.wiser_lts_temperature_attic') }}°C"
+                  secondary: "{{ states('sensor.wiser_lts_temperature_attic') }}°C · {{ states('sensor.ams_temperature_humidity_sensor_humidity') }}%"
                   icon: mdi:home-roof
                   color: brown
                   hash: "#attic"

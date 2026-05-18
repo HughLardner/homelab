@@ -6,8 +6,7 @@ views:
     max_columns: 4
     sections:
       # ===========================================================
-      # Bubble Card pop-ups consolidated into ONE vertical-stack
-      # (only one pop-up on this dashboard: printer)
+      # Printer pop-up (its own vertical-stack per bubble-card v2)
       # ===========================================================
       - type: grid
         column_span: 4
@@ -33,6 +32,9 @@ views:
                   - sensor.dcp_l3550cdw_page_counter
                   - sensor.dcp_l3550cdw_color_counter
                   - sensor.dcp_l3550cdw_b_w_counter
+      # ===========================================================
+      # Health summary chips
+      # ===========================================================
       - title: Health summary
         column_span: 4
         cards:
@@ -83,37 +85,104 @@ views:
                 tap_action:
                   action: navigate
                   navigation_path: /entity-health
-      - title: Updates available
+              - type: template
+                icon: mdi:printer
+                icon_color: blue
+                content: Printer
+                tap_action:
+                  action: navigate
+                  navigation_path: "#printer"
+      # ===========================================================
+      # Updates split into HACS / core integration / add-on groups
+      # (v3 split: v2 had one catch-all auto-entities list which
+      # was hard to scan)
+      # ===========================================================
+      - title: HACS & frontend updates
         column_span: 2
         cards:
           - type: custom:auto-entities
             card:
               type: entities
-              title: Update entities
+              title: Frontend / HACS
+              show_header_toggle: false
+            filter:
+              include:
+                - domain: update
+                  entity_id: "*hacs*"
+                  state: "on"
+                - domain: update
+                  entity_id: "*frontend*"
+                  state: "on"
+                - domain: update
+                  entity_id: "*lovelace*"
+                  state: "on"
+            sort:
+              method: friendly_name
+            show_empty: true
+      - title: Integration updates
+        column_span: 2
+        cards:
+          - type: custom:auto-entities
+            card:
+              type: entities
+              title: Integrations
               show_header_toggle: false
             filter:
               include:
                 - domain: update
                   state: "on"
+              exclude:
+                - entity_id: "*hacs*"
+                - entity_id: "*frontend*"
+                - entity_id: "*lovelace*"
             sort:
               method: friendly_name
             show_empty: true
-      - title: Unavailable entities
+      # ===========================================================
+      # Unavailable entities grouped by domain (v3: two stacks side
+      # by side — sensors vs everything else — easier to scan)
+      # ===========================================================
+      - title: Unavailable sensors
         column_span: 2
         cards:
           - type: custom:auto-entities
             card:
               type: entities
-              title: State = unavailable
+              title: sensor.* = unavailable
+              show_header_toggle: false
+            filter:
+              include:
+                - domain: sensor
+                  state: unavailable
+                  options:
+                    secondary_info: last-changed
+              exclude:
+                - entity_id: "*_signal$"
+            sort:
+              method: last_changed
+            show_empty: true
+      - title: Unavailable devices / other
+        column_span: 2
+        cards:
+          - type: custom:auto-entities
+            card:
+              type: entities
+              title: Non-sensor = unavailable
               show_header_toggle: false
             filter:
               include:
                 - state: unavailable
                   options:
                     secondary_info: last-changed
+              exclude:
+                - domain: sensor
             sort:
               method: last_changed
             show_empty: true
+      # ===========================================================
+      # Backups + HA host info (v3: dropped sun.sun + zone.home,
+      # they belong on an astronomical dashboard, not here)
+      # ===========================================================
       - title: Backups
         column_span: 2
         cards:
@@ -138,18 +207,12 @@ views:
             tap_action:
               action: perform-action
               perform_action: backup.create_automatic
-      # ===========================================================
-      # HA host — only entities that actually exist on this install
-      # (HA runs as a container: no update.home_assistant_* entities)
-      # ===========================================================
       - title: HA host
         column_span: 2
         cards:
           - type: entities
             show_header_toggle: false
             entities:
-              - sun.sun
-              - zone.home
               - entity: device_tracker.homeassistant
                 name: Home Assistant host
               - entity: update.hacs_update
@@ -162,22 +225,3 @@ views:
                 name: OpenID Connect
               - entity: update.node_red_companion_update
                 name: Node-RED Companion
-      # ===========================================================
-      # Printer tile (tap opens #printer pop-up at top of view)
-      # ===========================================================
-      - title: Printer
-        column_span: 4
-        cards:
-          - type: horizontal-stack
-            cards:
-              - type: custom:mushroom-template-card
-                primary: DCP-L3550CDW
-                secondary: "{{ states('sensor.dcp_l3550cdw_status') }}"
-                icon: mdi:printer
-                icon_color: blue
-                fill_container: true
-                layout: vertical
-                tap_action:
-                  action: navigate
-                  navigation_path: "#printer"
-      # Zigbee / Wiser health and battery detail moved to entity-health.

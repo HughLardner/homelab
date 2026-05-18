@@ -68,10 +68,64 @@ data:
       });
     }
 
-    // Fetch documents in batches to avoid loading entire vault into memory.
-    // CouchDB's _all_docs endpoint supports skip/limit pagination.
+    // Fetch and process documents in small batches to avoid OOM.
+    // Processes each batch immediately instead of accumulating in memory.
+    function fetchAndSyncAllDocs() {
+      var BATCH_SIZE = 50;  // Smaller batches to keep heap usage low
+      var byId = {};
+      var written = 0;
+      var skipped = 0;
+
+      // Wipe content directory once at start
+      fs.rmSync(CONTENT_DIR, { recursive: true, force: true });
+      fs.mkdirSync(CONTENT_DIR, { recursive: true });
+
+      function processBatch(skip, total) {
+        var url = '/' + COUCHDB_DATABASE + '/_all_docs?include_docs=true&limit=' + BATCH_SIZE + '&skip=' + skip;
+        return couchFetch(url).then(function(data) {
+          var docs = (data.rows || []).map(function(r) { return r.doc; }).filter(Boolean);
+          var currentTotal = data.total_rows || total || 0;
+
+          // Index all docs by ID for chunk resolution
+          docs.forEach(function(d) { byId[d._id] = d; });
+
+          // Process each doc immediately
+          docs.forEach(function(doc) {
+            if (!doc.path) return;
+            if (doc.type === 'leaf' || doc.type === 'versioninfo') return;
+            if (doc._deleted || doc.deleted) return;
+            if (!isPublishable(doc.path)) { skipped++; return; }
+
+            var filePath = path.join(CONTENT_DIR, restorePathCase(doc.path));
+            fs.mkdirSync(path.dirname(filePath), { recursive: true });
+
+            if (isTextFile(doc.path)) {
+              fs.writeFileSync(filePath, reconstructTextData(doc, byId), 'utf8');
+            } else {
+              fs.writeFileSync(filePath, reconstructBinaryData(doc, byId));
+            }
+            written++;
+          });
+
+          var fetched = skip + docs.length;
+          console.log('Processed ' + fetched + ' / ' + currentTotal + ' documents (' + written + ' written, ' + skipped + ' skipped)...');
+
+          // Continue if more documents exist
+          if (docs.length === BATCH_SIZE && fetched < currentTotal) {
+            return processBatch(skip + BATCH_SIZE, currentTotal);
+          }
+
+          console.log('Content sync complete: ' + written + ' files written, ' + skipped + ' system files skipped');
+          return { written: written, skipped: skipped };
+        });
+      }
+
+      return processBatch(0, 0);
+    }
+
+    // Legacy function kept for manual /rebuild endpoint
     function fetchAllDocs() {
-      var BATCH_SIZE = 100;
+      var BATCH_SIZE = 50;
       var allDocs = [];
 
       function fetchBatch(skip) {
@@ -84,7 +138,6 @@ data:
           var fetched = skip + docs.length;
           console.log('Fetched ' + fetched + ' / ' + total + ' documents...');
 
-          // If we got a full batch, there might be more
           if (docs.length === BATCH_SIZE && fetched < total) {
             return fetchBatch(skip + BATCH_SIZE);
           }
@@ -419,8 +472,7 @@ data:
       patchFolderPage();
 
       console.log('Initial full sync from CouchDB...');
-      return fetchAllDocs().then(function(docs) {
-        syncContent(docs);
+      return fetchAndSyncAllDocs().then(function(result) {
         runBuild();
         watchLoop(since);
       });

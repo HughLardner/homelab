@@ -59,7 +59,8 @@ views:
                 icon_color: cyan
                 content_info: state
       # ===========================================================
-      # bar-card — Batteries (all device_class: battery sensors)
+      # bar-card — Sensor batteries (v3: exclude obviously-bogus
+      # >100% readings; bar max=100 ensures no 200% overflow bars)
       # ===========================================================
       - title: Batteries
         column_span: 2
@@ -90,9 +91,11 @@ views:
                 - domain: sensor
                   attributes:
                     device_class: battery
+                  state: "< 101"
               exclude:
                 - state: unknown
                 - state: unavailable
+                - state: "> 100"
                 - entity_id: "*_mobile_*"
                 - entity_id: "*_tablet_*"
                 - entity_id: "*work_phone*"
@@ -101,7 +104,7 @@ views:
               numeric: true
             show_empty: true
       # ===========================================================
-      # bar-card — Phone / tablet batteries (grouped separately)
+      # Phone / tablet batteries
       # ===========================================================
       - title: Phones & tablets
         column_span: 2
@@ -135,12 +138,13 @@ views:
               exclude:
                 - state: unknown
                 - state: unavailable
+                - state: "> 100"
             sort:
               method: state
               numeric: true
             show_empty: true
       # ===========================================================
-      # Wiser iTRV / RoomStat telemetry (prev on heating dashboard)
+      # Wiser iTRV / RoomStat telemetry
       # ===========================================================
       - title: Wiser iTRV / RoomStat signal
         column_span: 2
@@ -188,6 +192,7 @@ views:
               exclude:
                 - state: unknown
                 - state: unavailable
+                - state: "> 100"
             sort:
               method: state
               numeric: true
@@ -224,7 +229,11 @@ views:
                 - state: unavailable
             show_empty: true
       # ===========================================================
-      # Zigbee mesh
+      # Zigbee mesh (v3: dropped duplicate *_2 entities — SLZB
+      # exposes zigbee_chip_temp_2 / zigbee_restart_2 which are
+      # phantom diagnostic copies; also dropped sensor.zigbee2mqtt
+      # _bridge_network_map which is a binary state blob, not a
+      # sensor value.)
       # ===========================================================
       - title: Zigbee mesh — SLZB coordinator
         column_span: 2
@@ -241,7 +250,6 @@ views:
                 label: Radio temps
               - sensor.slzb_mr3u_core_chip_temp
               - sensor.slzb_mr3u_zigbee_chip_temp
-              - sensor.slzb_mr3u_zigbee_chip_temp_2
               - type: section
                 label: Controls
               - sensor.slzb_mr3u_firmware_channel
@@ -249,7 +257,6 @@ views:
               - switch.slzb_mr3u_led_night_mode
               - button.slzb_mr3u_core_restart
               - button.slzb_mr3u_zigbee_restart
-              - button.slzb_mr3u_zigbee_restart_2
       - title: Zigbee2MQTT bridge
         column_span: 2
         cards:
@@ -258,7 +265,6 @@ views:
             entities:
               - binary_sensor.zigbee2mqtt_bridge_connection_state
               - switch.zigbee2mqtt_bridge_permit_join
-              - sensor.zigbee2mqtt_bridge_network_map
               - sensor.zigbee2mqtt_bridge_version
       # ===========================================================
       # Wiser platform / myenergi hardware

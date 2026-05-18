@@ -5,8 +5,11 @@ views:
     icon: mdi:radiator
     max_columns: 4
     sections:
-      - title: Global controls
-        column_span: 2
+      # =======================================================
+      # Row 1: chips + quick-action buttons on one line
+      # =======================================================
+      - type: grid
+        column_span: 4
         cards:
           - type: custom:mushroom-chips-card
             alignment: start
@@ -16,6 +19,18 @@ views:
                 icon: mdi:home-thermometer
                 icon_color: red
                 content_info: state
+              - type: entity
+                entity: sensor.wiser_hot_water_operation_mode
+                icon: mdi:water-boiler
+                icon_color: blue
+                content_info: state
+              - type: template
+                icon: mdi:fire
+                icon_color: orange
+                content: >-
+                  {{ states.climate
+                     | selectattr('attributes.hvac_action','eq','heating')
+                     | list | count }} heating
               - type: entity
                 entity: switch.wiser_comfort_mode
                 icon: mdi:home-heart
@@ -36,13 +51,19 @@ views:
                 icon: mdi:valve
                 icon_color: blue-grey
                 content_info: state
+      # =======================================================
+      # Row 2: quick-action buttons (heating + hot water)
+      # =======================================================
+      - title: Heating actions
+        column_span: 2
+        cards:
           - type: grid
             columns: 2
             square: false
             cards:
               - type: custom:mushroom-template-card
-                primary: Boost all heating
-                secondary: 30 min boost
+                primary: Boost all
+                secondary: 30 min
                 icon: mdi:fire
                 icon_color: red
                 fill_container: true
@@ -54,7 +75,7 @@ views:
                     entity_id: button.wiser_boost_all_heating
               - type: custom:mushroom-template-card
                 primary: Cancel overrides
-                secondary: Return to schedule
+                secondary: Back to schedule
                 icon: mdi:close-circle
                 icon_color: blue-grey
                 fill_container: true
@@ -88,34 +109,9 @@ views:
                   perform_action: button.press
                   target:
                     entity_id: button.wiser_moments_boost_downstairs
-          - type: entities
-            title: Away settings
-            show_header_toggle: false
-            entities:
-              - switch.wiser_away_mode_affects_hot_water
-              - number.wiser_away_mode_target_temperature
-              - switch.wiser_daylight_saving
-      - title: Hot water
+      - title: Hot water actions
         column_span: 2
         cards:
-          - type: custom:mushroom-chips-card
-            alignment: start
-            chips:
-              - type: entity
-                entity: sensor.wiser_hot_water_operation_mode
-                icon: mdi:water-boiler
-                icon_color: blue
-                content_info: state
-              - type: entity
-                entity: binary_sensor.wiser_hot_water
-                icon: mdi:water
-                icon_color: cyan
-                content_info: state
-              - type: entity
-                entity: select.wiser_hot_water_mode
-                icon: mdi:auto-mode
-                icon_color: indigo
-                content_info: state
           - type: grid
             columns: 3
             square: false
@@ -146,7 +142,7 @@ views:
                     entity_id: button.wiser_toggle_hot_water
               - type: custom:mushroom-template-card
                 primary: Cancel HW
-                secondary: Return to schedule
+                secondary: Back to schedule
                 icon: mdi:close-circle
                 icon_color: blue-grey
                 fill_container: true
@@ -156,51 +152,110 @@ views:
                   perform_action: button.press
                   target:
                     entity_id: button.wiser_cancel_hot_water_overrides
-          - type: custom:scheduler-card
-            title: Hot water schedule
-            include:
-              - switch.wiser_hot_water
-              - select.wiser_hot_water_mode
-            discover_existing: true
+          - type: entities
+            title: Hot water state
             show_header_toggle: false
-      # ===========================================================
-      # Zones: mini-climate-card grid (compact — fits 8 zones on one screen)
-      # ===========================================================
+            entities:
+              - entity: sensor.wiser_hot_water
+                name: Current state
+              - entity: sensor.wiser_hot_water_operation_mode
+                name: Operation mode
+              - entity: select.wiser_hot_water_mode
+                name: Mode
+              - entity: sensor.wiser_lts_hot_water_demand
+                name: Demand today
+              - entity: switch.wiser_away_mode_affects_hot_water
+                name: Away mode affects HW
+      # =======================================================
+      # 8 zones — big HA-native thermostat cards in a 2-col grid.
+      # Plenty of real estate on this dashboard; previous 4-col
+      # mushroom grid was cramping controls unnecessarily.
+      # =======================================================
       - title: Zones
         column_span: 4
         cards:
           - type: grid
-            columns: 4
+            columns: 2
             square: false
             cards:
-              - type: custom:mini-climate-card
+              - type: thermostat
                 entity: climate.wiser_kitchen_dining_room
-                name: Kitchen / Dining
-              - type: custom:mini-climate-card
+                name: Kitchen
+                features:
+                  - type: climate-hvac-modes
+                    hvac_modes:
+                      - "off"
+                      - heat
+                      - auto
+              - type: thermostat
                 entity: climate.wiser_sitting_room
                 name: Sitting Room
-              - type: custom:mini-climate-card
+                features:
+                  - type: climate-hvac-modes
+                    hvac_modes:
+                      - "off"
+                      - heat
+                      - auto
+              - type: thermostat
                 entity: climate.wiser_bedroom
                 name: Bedroom
-              - type: custom:mini-climate-card
+                features:
+                  - type: climate-hvac-modes
+                    hvac_modes:
+                      - "off"
+                      - heat
+                      - auto
+              - type: thermostat
                 entity: climate.wiser_hugh_s_office
                 name: Hugh's Office
-              - type: custom:mini-climate-card
+                features:
+                  - type: climate-hvac-modes
+                    hvac_modes:
+                      - "off"
+                      - heat
+                      - auto
+              - type: thermostat
                 entity: climate.wiser_marie_s_office
                 name: Marie's Office
-              - type: custom:mini-climate-card
+                features:
+                  - type: climate-hvac-modes
+                    hvac_modes:
+                      - "off"
+                      - heat
+                      - auto
+              - type: thermostat
                 entity: climate.wiser_alexander_s_room
                 name: Alex's Room
-              - type: custom:mini-climate-card
+                features:
+                  - type: climate-hvac-modes
+                    hvac_modes:
+                      - "off"
+                      - heat
+                      - auto
+              - type: thermostat
                 entity: climate.wiser_lily_s_room
                 name: Lily's Room
-              - type: custom:mini-climate-card
+                features:
+                  - type: climate-hvac-modes
+                    hvac_modes:
+                      - "off"
+                      - heat
+                      - auto
+              - type: thermostat
                 entity: climate.wiser_attic
                 name: Attic
-      # ===========================================================
-      # tabbed-card: Temperatures | Heating demand | Schedule
-      # (previously three separate sections — now collapsed)
-      # ===========================================================
+                features:
+                  - type: climate-hvac-modes
+                    hvac_modes:
+                      - "off"
+                      - heat
+                      - auto
+      # =======================================================
+      # Tabs: Temperatures | Demand | Schedule
+      # scheduler-card will show a friendly error until the
+      # nielsfaber/scheduler-component integration is activated
+      # in Settings → Devices & Services.
+      # =======================================================
       - title: Trends & schedule
         column_span: 4
         cards:
@@ -219,7 +274,7 @@ views:
                   span:
                     end: minute
                   yaxis:
-                    - min: 12
+                    - min: 14
                       max: 26
                       decimals: 1
                   apex_config:
@@ -250,7 +305,7 @@ views:
                     - entity: sensor.wiser_lts_temperature_attic
                       name: Attic
               - attributes:
-                  label: Heating demand (24h)
+                  label: Demand (24h)
                   icon: mdi:fire
                 card:
                   type: custom:apexcharts-card
@@ -302,16 +357,25 @@ views:
                   label: Schedule
                   icon: mdi:calendar-clock
                 card:
-                  type: custom:scheduler-card
-                  title: Heating schedules
-                  include:
-                    - climate.wiser_kitchen_dining_room
-                    - climate.wiser_sitting_room
-                    - climate.wiser_bedroom
-                    - climate.wiser_hugh_s_office
-                    - climate.wiser_marie_s_office
-                    - climate.wiser_alexander_s_room
-                    - climate.wiser_lily_s_room
-                    - climate.wiser_attic
-                  discover_existing: true
-                  show_header_toggle: false
+                  # Native Wiser schedule editor (ships with the
+                  # asantaga/wiserHomeAssistantPlatform integration).
+                  # Reads/writes Wiser schedules directly via the
+                  # wiser.set_schedule / wiser.assign_schedule services.
+                  type: custom:wiser-schedule-card
+      # =======================================================
+      # Away settings (compact)
+      # =======================================================
+      - title: Away settings
+        column_span: 4
+        cards:
+          - type: entities
+            show_header_toggle: false
+            entities:
+              - entity: switch.wiser_away_mode
+                name: Away mode
+              - entity: switch.wiser_away_mode_affects_hot_water
+                name: Away affects HW
+              - entity: number.wiser_away_mode_target_temperature
+                name: Away target °C
+              - entity: switch.wiser_daylight_saving
+                name: Daylight saving
