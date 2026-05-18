@@ -69,58 +69,64 @@ data:
     }
 
     // Fetch and process documents in small batches to avoid OOM.
-    // Processes each batch immediately instead of accumulating in memory.
+    // Strategy: fetch all docs for byId index (minimal memory), then process files in batches.
     function fetchAndSyncAllDocs() {
-      var BATCH_SIZE = 50;  // Smaller batches to keep heap usage low
+      var BATCH_SIZE = 50;
       var byId = {};
-      var written = 0;
-      var skipped = 0;
+      var pathDocs = [];
 
-      // Wipe content directory once at start
-      fs.rmSync(CONTENT_DIR, { recursive: true, force: true });
-      fs.mkdirSync(CONTENT_DIR, { recursive: true });
-
-      function processBatch(skip, total) {
+      // Phase 1: Build document index (all docs, minimal fields for lookup)
+      function buildIndex(skip, total) {
         var url = '/' + COUCHDB_DATABASE + '/_all_docs?include_docs=true&limit=' + BATCH_SIZE + '&skip=' + skip;
         return couchFetch(url).then(function(data) {
           var docs = (data.rows || []).map(function(r) { return r.doc; }).filter(Boolean);
           var currentTotal = data.total_rows || total || 0;
 
-          // Index all docs by ID for chunk resolution
-          docs.forEach(function(d) { byId[d._id] = d; });
-
-          // Process each doc immediately
-          docs.forEach(function(doc) {
-            if (!doc.path) return;
-            if (doc.type === 'leaf' || doc.type === 'versioninfo') return;
-            if (doc._deleted || doc.deleted) return;
-            if (!isPublishable(doc.path)) { skipped++; return; }
-
-            var filePath = path.join(CONTENT_DIR, restorePathCase(doc.path));
-            fs.mkdirSync(path.dirname(filePath), { recursive: true });
-
-            if (isTextFile(doc.path)) {
-              fs.writeFileSync(filePath, reconstructTextData(doc, byId), 'utf8');
-            } else {
-              fs.writeFileSync(filePath, reconstructBinaryData(doc, byId));
+          docs.forEach(function(d) {
+            byId[d._id] = d;
+            // Only track path docs for file writing
+            if (d.path && d.type !== 'leaf' && d.type !== 'versioninfo' && !d._deleted && !d.deleted && isPublishable(d.path)) {
+              pathDocs.push(d);
             }
-            written++;
           });
 
           var fetched = skip + docs.length;
-          console.log('Processed ' + fetched + ' / ' + currentTotal + ' documents (' + written + ' written, ' + skipped + ' skipped)...');
+          console.log('Indexed ' + fetched + ' / ' + currentTotal + ' documents...');
 
-          // Continue if more documents exist
           if (docs.length === BATCH_SIZE && fetched < currentTotal) {
-            return processBatch(skip + BATCH_SIZE, currentTotal);
+            return buildIndex(skip + BATCH_SIZE, currentTotal);
           }
 
-          console.log('Content sync complete: ' + written + ' files written, ' + skipped + ' system files skipped');
-          return { written: written, skipped: skipped };
+          console.log('Index complete: ' + pathDocs.length + ' files to write');
+          return pathDocs;
         });
       }
 
-      return processBatch(0, 0);
+      // Phase 2: Write files to disk (now that all chunks are in byId)
+      return buildIndex(0, 0).then(function() {
+        fs.rmSync(CONTENT_DIR, { recursive: true, force: true });
+        fs.mkdirSync(CONTENT_DIR, { recursive: true });
+
+        var written = 0;
+        pathDocs.forEach(function(doc) {
+          var filePath = path.join(CONTENT_DIR, restorePathCase(doc.path));
+          fs.mkdirSync(path.dirname(filePath), { recursive: true });
+
+          if (isTextFile(doc.path)) {
+            fs.writeFileSync(filePath, reconstructTextData(doc, byId), 'utf8');
+          } else {
+            fs.writeFileSync(filePath, reconstructBinaryData(doc, byId));
+          }
+          written++;
+
+          if (written % 10 === 0) {
+            console.log('Written ' + written + ' / ' + pathDocs.length + ' files...');
+          }
+        });
+
+        console.log('Content sync complete: ' + written + ' files written');
+        return { written: written };
+      });
     }
 
     // Legacy function kept for manual /rebuild endpoint
