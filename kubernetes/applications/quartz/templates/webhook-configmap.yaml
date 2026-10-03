@@ -26,7 +26,6 @@ data:
     const CONTENT_DIR = path.join(REPO_DIR, 'content');
     const SITE_DIR   = '/site/output';
     const QUARTZ_REPO = 'https://github.com/jackyzha0/quartz.git';
-    const BUILD_DEBOUNCE_MS = 5000;
     const HEALTH_PORT = 9000;
 
     const AUTH_HEADER = 'Basic ' + Buffer.from(COUCHDB_USER + ':' + COUCHDB_PASSWORD).toString('base64');
@@ -35,167 +34,180 @@ data:
     // ---------------------------------------------------------------------------
     // State
     // ---------------------------------------------------------------------------
-    let isReady        = false;
-    let buildInProgress = false;
-    let buildQueued    = false;
-    let buildTimer     = null;
+    // All three triggers (startup, CouchDB changes, POST /rebuild) go through
+    // requestSync(). Only one sync+build job runs at a time; anything requested
+    // while a job is running collapses into a single follow-up job.
+    var isReady    = false;
+    var phase      = 'starting';   // starting | idle | syncing | building
+    var jobRunning = false;
+    var jobQueued  = false;
+    var jobTimer   = null;
+    var lastResult = 'No sync has run yet.';
 
     // ---------------------------------------------------------------------------
     // CouchDB client
     // ---------------------------------------------------------------------------
-    function couchFetch(urlPath, timeoutMs) {
-      if (!timeoutMs) timeoutMs = 30000;
+    function couchRequest(method, urlPath, body, timeoutMs) {
+      if (!timeoutMs) timeoutMs = 60000;
       return new Promise(function(resolve, reject) {
         var base = new URL(COUCHDB_HOST);
-        var opts = {
+        var payload = body ? Buffer.from(JSON.stringify(body)) : null;
+        var headers = { Authorization: AUTH_HEADER, Accept: 'application/json' };
+        if (payload) {
+          headers['Content-Type'] = 'application/json';
+          headers['Content-Length'] = payload.length;
+        }
+        var req = http.request({
           hostname: base.hostname,
           port: parseInt(base.port) || 5984,
           path: urlPath,
-          method: 'GET',
-          headers: { Authorization: AUTH_HEADER },
+          method: method,
+          headers: headers,
           timeout: timeoutMs,
-        };
-        var req = http.request(opts, function(res) {
-          var body = '';
-          res.on('data', function(c) { body += c; });
+        }, function(res) {
+          // Collect raw Buffers and decode once: decoding per network chunk
+          // corrupts multi-byte UTF-8 characters split across chunk boundaries.
+          var parts = [];
+          res.on('data', function(c) { parts.push(c); });
           res.on('end', function() {
-            try { resolve(JSON.parse(body)); } catch(e) { resolve(body); }
+            var data;
+            try { data = JSON.parse(Buffer.concat(parts).toString('utf8')); }
+            catch (e) { return reject(new Error('Invalid JSON from CouchDB (HTTP ' + res.statusCode + ')')); }
+            if (res.statusCode >= 400) {
+              return reject(new Error('CouchDB HTTP ' + res.statusCode + ': ' + (data.reason || data.error)));
+            }
+            resolve(data);
           });
         });
         req.on('error', reject);
         req.on('timeout', function() { req.destroy(new Error('CouchDB timeout')); });
+        if (payload) req.write(payload);
         req.end();
       });
     }
 
-    // Fetch and process documents in small batches to avoid OOM.
-    // Strategy: fetch all docs for byId index (minimal memory), then process files in batches.
-    function fetchAndSyncAllDocs() {
-      var BATCH_SIZE = 50;
-      var byId = {};
-      var pathDocs = [];
-
-      // Phase 1: Build document index (all docs, minimal fields for lookup)
-      function buildIndex(skip, total) {
-        var url = '/' + COUCHDB_DATABASE + '/_all_docs?include_docs=true&limit=' + BATCH_SIZE + '&skip=' + skip;
-        return couchFetch(url).then(function(data) {
-          var docs = (data.rows || []).map(function(r) { return r.doc; }).filter(Boolean);
-          var currentTotal = data.total_rows || total || 0;
-
-          docs.forEach(function(d) {
-            byId[d._id] = d;
-            // Only track path docs for file writing
-            if (d.path && d.type !== 'leaf' && d.type !== 'versioninfo' && !d._deleted && !d.deleted && isPublishable(d.path)) {
-              pathDocs.push(d);
-            }
-          });
-
-          var fetched = skip + docs.length;
-          console.log('Indexed ' + fetched + ' / ' + currentTotal + ' documents...');
-
-          if (docs.length === BATCH_SIZE && fetched < currentTotal) {
-            return buildIndex(skip + BATCH_SIZE, currentTotal);
-          }
-
-          console.log('Index complete: ' + pathDocs.length + ' files to write');
-          return pathDocs;
-        });
-      }
-
-      // Phase 2: Write files to disk (now that all chunks are in byId)
-      return buildIndex(0, 0).then(function() {
-        fs.rmSync(CONTENT_DIR, { recursive: true, force: true });
-        fs.mkdirSync(CONTENT_DIR, { recursive: true });
-
-        var written = 0;
-        pathDocs.forEach(function(doc) {
-          var filePath = path.join(CONTENT_DIR, restorePathCase(doc.path));
-          fs.mkdirSync(path.dirname(filePath), { recursive: true });
-
-          if (isTextFile(doc.path)) {
-            fs.writeFileSync(filePath, reconstructTextData(doc, byId), 'utf8');
-          } else {
-            fs.writeFileSync(filePath, reconstructBinaryData(doc, byId));
-          }
-          written++;
-
-          if (written % 10 === 0) {
-            console.log('Written ' + written + ' / ' + pathDocs.length + ' files...');
-          }
-        });
-
-        console.log('Content sync complete: ' + written + ' files written');
-        return { written: written };
-      });
-    }
-
-    // Legacy function kept for manual /rebuild endpoint
-    function fetchAllDocs() {
-      var BATCH_SIZE = 50;
-      var allDocs = [];
-
-      function fetchBatch(skip) {
-        var url = '/' + COUCHDB_DATABASE + '/_all_docs?include_docs=true&limit=' + BATCH_SIZE + '&skip=' + skip;
-        return couchFetch(url).then(function(data) {
-          var docs = (data.rows || []).map(function(r) { return r.doc; }).filter(Boolean);
-          allDocs = allDocs.concat(docs);
-
-          var total = data.total_rows || 0;
-          var fetched = skip + docs.length;
-          console.log('Fetched ' + fetched + ' / ' + total + ' documents...');
-
-          if (docs.length === BATCH_SIZE && fetched < total) {
-            return fetchBatch(skip + BATCH_SIZE);
-          }
-          return allDocs;
-        });
-      }
-
-      return fetchBatch(0);
+    function dbPath(suffix) {
+      return '/' + encodeURIComponent(COUCHDB_DATABASE) + suffix;
     }
 
     function getDbInfo() {
-      return couchFetch('/' + COUCHDB_DATABASE);
+      return couchRequest('GET', dbPath(''));
     }
 
+    // Changes are only used as a trigger, so docs are not included: a LiveSync
+    // push can produce thousands of chunk changes in one response.
     function watchChanges(since) {
       var seq = encodeURIComponent(String(since));
-      // include_docs=true so tombstones carry the original path field,
-      // letting us delete the on-disk file immediately without a full resync.
-      return couchFetch('/' + COUCHDB_DATABASE + '/_changes?feed=longpoll&since=' + seq + '&include_docs=true&timeout=60000', 70000);
+      return couchRequest('GET', dbPath('/_changes?feed=longpoll&since=' + seq + '&timeout=60000'), null, 70000);
     }
 
-    // Immediately remove on-disk files for documents marked deleted in CouchDB.
-    // Called before the full fetchAllDocs/syncContent pass so the Quartz build
-    // never sees content that has already been removed from the vault.
-    function applyDeletions(changeResults) {
-      // A change is a deletion if CouchDB tombstoned it (r.deleted) OR if
-      // LiveSync soft-deleted it by setting deleted: true on the doc body.
-      var deleted = changeResults.filter(function(r) { return r.doc && (r.deleted || r.doc.deleted); });
-      if (!deleted.length) return;
+    // ---------------------------------------------------------------------------
+    // Vault sync — memory stays bounded by one page of file docs plus one group
+    // of chunks, regardless of vault size.
+    //
+    // Phase 1 lists the file docs. LiveSync stores content chunks under ids
+    // prefixed "h:", which make up nearly all of the database, so that key range
+    // is skipped. _all_docs sorts ids by raw byte order and ';' sorts directly
+    // after ':', so the two ranges below cover every id except "h:*".
+    //
+    // Phase 2 fetches each file's chunks by id and appends them to the file.
+    // Files are written to a staging dir that replaces content/ only once the
+    // whole sync succeeds, so a failed sync never leaves the site half-written.
+    // ---------------------------------------------------------------------------
+    var PAGE_SIZE        = 200;
+    var CHUNK_GROUP_SIZE = 50;
+    var STAGING_DIR      = path.join(REPO_DIR, '.content-staging');
+    var KEY_RANGES = [
+      { endkey: 'h:' },
+      { startkey: 'h;' },
+    ];
 
-      deleted.forEach(function(r) {
-        var docPath = r.doc.path;
-        // Fallback: LiveSync stores _id as the lowercase path — attempt to find
-        // a matching file on disk by case-insensitive path comparison.
-        if (!docPath) {
-          console.log('Deletion tombstone has no path field (id=' + r.id + '), relying on pruneDir.');
-          return;
-        }
-        if (!isPublishable(docPath)) return;
+    // Paginates by startkey rather than skip: skip makes CouchDB walk every
+    // earlier row on each request, so a full listing was quadratic.
+    function listFileDocs(range, startkey, out) {
+      var q = ['include_docs=true', 'limit=' + (PAGE_SIZE + 1)];
+      if (startkey !== undefined) q.push('startkey=' + encodeURIComponent(JSON.stringify(startkey)));
+      if (range.endkey !== undefined) {
+        q.push('endkey=' + encodeURIComponent(JSON.stringify(range.endkey)));
+        q.push('inclusive_end=false');
+      }
+      return couchRequest('GET', dbPath('/_all_docs?' + q.join('&'))).then(function(data) {
+        var rows = data.rows || [];
+        var nextKey = rows.length > PAGE_SIZE ? rows[PAGE_SIZE].id : undefined;
+        rows.slice(0, PAGE_SIZE).forEach(function(r) {
+          var d = r.doc;
+          if (!d || !d.path) return;
+          if (d.type === 'leaf' || d.type === 'versioninfo') return;
+          if (d._deleted || d.deleted) return;
+          if (!isPublishable(d.path)) return;
+          // Older LiveSync versions keep recently written chunks inline in
+          // "eden" until they are moved out to their own docs.
+          out.push({ path: d.path, children: d.children || [], eden: d.eden || {} });
+        });
+        return nextKey === undefined ? out : listFileDocs(range, nextKey, out);
+      });
+    }
 
-        var filePath = path.join(CONTENT_DIR, restorePathCase(docPath));
-        if (fs.existsSync(filePath)) {
-          fs.unlinkSync(filePath);
-          console.log('Deleted file for removed doc: ' + filePath);
-        } else {
-          console.log('Deleted doc had no on-disk file: ' + docPath);
-        }
+    // Writes one file from its chunks; resolves to the number of missing chunks.
+    function writeFileFromChunks(fileDoc, dest) {
+      var ids = fileDoc.children;
+      var isText = isTextFile(fileDoc.path);
+      var missing = 0;
+      fs.mkdirSync(path.dirname(dest), { recursive: true });
+      fs.writeFileSync(dest, '');
+
+      function writeGroup(i) {
+        if (i >= ids.length) return Promise.resolve(missing);
+        var group = ids.slice(i, i + CHUNK_GROUP_SIZE);
+        return couchRequest('POST', dbPath('/_all_docs?include_docs=true'), { keys: group }).then(function(data) {
+          var byId = {};
+          (data.rows || []).forEach(function(r) { if (r.doc) byId[r.id] = r.doc.data || ''; });
+          group.forEach(function(id) {
+            var chunk = byId[id];
+            if (chunk === undefined && fileDoc.eden[id]) chunk = fileDoc.eden[id].data || '';
+            if (chunk === undefined) { missing++; return; }
+            // Binary chunks are each base64-encoded with their own padding, so
+            // they must be decoded individually rather than joined first.
+            fs.appendFileSync(dest, Buffer.from(chunk, isText ? 'utf8' : 'base64'));
+          });
+          return writeGroup(i + CHUNK_GROUP_SIZE);
+        });
+      }
+      return writeGroup(0);
+    }
+
+    function syncVault() {
+      var started = Date.now();
+      var files = [];
+      var incomplete = [];
+
+      return KEY_RANGES.reduce(function(p, range) {
+        return p.then(function() { return listFileDocs(range, range.startkey, files); });
+      }, Promise.resolve()).then(function() {
+        console.log('Found ' + files.length + ' publishable files, fetching content...');
+        fs.rmSync(STAGING_DIR, { recursive: true, force: true });
+        fs.mkdirSync(STAGING_DIR, { recursive: true });
+
+        return files.reduce(function(p, f) {
+          return p.then(function() {
+            return writeFileFromChunks(f, path.join(STAGING_DIR, restorePathCase(f.path))).then(function(missing) {
+              if (missing) incomplete.push(f.path + ' (' + missing + ' of ' + f.children.length + ' chunks missing)');
+            });
+          });
+        }, Promise.resolve());
+      }).then(function() {
+        fs.rmSync(CONTENT_DIR, { recursive: true, force: true });
+        fs.renameSync(STAGING_DIR, CONTENT_DIR);
+        incomplete.forEach(function(msg) { console.warn('Incomplete file: ' + msg); });
+        var summary = files.length + ' files synced in ' + Math.round((Date.now() - started) / 1000) + 's' +
+          (incomplete.length ? ', ' + incomplete.length + ' with missing chunks' : '');
+        console.log('Content sync complete: ' + summary);
+        return summary;
       });
     }
 
     // ---------------------------------------------------------------------------
-    // Content sync — reconstructs vault files from LiveSync doc format
+    // Content helpers
     // ---------------------------------------------------------------------------
     function isTextFile(filePath) {
       return TEXT_EXTS.has(path.extname(filePath).toLowerCase());
@@ -263,65 +275,58 @@ data:
       }).join('/');
     }
 
-    function syncContent(docs) {
-      var byId = {};
-      docs.forEach(function(d) { byId[d._id] = d; });
-
-      var written = 0;
-      var skipped = 0;
-
-      // Wipe the content directory before rewriting so that any deleted,
-      // renamed, or moved vault notes are guaranteed to be gone. This is
-      // simpler and more reliable than trying to diff what changed — for a
-      // small vault the full rewrite is fast (<1s) and avoids any edge case
-      // where a stale file survives because a tombstone lacked a path field
-      // or _all_docs returned it with _deleted: true still in the result set.
-      fs.rmSync(CONTENT_DIR, { recursive: true, force: true });
-      fs.mkdirSync(CONTENT_DIR, { recursive: true });
-
-      docs.forEach(function(doc) {
-        if (!doc.path) return;
-        if (doc.type === 'leaf' || doc.type === 'versioninfo') return;
-        if (doc._deleted || doc.deleted) return;
-        if (!isPublishable(doc.path)) { skipped++; return; }
-
-        var filePath = path.join(CONTENT_DIR, restorePathCase(doc.path));
-        fs.mkdirSync(path.dirname(filePath), { recursive: true });
-
-        if (isTextFile(doc.path)) {
-          fs.writeFileSync(filePath, reconstructTextData(doc, byId), 'utf8');
-        } else {
-          fs.writeFileSync(filePath, reconstructBinaryData(doc, byId));
-        }
-        written++;
-      });
-
-      console.log('Content synced: ' + written + ' files written, ' + skipped + ' system files skipped');
-    }
-
     // ---------------------------------------------------------------------------
-    // Quartz build
+    // Sync + build job
     // ---------------------------------------------------------------------------
-    function triggerBuild() {
-      if (buildTimer) clearTimeout(buildTimer);
-      buildTimer = setTimeout(runBuild, BUILD_DEBOUNCE_MS);
+    var DEBOUNCE_MS    = 5000;
+    var RETRY_DELAY_MS = 60000;
+
+    function requestSync(reason, delayMs) {
+      if (jobRunning) {
+        if (!jobQueued) console.log('Sync requested (' + reason + ') while a job is running, queued.');
+        jobQueued = true;
+        return;
+      }
+      console.log('Sync requested (' + reason + ').');
+      if (jobTimer) clearTimeout(jobTimer);
+      jobTimer = setTimeout(runJob, delayMs);
     }
 
     function runBuild() {
-      buildTimer = null;
-      if (buildInProgress) { buildQueued = true; return; }
-      buildInProgress = true;
-      console.log('Building Quartz site...');
-      var proc = spawn('npx', ['quartz', 'build', '--output', SITE_DIR], { cwd: REPO_DIR, stdio: 'inherit' });
-      proc.on('close', function(code) {
-        buildInProgress = false;
-        if (code === 0) { console.log('Build complete.'); isReady = true; }
-        else { console.error('Build exited with code ' + code); }
-        if (buildQueued) { buildQueued = false; runBuild(); }
+      return new Promise(function(resolve, reject) {
+        var proc = spawn('npx', ['quartz', 'build', '--output', SITE_DIR], { cwd: REPO_DIR, stdio: 'inherit' });
+        proc.on('close', function(code) {
+          if (code === 0) resolve();
+          else reject(new Error('Quartz build exited with code ' + code));
+        });
+        proc.on('error', reject);
       });
-      proc.on('error', function(err) {
-        buildInProgress = false;
-        console.error('Build spawn error:', err.message);
+    }
+
+    function runJob() {
+      jobTimer = null;
+      jobRunning = true;
+      jobQueued = false;
+      phase = 'syncing';
+      var failed = false;
+
+      syncVault().then(function(summary) {
+        phase = 'building';
+        console.log('Building Quartz site...');
+        return runBuild().then(function() {
+          isReady = true;
+          lastResult = 'Succeeded ' + new Date().toLocaleString('en-GB') + ': ' + summary + '.';
+          console.log('Build complete.');
+        });
+      }).catch(function(err) {
+        failed = true;
+        lastResult = 'Failed ' + new Date().toLocaleString('en-GB') + ': ' + err.message;
+        console.error('Sync/build failed: ' + err.message);
+      }).then(function() {
+        jobRunning = false;
+        phase = 'idle';
+        if (jobQueued) requestSync('changes during previous job', DEBOUNCE_MS);
+        else if (failed) requestSync('retry after failure', RETRY_DELAY_MS);
       });
     }
 
@@ -390,52 +395,58 @@ data:
     }
 
     // ---------------------------------------------------------------------------
-    // ---------------------------------------------------------------------------
     // Health server (always responds, even during bootstrap)
-    // POST /rebuild  — wipes content dir and forces a full re-sync + build.
-    //   Use this when renames/deletes in Obsidian are not reflected on the site.
+    // GET  /rebuild — status page with a rebuild button.
+    // POST /rebuild — queues a full re-sync + build and redirects to the status
+    //   page straight away. Safe to press repeatedly: requests made while a job
+    //   is running collapse into one follow-up job.
     //   Invoke (no curl in image — use node):
     //     kubectl exec -n quartz deploy/quartz-webhook -- node -e \
     //       "require('http').request({hostname:'localhost',port:9000,path:'/rebuild',method:'POST'},r=>r.resume()).end()"
     // ---------------------------------------------------------------------------
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"]/g, function(c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+      });
+    }
+
+    function statusPage() {
+      var busy = jobRunning || jobTimer !== null || phase === 'starting';
+      var status = phase === 'syncing'  ? 'Syncing from CouchDB...' :
+                   phase === 'building' ? 'Building site...' :
+                   phase === 'starting' ? 'Starting up...' :
+                   jobTimer !== null    ? 'Sync starting...' : 'Idle';
+      if (jobQueued) status += ' (another sync queued)';
+      var statusColour = busy ? '#f59e0b' : (isReady ? '#10b981' : '#6b7280');
+      return '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Quartz Rebuild</title>' +
+        (busy ? '<meta http-equiv="refresh" content="5">' : '') +
+        '<style>body{font-family:system-ui,sans-serif;background:#0f172a;color:#e2e8f0;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0}' +
+        '.card{background:#1e293b;border-radius:12px;padding:2rem 2.5rem;max-width:400px;width:100%;text-align:center;box-shadow:0 4px 24px rgba(0,0,0,.4)}' +
+        'h1{font-size:1.25rem;margin:0 0 .5rem}p{color:#94a3b8;font-size:.875rem;margin:.25rem 0}' +
+        '.status{display:inline-block;padding:.25rem .75rem;border-radius:999px;font-size:.75rem;font-weight:600;background:' + statusColour + '33;color:' + statusColour + ';margin:.75rem 0 .5rem}' +
+        '.last{margin:0 0 1.5rem;word-break:break-word}' +
+        'button{background:#6366f1;color:#fff;border:none;border-radius:8px;padding:.75rem 2rem;font-size:1rem;font-weight:600;cursor:pointer;width:100%;transition:background .2s}' +
+        'button:hover{background:#4f46e5}</style></head>' +
+        '<body><div class="card"><h1>Quartz Rebuild</h1><p>Fall &amp; Rise Digital Garden</p>' +
+        '<div class="status">' + escapeHtml(status) + '</div>' +
+        '<p class="last">Last run: ' + escapeHtml(lastResult) + '</p>' +
+        '<form method="POST" action="/rebuild"><button type="submit">&#9654; Trigger Full Rebuild</button></form></div></body></html>';
+    }
+
     http.createServer(function(req, res) {
       if (req.url === '/healthz') { res.writeHead(200); res.end('ok'); return; }
       if (req.url === '/readyz')  { res.writeHead(isReady ? 200 : 503); res.end(isReady ? 'ready' : 'initializing'); return; }
       if (req.url === '/rebuild' && req.method === 'GET') {
-        var status = buildInProgress ? 'Build in progress...' : (isReady ? 'Site is ready.' : 'Initialising...');
-        var statusColour = buildInProgress ? '#f59e0b' : (isReady ? '#10b981' : '#6b7280');
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-        res.end('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Quartz Rebuild</title>' +
-          '<style>body{font-family:system-ui,sans-serif;background:#0f172a;color:#e2e8f0;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0}' +
-          '.card{background:#1e293b;border-radius:12px;padding:2rem 2.5rem;max-width:400px;width:100%;text-align:center;box-shadow:0 4px 24px rgba(0,0,0,.4)}' +
-          'h1{font-size:1.25rem;margin:0 0 .5rem}p{color:#94a3b8;font-size:.875rem;margin:.25rem 0}' +
-          '.status{display:inline-block;padding:.25rem .75rem;border-radius:999px;font-size:.75rem;font-weight:600;background:' + statusColour + '33;color:' + statusColour + ';margin:.75rem 0 1.5rem}' +
-          'button{background:#6366f1;color:#fff;border:none;border-radius:8px;padding:.75rem 2rem;font-size:1rem;font-weight:600;cursor:pointer;width:100%;transition:background .2s}' +
-          'button:hover{background:#4f46e5}</style></head>' +
-          '<body><div class="card"><h1>Quartz Rebuild</h1><p>Fall &amp; Rise Digital Garden</p>' +
-          '<div class="status">' + status + '</div>' +
-          '<form method="POST" action="/rebuild"><button type="submit">&#9654; Trigger Full Rebuild</button></form></div></body></html>');
+        res.end(statusPage());
         return;
       }
       if (req.url === '/rebuild' && req.method === 'POST') {
-        console.log('Manual full rebuild requested via /rebuild...');
-        fetchAllDocs().then(function(docs) {
-          fs.rmSync(CONTENT_DIR, { recursive: true, force: true });
-          fs.mkdirSync(CONTENT_DIR, { recursive: true });
-          syncContent(docs);
-          runBuild();
-          res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-          res.end('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Quartz Rebuild</title>' +
-            '<meta http-equiv="refresh" content="3;url=/rebuild">' +
-            '<style>body{font-family:system-ui,sans-serif;background:#0f172a;color:#e2e8f0;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0}' +
-            '.card{background:#1e293b;border-radius:12px;padding:2rem 2.5rem;max-width:400px;width:100%;text-align:center;box-shadow:0 4px 24px rgba(0,0,0,.4)}' +
-            'h1{font-size:1.25rem;margin:0 0 .75rem}.ok{font-size:2.5rem;margin:.5rem 0}p{color:#94a3b8;font-size:.875rem}</style></head>' +
-            '<body><div class="card"><div class="ok">&#10003;</div><h1>Rebuild Triggered</h1>' +
-            '<p>Redirecting back in 3 seconds&hellip;</p></div></body></html>');
-        }).catch(function(err) {
-          console.error('Rebuild error:', err.message);
-          res.writeHead(500); res.end('Rebuild failed: ' + err.message);
-        });
+        if (phase === 'starting') { res.writeHead(303, { Location: '/rebuild' }); res.end(); return; }
+        requestSync('manual /rebuild', 0);
+        // 303 so refreshing the status page does not resubmit the form.
+        res.writeHead(303, { Location: '/rebuild' });
+        res.end();
         return;
       }
       res.writeHead(404); res.end();
@@ -445,22 +456,9 @@ data:
     // Main
     // ---------------------------------------------------------------------------
     function watchLoop(since) {
-      console.log('Watching CouchDB _changes from seq ' + since + '...');
       watchChanges(since).then(function(result) {
-        var results = result.results || [];
-        if (results.length > 0) {
-          var deletions = results.filter(function(r) { return r.deleted; }).length;
-          var updates   = results.length - deletions;
-          console.log(results.length + ' change(s) detected (' + updates + ' update(s), ' + deletions + ' deletion(s)), re-syncing...');
-          // Eagerly remove files for deleted docs before the full sync so the
-          // Quartz build never picks up stale content.
-          applyDeletions(results);
-          return fetchAllDocs().then(function(docs) {
-            syncContent(docs);
-            triggerBuild();
-            return result.last_seq || since;
-          });
-        }
+        var count = (result.results || []).length;
+        if (count > 0) requestSync(count + ' CouchDB change(s)', DEBOUNCE_MS);
         return result.last_seq || since;
       }).then(function(nextSeq) {
         setImmediate(function() { watchLoop(nextSeq); });
@@ -471,17 +469,16 @@ data:
     }
 
     getDbInfo().then(function(info) {
-      // Capture seq BEFORE full sync to avoid missing concurrent changes
+      // Capture seq BEFORE the initial sync so concurrent changes are not missed
       var since = info.update_seq;
 
       bootstrap();
       patchFolderPage();
 
-      console.log('Initial full sync from CouchDB...');
-      return fetchAndSyncAllDocs().then(function(result) {
-        runBuild();
-        watchLoop(since);
-      });
+      phase = 'idle';
+      requestSync('startup', 0);
+      console.log('Watching CouchDB _changes for ' + COUCHDB_DATABASE + '...');
+      watchLoop(since);
     }).catch(function(err) {
       console.error('Fatal startup error:', err.message);
       process.exit(1);
