@@ -187,10 +187,11 @@ data:
         console.log('Found ' + files.length + ' publishable files, fetching content...');
         fs.rmSync(STAGING_DIR, { recursive: true, force: true });
         fs.mkdirSync(STAGING_DIR, { recursive: true });
+        var folderCase = buildFolderCaseMap(files.map(function(f) { return f.path; }));
 
         return files.reduce(function(p, f) {
           return p.then(function() {
-            return writeFileFromChunks(f, path.join(STAGING_DIR, restorePathCase(f.path))).then(function(missing) {
+            return writeFileFromChunks(f, path.join(STAGING_DIR, resolvePath(f.path, folderCase))).then(function(missing) {
               if (missing) incomplete.push(f.path + ' (' + missing + ' of ' + f.children.length + ' chunks missing)');
             });
           });
@@ -227,51 +228,59 @@ data:
       return true;
     }
 
-    // Text files: join chunk data strings directly (plain text, no padding issue).
-    function reconstructTextData(pathDoc, byId) {
-      return (pathDoc.children || []).map(function(id) {
-        var child = byId[id];
-        return child ? (child.data || '') : '';
-      }).join('');
-    }
-
-    // Binary files: each chunk is independently base64-encoded with padding.
-    // Joining the base64 strings causes Buffer.from() to stop at the first
-    // padding character, truncating the file after 1 chunk (~100KB).
-    // Fix: decode each chunk individually and concatenate the raw Buffers.
-    function reconstructBinaryData(pathDoc, byId) {
-      var buffers = (pathDoc.children || []).map(function(id) {
-        var child = byId[id];
-        if (!child) { console.warn('Missing chunk ' + id + ' for ' + pathDoc.path); return Buffer.alloc(0); }
-        return Buffer.from(child.data || '', 'base64');
-      });
-      return Buffer.concat(buffers);
-    }
-
-    // LiveSync normalises paths to lowercase in newer versions (APFS compat).
-    // Restore title-case for display: "locations/the sulking beholder.md"
-    // → "Locations/The Sulking Beholder.md".  Each slash-delimited segment is
-    // word-capitalised; the file extension is kept lowercase.
+    // Paths: LiveSync stores each file's real path, except files written by
+    // older versions, whose paths were normalised to all-lowercase. Real paths
+    // are kept exactly, since Quartz matches embeds and links case-sensitively
+    // ("Pasted image 123.jpg" must not become "Pasted Image 123.jpg").
+    //
+    // Folder names are unified across the vault so "assets/image/x.webp" lands
+    // in the same "Assets" folder as "Assets/Pasted image y.jpg" rather than a
+    // second "assets" folder. All-lowercase paths with no cased counterpart fall
+    // back to title case: "npcs/albert perison.md" -> "NPCs/Albert Perison.md".
+    //
     // Exceptions map handles acronyms/abbreviations that must not be title-cased.
     // 'index' is kept lowercase because Quartz treats index.md as a special root
     // page and generates index.html — renaming it breaks directory resolution.
     var PATH_EXCEPTIONS = { 'npcs': 'NPCs', 'pcs': 'PCs', 'index': 'index' };
 
-    function restorePathCase(docPath) {
-      var segments = docPath.split('/');
-      return segments.map(function(seg, i) {
-        var isFile = i === segments.length - 1;
-        if (isFile) {
-          var dot = seg.lastIndexOf('.');
-          var name = dot > -1 ? seg.slice(0, dot) : seg;
-          var ext  = dot > -1 ? seg.slice(dot).toLowerCase() : '';
-          var lower = name.toLowerCase();
-          if (PATH_EXCEPTIONS[lower]) return PATH_EXCEPTIONS[lower] + ext;
-          return name.replace(/(?:^|\s|-)\S/g, function(c) { return c.toUpperCase(); }) + ext;
+    function isLegacyLowercase(docPath) {
+      return docPath === docPath.toLowerCase();
+    }
+
+    function titleCase(seg, isFile) {
+      var dot  = isFile ? seg.lastIndexOf('.') : -1;
+      var name = dot > -1 ? seg.slice(0, dot) : seg;
+      var ext  = dot > -1 ? seg.slice(dot).toLowerCase() : '';
+      var lower = name.toLowerCase();
+      if (PATH_EXCEPTIONS[lower]) return PATH_EXCEPTIONS[lower] + ext;
+      return name.replace(/(?:^|\s|-)\S/g, function(c) { return c.toUpperCase(); }) + ext;
+    }
+
+    // Maps each lowercased folder path to the first cased spelling seen in a
+    // non-legacy path, e.g. "assets/image" -> "Assets/Image".
+    function buildFolderCaseMap(docPaths) {
+      var map = {};
+      docPaths.forEach(function(p) {
+        if (isLegacyLowercase(p)) return;
+        var dirs = p.split('/').slice(0, -1);
+        for (var i = 1; i <= dirs.length; i++) {
+          var dir = dirs.slice(0, i).join('/');
+          if (!(dir.toLowerCase() in map)) map[dir.toLowerCase()] = dir;
         }
-        var lower = seg.toLowerCase();
-        if (PATH_EXCEPTIONS[lower]) return PATH_EXCEPTIONS[lower];
-        return seg.replace(/(?:^|\s|-)\S/g, function(c) { return c.toUpperCase(); });
+      });
+      return map;
+    }
+
+    function resolvePath(docPath, folderCase) {
+      var segs = docPath.split('/');
+      var legacy = isLegacyLowercase(docPath);
+      return segs.map(function(seg, i) {
+        var isFile = i === segs.length - 1;
+        if (!isFile) {
+          var known = folderCase[segs.slice(0, i + 1).join('/').toLowerCase()];
+          if (known) return known.split('/')[i];
+        }
+        return legacy ? titleCase(seg, isFile) : seg;
       }).join('/');
     }
 
