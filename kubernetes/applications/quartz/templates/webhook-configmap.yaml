@@ -222,11 +222,22 @@ data:
       if (docPath.startsWith('i:')) return false;
       // LiveSync version sentinel document
       if (docPath === 'obsydian_livesync_version') return false;
+      var segments = docPath.split('/');
+      var fileName = segments[segments.length - 1].toLowerCase();
       // Hidden directories (.obsidian, .git, etc.) without i: prefix
-      var firstSegment = docPath.split('/')[0];
-      if (firstSegment.startsWith('.')) return false;
+      if (segments[0].startsWith('.')) return false;
+      // Vault backups (e.g. the Diff Zip Backup plugin writes zips plus
+      // backupinfo.md into a backup folder). They can contain .obsidian plugin
+      // settings, including sync credentials, so never publish them — wherever
+      // the backup folder is configured and whatever the archive is called.
+      if (segments.slice(0, -1).some(function(s) { return BACKUP_DIRS.has(s.toLowerCase()); })) return false;
+      if (BACKUP_FILES.has(fileName)) return false;
+      if (ARCHIVE_EXTS.has(path.extname(fileName))) return false;
       return true;
     }
+    var BACKUP_DIRS  = new Set(['backup', 'backups']);
+    var BACKUP_FILES = new Set(['backupinfo.md']);
+    var ARCHIVE_EXTS = new Set(['.zip', '.7z', '.rar', '.tar', '.gz', '.tgz', '.bz2', '.xz', '.bak']);
 
     // Paths: LiveSync stores each file's real path, except files written by
     // older versions, whose paths were normalised to all-lowercase. Real paths
