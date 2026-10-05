@@ -16,7 +16,7 @@ Date: 2026-10-05. Supersedes `HOME_ASSISTANT_REVIEW_2026-03-22.md`.
 | 2 | P0 | Alertmanager posts to webhook `alertmanager-k8s`, but no automation handled it, so cluster alerts were silently dropped. | Fixed in `packages/alerting.yaml` |
 | 3 | P0 | Automations in `managed-state/review-managed-automations.yaml` were never live. | Moved to `packages/` |
 | 4 | P0 | The live `configuration.yaml` lacks the `homeassistant: packages:` include, so `packages/plex.yaml` never loaded and `input_boolean.plex_server` didn't exist. | Needs one-time live edit |
-| 5 | P1 | A `cffi` 2.1.1 / `_cffi_backend` 2.0.0 mismatch breaks every `pycryptodome` import: the Google Calendar integration and the Roborock config flow. | Expected to clear with image upgrade |
+| 5 | P1 | A `cffi` 2.1.1 / `_cffi_backend` 2.0.0 mismatch breaks every `pycryptodome` import: the Google Calendar integration and the Roborock config flow. | Fixed by 2026.9.4 (image cffi no longer upgraded at startup) |
 | 6 | P1 | HA was 7 months behind and no Renovate PR had been merged. | Upgraded to `2026.9.4` (via 2026.6.4) |
 | 7 | P1 | `Bedtime — Scene & Wind Down` references the missing `scene.bedroom_lamps_bed_time` every night. | Needs UI fix |
 | 8 | P1 | Claude Code's MCP token for `/api/mcp` is rejected (401). | Needs new token |
