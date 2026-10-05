@@ -1,0 +1,37 @@
+# Presence-driven automations. Git-managed: edit here, not in the HA UI.
+presence_package:
+  automation:
+    - id: presence_arrival_after_dark
+      alias: Presence — Arrival After Dark
+      description: Turn on the hall lights for 10 minutes when Hugh or Marie
+        arrives home while the sun is down.
+      mode: restart
+      triggers:
+        - trigger: state
+          entity_id:
+            - person.hugh
+            - person.marie
+          to: home
+      conditions:
+        # sun.sun state, not `condition: sun, after: sunset`, which stops
+        # matching at midnight.
+        - condition: state
+          entity_id: sun.sun
+          state: below_horizon
+        - condition: state
+          entity_id: light.hall
+          state: "off"
+      actions:
+        - action: light.turn_on
+          target:
+            entity_id:
+              - light.hall
+              - light.hall_light_door
+          data:
+            brightness_pct: 45
+        - delay: "00:10:00"
+        - action: light.turn_off
+          target:
+            entity_id:
+              - light.hall
+              - light.hall_light_door

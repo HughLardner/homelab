@@ -1,0 +1,201 @@
+views:
+- title: Security & Network (wide)
+  path: default_view
+  icon: mdi:view-column
+  panel: true
+  cards:
+  - type: vertical-stack
+    cards:
+    - type: custom:mushroom-chips-card
+      alignment: start
+      chips:
+      - type: entity
+        entity: binary_sensor.hall_front_door_sensor_contact
+        icon: mdi:door
+        icon_color: red
+        content_info: state
+      - type: template
+        icon: mdi:motion-sensor
+        icon_color: amber
+        content: |-
+          {{ states.binary_sensor
+             | selectattr('entity_id','search','motion|occupancy')
+             | selectattr('state','eq','on')
+             | list | count }} motion
+      - type: entity
+        entity: person.hugh
+        icon: mdi:account
+        icon_color: blue
+        content_info: state
+      - type: entity
+        entity: person.marie
+        icon: mdi:account-outline
+        icon_color: pink
+        content_info: state
+      - type: entity
+        entity: binary_sensor.zigbee2mqtt_bridge_connection_state
+        icon: mdi:zigbee
+        icon_color: green
+        content_info: state
+      - type: entity
+        entity: binary_sensor.slzb_mr3u_internet
+        icon: mdi:web
+        icon_color: blue
+        content_info: state
+      - type: entity
+        entity: sensor.wiser_cloud
+        icon: mdi:cloud
+        icon_color: cyan
+        content_info: state
+    - type: markdown
+      content: '### Cameras & automations'
+    - type: horizontal-stack
+      cards:
+      - type: picture-entity
+        entity: camera.front_door
+        name: Front Door
+        camera_view: auto
+        show_state: false
+      - type: picture-entity
+        entity: camera.back_garden
+        name: Back Garden
+        camera_view: auto
+        show_state: false
+      - type: picture-entity
+        entity: camera.side_gate
+        name: Side Gate
+        camera_view: auto
+        show_state: false
+      - type: entities
+        title: Automations
+        show_header_toggle: false
+        entities:
+        - entity: automation.hall_front_door_opened_turn_on_light
+          name: Front door → light on
+          secondary_info: last-triggered
+        - entity: automation.hall_front_door_opened_night_alert
+          name: Front door → night alert
+          secondary_info: last-triggered
+        - entity: automation.hall_lights_on_motion_night
+          name: Hall lights (motion night)
+          secondary_info: last-triggered
+        - entity: automation.hall_lights_off_no_motion_2_min
+          name: Hall lights off (2 min)
+          secondary_info: last-triggered
+    - type: markdown
+      content: '### 24h motion & contact timeline'
+    - type: custom:apexcharts-card
+      header:
+        show: false
+      graph_span: 24h
+      span:
+        end: minute
+      apex_config:
+        chart:
+          height: 280
+          type: line
+        stroke:
+          width: 2
+          curve: stepline
+        legend:
+          position: bottom
+        grid:
+          borderColor: rgba(255,255,255,0.08)
+        yaxis:
+        - min: 0
+          max: 1
+          tickAmount: 1
+      all_series_config:
+        transform: 'return x === ''on'' ? 1 : 0;'
+        type: area
+      series:
+      - entity: binary_sensor.hall_motion_sensor_occupancy
+        name: Hall
+      - entity: binary_sensor.landing_motion_sensor_occupancy
+        name: Landing
+      - entity: binary_sensor.office_motion_sensor_occupancy
+        name: Office
+      - entity: binary_sensor.myggspray_wrlss_mtn_sensor_occupancy
+        name: Aux
+      - entity: binary_sensor.hall_front_door_sensor_contact
+        name: Front door
+    - type: horizontal-stack
+      cards:
+      - type: custom:logbook-card
+        title: Security logbook (24h)
+        hours_to_show: 24
+        collapse: 16
+        entities:
+        - entity: event.front_door_motion
+        - entity: event.back_garden_motion
+        - entity: event.side_gate_motion
+        - entity: binary_sensor.hall_front_door_sensor_contact
+        - entity: binary_sensor.hall_motion_sensor_occupancy
+        - entity: binary_sensor.landing_motion_sensor_occupancy
+        - entity: binary_sensor.office_motion_sensor_occupancy
+        - entity: binary_sensor.myggspray_wrlss_mtn_sensor_occupancy
+        - entity: binary_sensor.myggbett_door_window_sensor_door
+        show:
+          state: true
+          duration: true
+          icon: true
+          separator: true
+      - type: entities
+        title: Presence & devices
+        show_header_toggle: false
+        entities:
+        - type: section
+          label: People
+        - entity: person.hugh
+          secondary_info: last-changed
+        - entity: person.marie
+          secondary_info: last-changed
+        - type: section
+          label: Tracked devices
+        - entity: device_tracker.hugh_mobile
+          name: Hugh Mobile
+          secondary_info: last-changed
+        - entity: device_tracker.hugh_tablet
+          name: Hugh Tablet
+          secondary_info: last-changed
+        - entity: device_tracker.work_phone
+          name: Work phone
+          secondary_info: last-changed
+        - type: section
+          label: Batteries
+        - entity: sensor.hugh_mobile_battery_level
+          name: Hugh Mobile battery
+        - entity: sensor.hugh_tablet_battery_level
+          name: Hugh Tablet battery
+        - entity: sensor.work_phone_battery_level
+          name: Work phone battery
+    - type: markdown
+      content: '### Doors & motion'
+    - type: horizontal-stack
+      cards:
+      - type: entities
+        title: Contacts
+        show_header_toggle: false
+        entities:
+        - entity: binary_sensor.hall_front_door_sensor_contact
+          name: Hall front door
+          secondary_info: last-changed
+        - entity: binary_sensor.myggbett_door_window_sensor_door
+          name: Aux door/window
+          secondary_info: last-changed
+      - type: entities
+        title: Motion
+        show_header_toggle: false
+        entities:
+        - entity: binary_sensor.hall_motion_sensor_occupancy
+          name: Hall motion
+          secondary_info: last-changed
+        - entity: binary_sensor.landing_motion_sensor_occupancy
+          name: Landing motion
+          secondary_info: last-changed
+        - entity: binary_sensor.office_motion_sensor_occupancy
+          name: Office motion
+          secondary_info: last-changed
+        - entity: binary_sensor.myggspray_wrlss_mtn_sensor_occupancy
+          name: Aux motion
+          secondary_info: last-changed

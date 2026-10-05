@@ -7,7 +7,6 @@ Open source home automation platform running on Kubernetes with Authelia SSO int
 This deployment uses the [pajikos/home-assistant-helm-chart](https://github.com/pajikos/home-assistant-helm-chart) as a Helm dependency, which provides:
 
 - StatefulSet for persistent pod identity
-- Automatic configuration management
 - Persistent storage via Longhorn
 - Health probes and resource management
 
@@ -15,10 +14,42 @@ Custom templates provide:
 
 - Traefik IngressRoute for HTTPS access
 - cert-manager Certificate for TLS
-- **Automatic HACS installation** via post-install job
-- **Automatic owner creation** - no manual onboarding required!
+- `ha-packages` ConfigMap: Git-managed HA packages (see below)
+- Fresh-install jobs for HACS and owner creation (disabled; see below), adapted
+  from [small-hack/home-assistant-chart](https://github.com/small-hack/home-assistant-chart)
 
-Both automation features are adapted from [small-hack/home-assistant-chart](https://github.com/small-hack/home-assistant-chart).
+## Git-managed packages
+
+Shared HA configuration that should live in Git (recorder settings, alerting,
+presence automations, the Plex toggle) is written as
+[HA packages](https://www.home-assistant.io/docs/configuration/packages/) in
+`packages/*.yaml`. `templates/packages-configmap.yaml` bundles every file into
+the `ha-packages` ConfigMap, which is mounted read-only at `/config/packages`.
+
+| File | Contents |
+| --- | --- |
+| `packages/core.yaml` | Recorder retention and noisy-entity exclusions |
+| `packages/alerting.yaml` | Alertmanager webhook relay, connectivity / UniFi / battery / backup alerts |
+| `packages/presence.yaml` | Arrival-after-dark hall lighting |
+| `packages/plex.yaml` | Plex on/off toggle (scales `media/plex`) |
+
+Requirements and workflow:
+
+- The live `/config/configuration.yaml` must contain this block (one-time
+  manual edit; the chart does not manage `configuration.yaml`):
+
+  ```yaml
+  homeassistant:
+    packages: !include_dir_merge_named packages
+  ```
+
+- Each file's top-level key is the package name; automations need an `id:`
+  and show as read-only in the UI.
+- After ArgoCD syncs, the mounted files update in place; reload YAML
+  (Developer tools → YAML → All YAML configuration) or restart HA.
+- UI-created room/lighting automations stay in the live `automations.yaml`.
+- The Alertmanager receiver in `kubernetes/applications/monitoring` posts to
+  webhook ID `alertmanager-k8s`, handled in `packages/alerting.yaml`.
 
 ## Access
 
@@ -107,11 +138,12 @@ Thread-backed Matter devices.
 └─────────────────────────────────────────────────────────┘
 ```
 
-## Automatic Deployment
+## Fresh-Install Jobs (disabled)
 
-Both **HACS** and the **initial owner user** are created automatically via post-install jobs!
+`owner.create` and `setupHacs.enabled` are both `false`. Enable them only for a
+fresh install, then disable again: they are hooks that re-run on every sync.
 
-### What Happens Automatically
+### What the jobs do
 
 1. **Owner Creation** (`create-owner` job): Creates the initial admin user
    - Username: `admin` (configurable in secrets)
@@ -181,7 +213,7 @@ Or configure via UI after installing the integration.
 ### Step 5: Restart and Test
 
 ```bash
-kubectl rollout restart statefulset -n home-assistant home-assistant-homeassistant
+kubectl rollout restart statefulset -n home-assistant home-assistant
 ```
 
 Access https://home-assistant.silverseekers.org - you should see "Login with Authelia" option.
@@ -205,22 +237,28 @@ dependencies:
 | Value                                    | Description                                      | Default         |
 | ---------------------------------------- | ------------------------------------------------ | --------------- |
 | `auth_enabled`                           | Enable Authelia forward auth (disabled for OIDC) | `false`         |
-| `setupHacs.enabled`                      | Auto-install HACS via post-install job           | `true`          |
+| `setupHacs.enabled`                      | Auto-install HACS via post-install job           | `false`         |
 | `homeassistant.persistence.size`         | Storage size                                     | `10Gi`          |
 | `homeassistant.persistence.storageClass` | Storage class                                    | `longhorn`      |
 | `homeassistant.resources`                | CPU/memory limits                                | See values.yaml |
 
 ### Home Assistant Configuration
 
-The chart manages `configuration.yaml` via the `homeassistant.configuration` values:
+`homeassistant.configuration.enabled` is `false`: the upstream chart's
+init container has no resource settings, which the namespace ResourceQuota
+rejects. The live `configuration.yaml` is hand-maintained; `templateConfig`
+in `values.yaml` is kept as the reference baseline for rebuilds. Put new
+configuration in `packages/` instead.
 
-```yaml
-homeassistant:
-  configuration:
-    enabled: true
-    trusted_proxies:
-      - 10.42.0.0/16 # K3s pod CIDR
-```
+## Backups
+
+- HA's built-in backup runs daily (Settings → System → Backups). Make sure an
+  off-volume agent (Garage S3 and/or Google Drive) is selected: local backups
+  live on the same Longhorn PVC as the data.
+- Keep the backup encryption key outside the cluster (password manager); it is
+  otherwise only stored in `/config/.storage/backup`.
+- `Health — Backup Stale` (in `packages/alerting.yaml`) alerts when no
+  automatic backup has succeeded in 36 hours.
 
 ## Secrets
 
@@ -288,7 +326,7 @@ Rollback:
 Useful verification command:
 
 ```bash
-kubectl -n home-assistant get sts home-assistant-homeassistant \
+kubectl -n home-assistant get sts home-assistant \
   -o jsonpath='{.spec.template.spec.containers[0].image}{"\n"}'
 ```
 
@@ -321,13 +359,13 @@ kubectl delete job -n home-assistant home-assistant-setup-hacs
 curl -s https://auth.silverseekers.org/.well-known/openid-configuration | jq
 
 # Check if HA has the OIDC secret mounted
-kubectl exec -n home-assistant -it sts/home-assistant-homeassistant -- env | grep OIDC
+kubectl exec -n home-assistant -it sts/home-assistant -- env | grep OIDC
 ```
 
 ### Access Home Assistant shell
 
 ```bash
-kubectl exec -n home-assistant -it sts/home-assistant-homeassistant -- /bin/bash
+kubectl exec -n home-assistant -it sts/home-assistant -- /bin/bash
 ```
 
 ### Manual HACS Installation
@@ -335,7 +373,7 @@ kubectl exec -n home-assistant -it sts/home-assistant-homeassistant -- /bin/bash
 If the automatic job fails, install HACS manually:
 
 ```bash
-kubectl exec -n home-assistant -it sts/home-assistant-homeassistant -- /bin/bash -c \
+kubectl exec -n home-assistant -it sts/home-assistant -- /bin/bash -c \
   "cd /config && wget -O - https://get.hacs.xyz | bash -"
 ```
 
@@ -351,7 +389,7 @@ kubectl exec -n home-assistant -it sts/home-assistant-homeassistant -- /bin/bash
 If locked out, you can reset auth by editing the config:
 
 ```bash
-kubectl exec -n home-assistant -it sts/home-assistant-homeassistant -- \
+kubectl exec -n home-assistant -it sts/home-assistant -- \
   rm /config/.storage/auth_provider.homeassistant
-kubectl rollout restart statefulset -n home-assistant home-assistant-homeassistant
+kubectl rollout restart statefulset -n home-assistant home-assistant
 ```

@@ -1,0 +1,536 @@
+views:
+- title: Rooms (wide)
+  path: default_view
+  icon: mdi:view-grid
+  panel: true
+  cards:
+  - type: vertical-stack
+    cards:
+    - type: vertical-stack
+      cards:
+      - type: custom:bubble-card
+        card_type: pop-up
+        hash: '#kitchen'
+        name: Kitchen / Dining
+        icon: mdi:silverware-fork-knife
+      - type: custom:mushroom-climate-card
+        entity: climate.wiser_kitchen_dining_room
+        name: Kitchen
+        hvac_modes:
+        - 'off'
+        - heat
+        - auto
+        show_temperature_control: true
+        fill_container: true
+      - type: entities
+        title: Lights
+        show_header_toggle: false
+        entities:
+        - light.kitchen_cabinet
+        - light.kitchen_spot_1
+        - light.kitchen_spot_2
+        - light.kitchen_spot_3
+        - light.kitchen_spot_4
+      - type: entities
+        title: Environment
+        show_header_toggle: false
+        entities:
+        - sensor.wiser_lts_temperature_kitchen_dining_room
+      - type: custom:mushroom-media-player-card
+        entity: media_player.kitchen
+        use_media_info: true
+        show_volume_level: true
+        fill_container: true
+    - type: vertical-stack
+      cards:
+      - type: custom:bubble-card
+        card_type: pop-up
+        hash: '#sitting_room'
+        name: Sitting Room
+        icon: mdi:sofa
+      - type: custom:mushroom-climate-card
+        entity: climate.wiser_sitting_room
+        name: Sitting Room
+        hvac_modes:
+        - 'off'
+        - heat
+        - auto
+        fill_container: true
+      - type: entities
+        title: Switches
+        show_header_toggle: false
+        entities:
+        - switch.sitting_room_lamp
+      - type: entities
+        title: Environment
+        show_header_toggle: false
+        entities:
+        - sensor.wiser_lts_temperature_sitting_room
+        - sensor.wiser_lts_humidity_sitting_room
+      - type: custom:mushroom-media-player-card
+        entity: media_player.living_room
+        use_media_info: true
+        show_volume_level: true
+        fill_container: true
+    - type: vertical-stack
+      cards:
+      - type: custom:bubble-card
+        card_type: pop-up
+        hash: '#hall'
+        name: Hall
+        icon: mdi:door-open
+      - type: entities
+        title: Lights
+        show_header_toggle: false
+        entities:
+        - light.hall
+        - light.hall_light_kitchen
+        - light.hall_light_door
+      - type: entities
+        title: Doors & motion
+        show_header_toggle: false
+        entities:
+        - binary_sensor.hall_front_door_sensor_contact
+        - binary_sensor.hall_motion_sensor_occupancy
+        - sensor.hall_motion_sensor_temperature
+        - sensor.hall_motion_sensor_illuminance
+    - type: vertical-stack
+      cards:
+      - type: custom:bubble-card
+        card_type: pop-up
+        hash: '#marie_office'
+        name: Marie's Office
+        icon: mdi:desk
+      - type: custom:mushroom-climate-card
+        entity: climate.wiser_marie_s_office
+        name: Marie's Office
+        hvac_modes:
+        - 'off'
+        - heat
+        - auto
+        fill_container: true
+      - type: entities
+        title: Environment
+        show_header_toggle: false
+        entities:
+        - sensor.wiser_lts_temperature_marie_s_office
+    - type: vertical-stack
+      cards:
+      - type: custom:bubble-card
+        card_type: pop-up
+        hash: '#outside'
+        name: Outside / Garden
+        icon: mdi:leaf
+      - type: weather-forecast
+        entity: weather.home
+        forecast_type: daily
+      - type: picture-entity
+        entity: camera.front_door
+        name: Front Door
+        camera_view: auto
+        show_state: false
+      - type: picture-entity
+        entity: camera.back_garden
+        name: Back Garden
+        camera_view: auto
+        show_state: false
+      - type: picture-entity
+        entity: camera.side_gate
+        name: Side Gate
+        camera_view: auto
+        show_state: false
+    - type: vertical-stack
+      cards:
+      - type: custom:bubble-card
+        card_type: pop-up
+        hash: '#bedroom'
+        name: Bedroom
+        icon: mdi:bed-queen
+      - type: custom:mushroom-climate-card
+        entity: climate.wiser_bedroom
+        name: Bedroom
+        hvac_modes:
+        - 'off'
+        - heat
+        - auto
+        fill_container: true
+      - type: entities
+        title: Lights & scenes
+        show_header_toggle: false
+        entities:
+        - light.bedroom_lamps
+        - light.marie_lamp
+        - light.hugh_s_lamp
+        - scene.bedroom_lamps_0_bed_time
+      - type: entities
+        title: Environment
+        show_header_toggle: false
+        entities:
+        - sensor.wiser_lts_temperature_bedroom
+        - sensor.wiser_lts_humidity_bedroom
+    - type: vertical-stack
+      cards:
+      - type: custom:bubble-card
+        card_type: pop-up
+        hash: '#landing'
+        name: Landing
+        icon: mdi:stairs
+      - type: entities
+        title: Landing
+        show_header_toggle: false
+        entities:
+        - light.landing_light
+        - binary_sensor.landing_motion_sensor_occupancy
+        - sensor.landing_motion_sensor_temperature
+        - sensor.landing_motion_sensor_illuminance
+    - type: vertical-stack
+      cards:
+      - type: custom:bubble-card
+        card_type: pop-up
+        hash: '#office'
+        name: Office (Hugh's)
+        icon: mdi:monitor-dashboard
+      - type: custom:mushroom-climate-card
+        entity: climate.wiser_hugh_s_office
+        name: Hugh's Office
+        hvac_modes:
+        - 'off'
+        - heat
+        - auto
+        fill_container: true
+      - type: entities
+        title: Lights & scenes
+        show_header_toggle: false
+        entities:
+        - light.office
+        - light.office_light
+        - light.office_cabinet
+        - light.office_bar_right
+        - light.office_bar_left
+        - scene.office_0_test
+        - scene.office_1_red
+        - scene.office_2_red2
+      - type: entities
+        title: Environment
+        show_header_toggle: false
+        entities:
+        - sensor.wiser_lts_temperature_hugh_s_office
+        - sensor.office_motion_sensor_temperature
+        - binary_sensor.office_motion_sensor_occupancy
+        - sensor.office_motion_sensor_illuminance
+    - type: vertical-stack
+      cards:
+      - type: custom:bubble-card
+        card_type: pop-up
+        hash: '#lily_room'
+        name: Lily's Room
+        icon: mdi:bed-single
+      - type: custom:mushroom-climate-card
+        entity: climate.wiser_lily_s_room
+        name: Lily's Room
+        hvac_modes:
+        - 'off'
+        - heat
+        - auto
+        fill_container: true
+      - type: entities
+        title: Environment
+        show_header_toggle: false
+        entities:
+        - sensor.wiser_lts_temperature_lily_s_room
+    - type: vertical-stack
+      cards:
+      - type: custom:bubble-card
+        card_type: pop-up
+        hash: '#alex_room'
+        name: Alex's Room
+        icon: mdi:bed-single
+      - type: custom:mushroom-climate-card
+        entity: climate.wiser_alexander_s_room
+        name: Alex's Room
+        hvac_modes:
+        - 'off'
+        - heat
+        - auto
+        fill_container: true
+      - type: entities
+        title: Environment
+        show_header_toggle: false
+        entities:
+        - sensor.wiser_lts_temperature_alexander_s_room
+    - type: vertical-stack
+      cards:
+      - type: custom:bubble-card
+        card_type: pop-up
+        hash: '#main_bathroom'
+        name: Main Bathroom
+        icon: mdi:bathtub
+      - type: entities
+        title: Environment
+        show_header_toggle: false
+        entities:
+        - sensor.main_bathroom_temperature_humidity_sensor_temperature
+        - sensor.main_bathroom_temperature_humidity_sensor_humidity
+        - sensor.main_bathroom_temperature_humidity_sensor_atmospheric_pressure
+        - sensor.main_bathroom_temperature_humidity_sensor_battery
+    - type: vertical-stack
+      cards:
+      - type: custom:bubble-card
+        card_type: pop-up
+        hash: '#ensuite'
+        name: Ensuite
+        icon: mdi:shower-head
+      - type: entities
+        title: Environment
+        show_header_toggle: false
+        entities:
+        - sensor.ensuite_temperature_humidity_sensor_temperature
+        - sensor.ensuite_temperature_humidity_sensor_humidity
+        - sensor.ensuite_temperature_humidity_sensor_atmospheric_pressure
+        - sensor.ensuite_temperature_humidity_sensor_battery
+    - type: vertical-stack
+      cards:
+      - type: custom:bubble-card
+        card_type: pop-up
+        hash: '#attic'
+        name: Attic
+        icon: mdi:home-roof
+      - type: custom:mushroom-climate-card
+        entity: climate.wiser_attic
+        name: Attic
+        hvac_modes:
+        - 'off'
+        - heat
+        - auto
+        fill_container: true
+      - type: entities
+        title: Attic
+        show_header_toggle: false
+        entities:
+        - switch.attic_clothes_rail
+        - sensor.wiser_lts_temperature_attic
+        - sensor.ams_temperature_humidity_sensor_temperature
+        - sensor.ams_temperature_humidity_sensor_humidity
+        - sensor.ams_temperature_humidity_sensor_pressure
+        - sensor.ams_temperature_humidity_sensor_battery
+    - type: custom:mushroom-chips-card
+      alignment: start
+      chips:
+      - type: template
+        icon: mdi:fire
+        icon_color: orange
+        content: |-
+          {{ states.climate
+             | selectattr('attributes.hvac_action','eq','heating')
+             | list | count }} heating
+      - type: template
+        icon: mdi:door
+        icon_color: red
+        content: |-
+          {{ (states.binary_sensor
+              | selectattr('attributes.device_class','defined')
+              | selectattr('attributes.device_class','in',['door','opening','window'])
+              | selectattr('state','eq','on')
+              | list | count) }} open
+      - type: template
+        icon: mdi:motion-sensor
+        icon_color: amber
+        content: |-
+          {{ states.binary_sensor
+             | selectattr('entity_id','search','motion|occupancy')
+             | selectattr('state','eq','on')
+             | list | count }} motion
+      - type: template
+        icon: mdi:lightbulb-on
+        icon_color: amber
+        content: |-
+          {{ states.light
+             | rejectattr('state','in',['unknown','unavailable'])
+             | selectattr('state','eq','on')
+             | list | count }} lights
+    - type: markdown
+      content: '### Room state'
+    - type: horizontal-stack
+      cards:
+      - type: entities
+        title: Ground floor
+        show_header_toggle: false
+        state_color: true
+        entities:
+        - entity: sensor.wiser_lts_temperature_kitchen_dining_room
+          name: Kitchen
+          icon: mdi:silverware-fork-knife
+          secondary_info: last-changed
+          tap_action:
+            action: navigate
+            navigation_path: '#kitchen'
+        - entity: sensor.wiser_lts_temperature_sitting_room
+          name: Sitting Room
+          icon: mdi:sofa
+          secondary_info: last-changed
+          tap_action:
+            action: navigate
+            navigation_path: '#sitting_room'
+        - entity: sensor.hall_motion_sensor_temperature
+          name: Hall
+          icon: mdi:door-open
+          secondary_info: last-changed
+          tap_action:
+            action: navigate
+            navigation_path: '#hall'
+        - entity: sensor.wiser_lts_temperature_marie_s_office
+          name: Marie's Office
+          icon: mdi:desk
+          secondary_info: last-changed
+          tap_action:
+            action: navigate
+            navigation_path: '#marie_office'
+        - entity: weather.home
+          name: Outside
+          icon: mdi:leaf
+          tap_action:
+            action: navigate
+            navigation_path: '#outside'
+      - type: entities
+        title: First floor
+        show_header_toggle: false
+        state_color: true
+        entities:
+        - entity: sensor.wiser_lts_temperature_bedroom
+          name: Bedroom
+          icon: mdi:bed-queen
+          secondary_info: last-changed
+          tap_action:
+            action: navigate
+            navigation_path: '#bedroom'
+        - entity: sensor.landing_motion_sensor_temperature
+          name: Landing
+          icon: mdi:stairs
+          secondary_info: last-changed
+          tap_action:
+            action: navigate
+            navigation_path: '#landing'
+        - entity: sensor.wiser_lts_temperature_hugh_s_office
+          name: Hugh's Office
+          icon: mdi:monitor-dashboard
+          secondary_info: last-changed
+          tap_action:
+            action: navigate
+            navigation_path: '#office'
+        - entity: sensor.wiser_lts_temperature_lily_s_room
+          name: Lily's Room
+          icon: mdi:bed-single
+          secondary_info: last-changed
+          tap_action:
+            action: navigate
+            navigation_path: '#lily_room'
+        - entity: sensor.wiser_lts_temperature_alexander_s_room
+          name: Alex's Room
+          icon: mdi:bed-single
+          secondary_info: last-changed
+          tap_action:
+            action: navigate
+            navigation_path: '#alex_room'
+        - entity: sensor.main_bathroom_temperature_humidity_sensor_temperature
+          name: Main Bathroom
+          icon: mdi:bathtub
+          secondary_info: last-changed
+          tap_action:
+            action: navigate
+            navigation_path: '#main_bathroom'
+        - entity: sensor.ensuite_temperature_humidity_sensor_temperature
+          name: Ensuite
+          icon: mdi:shower-head
+          secondary_info: last-changed
+          tap_action:
+            action: navigate
+            navigation_path: '#ensuite'
+      - type: entities
+        title: Attic
+        show_header_toggle: false
+        state_color: true
+        entities:
+        - entity: sensor.wiser_lts_temperature_attic
+          name: Attic
+          icon: mdi:home-roof
+          secondary_info: last-changed
+          tap_action:
+            action: navigate
+            navigation_path: '#attic'
+        - entity: switch.attic_clothes_rail
+          name: Clothes rail
+          icon: mdi:hanger
+    - type: markdown
+      content: '### 24-hour temperatures'
+    - type: horizontal-stack
+      cards:
+      - type: custom:apexcharts-card
+        header:
+          show: true
+          title: Ground floor
+          show_states: false
+        graph_span: 24h
+        span:
+          end: minute
+        yaxis:
+        - min: 14
+          max: 26
+          decimals: 1
+        apex_config:
+          chart:
+            height: 260
+          stroke:
+            width: 2
+            curve: smooth
+          legend:
+            position: bottom
+          grid:
+            borderColor: rgba(255,255,255,0.08)
+        series:
+        - entity: sensor.wiser_lts_temperature_kitchen_dining_room
+          name: Kitchen
+        - entity: sensor.wiser_lts_temperature_sitting_room
+          name: Sitting
+        - entity: sensor.wiser_lts_temperature_marie_s_office
+          name: M-Office
+        - entity: sensor.hall_motion_sensor_temperature
+          name: Hall
+      - type: custom:apexcharts-card
+        header:
+          show: true
+          title: First floor + Attic
+          show_states: false
+        graph_span: 24h
+        span:
+          end: minute
+        yaxis:
+        - min: 14
+          max: 26
+          decimals: 1
+        apex_config:
+          chart:
+            height: 260
+          stroke:
+            width: 2
+            curve: smooth
+          legend:
+            position: bottom
+          grid:
+            borderColor: rgba(255,255,255,0.08)
+        series:
+        - entity: sensor.wiser_lts_temperature_bedroom
+          name: Bedroom
+        - entity: sensor.wiser_lts_temperature_hugh_s_office
+          name: H-Office
+        - entity: sensor.wiser_lts_temperature_lily_s_room
+          name: Lily
+        - entity: sensor.wiser_lts_temperature_alexander_s_room
+          name: Alex
+        - entity: sensor.landing_motion_sensor_temperature
+          name: Landing
+        - entity: sensor.main_bathroom_temperature_humidity_sensor_temperature
+          name: Main Bath
+        - entity: sensor.ensuite_temperature_humidity_sensor_temperature
+          name: Ensuite
+        - entity: sensor.wiser_lts_temperature_attic
+          name: Attic

@@ -1,0 +1,19 @@
+---
+# Git-managed Home Assistant packages.
+#
+# Every packages/*.yaml file in this chart becomes a key in this ConfigMap,
+# which values.yaml mounts as the /config/packages directory. The live
+# configuration.yaml loads them via:
+#   homeassistant:
+#     packages: !include_dir_merge_named packages
+#
+# Files are read with .Files.Get (not rendered), so HA Jinja needs no escaping.
+# The directory mount (no subPath) updates in place after an ArgoCD sync;
+# reload YAML in HA (Developer tools → YAML) or restart to apply.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ha-packages
+  namespace: {{ .Release.Namespace }}
+data:
+{{ (.Files.Glob "packages/*.yaml").AsConfig | indent 2 }}

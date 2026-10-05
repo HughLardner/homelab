@@ -1,0 +1,203 @@
+views:
+- title: Energy & EV (wide)
+  path: default_view
+  icon: mdi:view-sequential
+  panel: true
+  cards:
+  - type: vertical-stack
+    cards:
+    - type: horizontal-stack
+      cards:
+      - type: custom:power-flow-card-plus
+        title: Grid • Home • EV
+        clickable_entities: true
+        entities:
+          grid:
+            entity: sensor.myenergi_harvi_2239208_grid_ct1
+            name: Grid
+            color:
+              consumption: '#ef5350'
+              production: '#66bb6a'
+          home:
+            entity: sensor.myenergi_zappi_home_consumption
+          individual:
+          - entity: sensor.myenergi_zappi_power_charging
+            name: EV Charger
+            icon: mdi:ev-station
+            color: '#42a5f5'
+      - type: custom:apexcharts-card
+        header:
+          show: true
+          title: 7-day energy flow
+          show_states: false
+        graph_span: 7d
+        span:
+          end: day
+        apex_config:
+          chart:
+            height: 300
+            type: area
+            stacked: false
+          stroke:
+            width: 2
+            curve: smooth
+          fill:
+            type: gradient
+            gradient:
+              opacityFrom: 0.4
+              opacityTo: 0.05
+          legend:
+            position: bottom
+          grid:
+            borderColor: rgba(255,255,255,0.08)
+        series:
+        - entity: sensor.myenergi_zappi_grid_import_today
+          name: Grid import
+          color: '#ef5350'
+          curve: stepline
+        - entity: sensor.myenergi_zappi_grid_export_today
+          name: Grid export
+          color: '#66bb6a'
+          curve: stepline
+        - entity: sensor.myenergi_zappi_25608214_energy_used_today
+          name: Charger energy
+          color: '#42a5f5'
+          curve: stepline
+        - entity: sensor.myenergi_zappi_home_consumption
+          name: Home consumption
+          color: '#ffa726'
+    - type: markdown
+      content: '### Hourly consumption (7d)'
+    - type: statistics-graph
+      chart_type: bar
+      period: hour
+      days_to_show: 7
+      stat_types:
+      - sum
+      entities:
+      - sensor.myenergi_zappi_grid_import_today
+      - sensor.myenergi_zappi_grid_export_today
+      - sensor.myenergi_zappi_25608214_energy_used_today
+    - type: markdown
+      content: '### Charger & grid'
+    - type: horizontal-stack
+      cards:
+      - type: entities
+        title: Charger (Zappi)
+        show_header_toggle: false
+        entities:
+        - type: section
+          label: Status
+        - entity: sensor.myenergi_zappi_25608214_status
+          name: Status
+          secondary_info: last-changed
+        - entity: sensor.myenergi_zappi_25608214_plug_status
+          name: Plug
+        - entity: select.myenergi_zappi_25608214_charge_mode
+          name: Charge mode
+        - type: section
+          label: Session
+        - entity: sensor.myenergi_zappi_25608214_charge_added_session
+          name: Session added
+        - entity: sensor.myenergi_zappi_25608214_energy_used_today
+          name: Today energy
+        - entity: sensor.myenergi_zappi_25608214_green_energy_today
+          name: Today green
+        - entity: sensor.myenergi_zappi_25608214_pwm
+          name: PWM
+        - type: section
+          label: Locks & limits
+        - entity: binary_sensor.myenergi_zappi_25608214_locked
+          name: Locked
+        - entity: binary_sensor.myenergi_zappi_25608214_charge_when_locked
+          name: Charge when locked
+        - entity: binary_sensor.myenergi_zappi_25608214_lock_when_plugged_in
+          name: Lock when plugged in
+        - entity: number.myenergi_zappi_25608214_minimum_green_level
+          name: Minimum green %
+        - entity: number.myenergi_zappi_25608214_device_priority
+          name: Priority
+        - entity: select.myenergi_zappi_25608214_phase_setting
+          name: Phase
+      - type: entities
+        title: Grid & meter (Harvi)
+        show_header_toggle: false
+        entities:
+        - type: section
+          label: Live
+        - entity: sensor.myenergi_zappi_voltage_grid
+          name: Voltage
+        - entity: sensor.myenergi_zappi_frequency_grid
+          name: Frequency
+        - entity: sensor.myenergi_harvi_2239208_grid_ct1
+          name: Grid CT1
+        - entity: sensor.myenergi_harvi_2239208_none_ct2
+          name: CT2
+        - entity: sensor.myenergi_harvi_2239208_none_ct3
+          name: CT3
+        - type: section
+          label: Today totals
+        - entity: sensor.myenergi_zappi_grid_import_today
+          name: Grid import
+        - entity: sensor.myenergi_zappi_grid_export_today
+          name: Grid export
+        - entity: sensor.myenergi_zappi_green_energy_today
+          name: Zappi green
+        - entity: sensor.myenergi_zappi_generated_today
+          name: Generated
+        - entity: sensor.myenergi_zappi_home_consumption
+          name: Home consumption
+    - type: markdown
+      content: '### Charge mode'
+    - type: custom:mushroom-chips-card
+      alignment: start
+      chips:
+      - type: template
+        icon: mdi:ev-station
+        icon_color: '{% set m = states(''select.myenergi_zappi_25608214_charge_mode'') %} {% if m == ''Fast''
+          %}red {% elif m == ''Eco'' %}green {% elif m == ''Eco+'' %}teal {% else %}grey{% endif %}'
+        content: 'Current: {{ states(''select.myenergi_zappi_25608214_charge_mode'') }}'
+      - type: action
+        icon: mdi:flash
+        icon_color: red
+        content: Fast
+        tap_action:
+          action: perform-action
+          perform_action: select.select_option
+          target:
+            entity_id: select.myenergi_zappi_25608214_charge_mode
+          data:
+            option: Fast
+      - type: action
+        icon: mdi:leaf
+        icon_color: green
+        content: Eco
+        tap_action:
+          action: perform-action
+          perform_action: select.select_option
+          target:
+            entity_id: select.myenergi_zappi_25608214_charge_mode
+          data:
+            option: Eco
+      - type: action
+        icon: mdi:leaf-circle
+        icon_color: teal
+        content: Eco+
+        tap_action:
+          action: perform-action
+          perform_action: select.select_option
+          target:
+            entity_id: select.myenergi_zappi_25608214_charge_mode
+          data:
+            option: Eco+
+      - type: action
+        icon: mdi:pause-circle
+        icon_color: grey
+        content: Stop
+        tap_action:
+          action: perform-action
+          perform_action: select.select_option
+          target:
+            entity_id: select.myenergi_zappi_25608214_charge_mode
+          data:
+            option: Stopped

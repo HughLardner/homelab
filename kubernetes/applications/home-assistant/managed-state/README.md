@@ -191,8 +191,13 @@ Per-dashboard layout:
 
 Automations:
 
-- `review-managed-automations.yaml` — shared automations (critical
-  connectivity, UniFi telemetry, presence lighting)
+- Git-managed automations now live as HA **packages** in
+  `../packages/*.yaml` (alerting, presence, plex, recorder baseline) and are
+  deployed by ArgoCD via the `ha-packages` ConfigMap, so they no longer need a
+  manual MCP apply. `review-managed-automations.yaml` is superseded by
+  `../packages/alerting.yaml` + `../packages/presence.yaml`.
+- Room / lighting / button automations remain UI-managed in the live
+  `automations.yaml`.
 
 ## Recent iterations
 
@@ -328,6 +333,9 @@ section.
   sparklines on `heating-zones-wide` and the pre-history-explorer
   Plotly block. Update once the v5.2 layout has settled for a few
   weeks.
+- **Retire leftovers.** The legacy `map` dashboard is still live in the
+  sidebar, and `lovelace-plotly-graph-card` is still installed in HACS even
+  though no dashboard uses it. Delete both.
 - **Mobile `home-overview` parity check.** The mobile variant was
   regenerated in 2026-04 to mirror the wide dashboard's chip row and
   weather/presence split; the Room-temperatures 6×2 grid is still
@@ -412,18 +420,17 @@ v2 also moved the following out of thematic dashboards into the dedicated
 - `person.hugh` → `device_tracker.hugh_mobile`, `device_tracker.hugh_tablet`
 - `person.marie` → `device_tracker.work_phone`
 
-UniFi is not currently providing device_trackers (integration inactive); the
-`security-network` dashboard reflects this and falls back to Wi-Fi/Zigbee
-counts from MQTT/Z2M.
+The UniFi integration is active again (~220 entities, as of 2026-10), but the
+person entities still use only companion-app trackers.
 
 ## Refresh workflow
 
 1. Pull the live config snapshot with `~/ha-edit.sh pull` on the K3s node.
 2. Read the live dashboard/automation state from Home Assistant.
 3. Update the files in this directory first (YAML is source of truth).
-4. Re-apply the shared state to Home Assistant via MCP tools
-   (`ha_config_set_dashboard` for dashboards, `ha_config_set_automation` for
-   automations).
+4. Re-apply dashboards to Home Assistant via MCP tools
+   (`ha_config_set_dashboard`). Automations in `../packages/` are applied by
+   ArgoCD; reload YAML in HA after the sync.
 
 This is intentionally a documented sync pattern, not an attempt to commit
 ephemeral Home Assistant storage files directly.

@@ -2,6 +2,8 @@
 
 Date: 2026-03-22
 
+> Superseded by [HOME_ASSISTANT_REVIEW_2026-10-05.md](HOME_ASSISTANT_REVIEW_2026-10-05.md).
+
 ## Executive Summary
 
 Home Assistant is healthy, valid, and already useful for lighting, heating, Zigbee, and operational notifications. The biggest issue is not platform stability, but configuration drift: the live `/config` volume now contains the real source of truth for dashboards, automations, OIDC auth, persons, and storage-managed state, while the Git repo mostly describes deployment.

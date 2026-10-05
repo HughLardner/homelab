@@ -1,0 +1,11 @@
+# Recorder baseline. Git-managed: edit here, not in the HA UI.
+core_package:
+  recorder:
+    purge_keep_days: 10
+    exclude:
+      entity_globs:
+        # UniFi device CPU/memory sensors update every ~2s and were ~60% of all
+        # recorder state rows (2026-10 review, 5 GB DB). Automations still see
+        # their live state; only history/statistics are dropped.
+        - sensor.*_cpu_utilization
+        - sensor.*_memory_utilization

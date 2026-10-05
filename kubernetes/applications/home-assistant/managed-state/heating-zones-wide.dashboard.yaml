@@ -1,0 +1,303 @@
+views:
+- title: Heating (wide)
+  path: default_view
+  icon: mdi:view-quilt
+  panel: true
+  cards:
+  - type: vertical-stack
+    cards:
+    - type: custom:mushroom-chips-card
+      alignment: start
+      chips:
+      - type: entity
+        entity: sensor.wiser_heating_operation_mode
+        icon: mdi:home-thermometer
+        icon_color: red
+        content_info: state
+      - type: entity
+        entity: sensor.wiser_hot_water_operation_mode
+        icon: mdi:water-boiler
+        icon_color: blue
+        content_info: state
+      - type: template
+        icon: mdi:fire
+        icon_color: orange
+        content: |-
+          {{ states.climate
+             | selectattr('attributes.hvac_action','eq','heating')
+             | list | count }} heating
+      - type: action
+        icon: mdi:fire
+        icon_color: red
+        content: Boost 30m
+        tap_action:
+          action: perform-action
+          perform_action: button.press
+          target:
+            entity_id: button.wiser_boost_all_heating
+      - type: action
+        icon: mdi:close-circle
+        icon_color: blue-grey
+        content: Cancel
+        tap_action:
+          action: perform-action
+          perform_action: button.press
+          target:
+            entity_id: button.wiser_cancel_all_heating_overrides
+      - type: action
+        icon: mdi:fire-off
+        icon_color: grey
+        content: Heat off
+        tap_action:
+          action: perform-action
+          perform_action: button.press
+          target:
+            entity_id: button.wiser_moments_heating_off
+      - type: action
+        icon: mdi:water-plus
+        icon_color: blue
+        content: Boost HW
+        tap_action:
+          action: perform-action
+          perform_action: button.press
+          target:
+            entity_id: button.wiser_boost_hot_water
+      - type: action
+        icon: mdi:water-percent-alert
+        icon_color: amber
+        content: Toggle HW
+        tap_action:
+          action: perform-action
+          perform_action: button.press
+          target:
+            entity_id: button.wiser_toggle_hot_water
+      - type: entity
+        entity: switch.wiser_away_mode
+        icon: mdi:airplane
+        icon_color: deep-orange
+        content_info: state
+      - type: entity
+        entity: switch.wiser_eco_mode
+        icon: mdi:leaf
+        icon_color: green
+        content_info: state
+      - type: entity
+        entity: switch.wiser_comfort_mode
+        icon: mdi:home-heart
+        icon_color: amber
+        content_info: state
+    - type: markdown
+      content: '### Zones'
+    - type: horizontal-stack
+      cards:
+      - type: thermostat
+        entity: climate.wiser_kitchen_dining_room
+        name: Kitchen
+        features:
+        - type: climate-hvac-modes
+          hvac_modes:
+          - 'off'
+          - heat
+          - auto
+      - type: thermostat
+        entity: climate.wiser_sitting_room
+        name: Sitting Room
+        features:
+        - type: climate-hvac-modes
+          hvac_modes:
+          - 'off'
+          - heat
+          - auto
+      - type: thermostat
+        entity: climate.wiser_bedroom
+        name: Bedroom
+        features:
+        - type: climate-hvac-modes
+          hvac_modes:
+          - 'off'
+          - heat
+          - auto
+      - type: thermostat
+        entity: climate.wiser_hugh_s_office
+        name: Hugh's Office
+        features:
+        - type: climate-hvac-modes
+          hvac_modes:
+          - 'off'
+          - heat
+          - auto
+    - type: horizontal-stack
+      cards:
+      - type: thermostat
+        entity: climate.wiser_marie_s_office
+        name: Marie's Office
+        features:
+        - type: climate-hvac-modes
+          hvac_modes:
+          - 'off'
+          - heat
+          - auto
+      - type: thermostat
+        entity: climate.wiser_alexander_s_room
+        name: Alex's Room
+        features:
+        - type: climate-hvac-modes
+          hvac_modes:
+          - 'off'
+          - heat
+          - auto
+      - type: thermostat
+        entity: climate.wiser_lily_s_room
+        name: Lily's Room
+        features:
+        - type: climate-hvac-modes
+          hvac_modes:
+          - 'off'
+          - heat
+          - auto
+      - type: thermostat
+        entity: climate.wiser_attic
+        name: Attic
+        features:
+        - type: climate-hvac-modes
+          hvac_modes:
+          - 'off'
+          - heat
+          - auto
+    - type: markdown
+      content: '### Temperature & heating demand (drag to pan, use +/− to zoom, click labels to toggle)'
+    - type: custom:history-explorer-card
+      defaultTimeRange: 24h
+      lineMode: lines
+      showCurrentValues: true
+      combineSameUnits: false
+      decimation: fast
+      refresh:
+        automatic: true
+      graphs:
+      - type: line
+        entities:
+        - entity: sensor.wiser_lts_temperature_kitchen_dining_room
+          name: Kitchen
+          color: '#ffa726'
+          fill: rgba(0,0,0,0)
+          width: 2
+        - entity: sensor.wiser_lts_temperature_sitting_room
+          name: Sitting
+          color: '#ff7043'
+          fill: rgba(0,0,0,0)
+          width: 2
+        - entity: sensor.wiser_lts_temperature_bedroom
+          name: Bedroom
+          color: '#7986cb'
+          fill: rgba(0,0,0,0)
+          width: 2
+        - entity: sensor.wiser_lts_temperature_hugh_s_office
+          name: H-Office
+          color: '#f06292'
+          fill: rgba(0,0,0,0)
+          width: 2
+        - entity: sensor.wiser_lts_temperature_marie_s_office
+          name: M-Office
+          color: '#ab47bc'
+          fill: rgba(0,0,0,0)
+          width: 2
+        - entity: sensor.wiser_lts_temperature_alexander_s_room
+          name: Alex
+          color: '#26c6da'
+          fill: rgba(0,0,0,0)
+          width: 2
+        - entity: sensor.wiser_lts_temperature_lily_s_room
+          name: Lily
+          color: '#ec407a'
+          fill: rgba(0,0,0,0)
+          width: 2
+        - entity: sensor.wiser_lts_temperature_attic
+          name: Attic
+          color: '#a1887f'
+          fill: rgba(0,0,0,0)
+          width: 2
+      - type: line
+        options:
+          ymin: 0
+          ymax: 100
+        entities:
+        - entity: sensor.wiser_lts_heating_demand_kitchen_dining_room
+          name: Kitchen
+          color: '#ffa726'
+          fill: rgba(255,167,38,0.15)
+          width: 1
+          lineMode: stepped
+        - entity: sensor.wiser_lts_heating_demand_sitting_room
+          name: Sitting
+          color: '#ff7043'
+          fill: rgba(255,112,67,0.15)
+          width: 1
+          lineMode: stepped
+        - entity: sensor.wiser_lts_heating_demand_bedroom
+          name: Bedroom
+          color: '#7986cb'
+          fill: rgba(121,134,203,0.15)
+          width: 1
+          lineMode: stepped
+        - entity: sensor.wiser_lts_heating_demand_hugh_s_office
+          name: H-Office
+          color: '#f06292'
+          fill: rgba(240,98,146,0.15)
+          width: 1
+          lineMode: stepped
+        - entity: sensor.wiser_lts_heating_demand_marie_s_office
+          name: M-Office
+          color: '#ab47bc'
+          fill: rgba(171,71,188,0.15)
+          width: 1
+          lineMode: stepped
+        - entity: sensor.wiser_lts_heating_demand_alexander_s_room
+          name: Alex
+          color: '#26c6da'
+          fill: rgba(38,198,218,0.15)
+          width: 1
+          lineMode: stepped
+        - entity: sensor.wiser_lts_heating_demand_lily_s_room
+          name: Lily
+          color: '#ec407a'
+          fill: rgba(236,64,122,0.15)
+          width: 1
+          lineMode: stepped
+        - entity: sensor.wiser_lts_heating_demand_attic
+          name: Attic
+          color: '#a1887f'
+          fill: rgba(161,136,127,0.15)
+          width: 1
+          lineMode: stepped
+    - type: markdown
+      content: '### Schedule'
+    - type: custom:wiser-schedule-card
+    - type: horizontal-stack
+      cards:
+      - type: entities
+        title: Hot water
+        show_header_toggle: false
+        entities:
+        - entity: sensor.wiser_hot_water
+          name: Current state
+        - entity: sensor.wiser_hot_water_operation_mode
+          name: Operation mode
+        - entity: select.wiser_hot_water_mode
+          name: Mode
+        - entity: sensor.wiser_lts_hot_water_demand
+          name: Demand today
+        - entity: switch.wiser_away_mode_affects_hot_water
+          name: Away affects HW
+      - type: entities
+        title: Away settings
+        show_header_toggle: false
+        entities:
+        - entity: switch.wiser_away_mode
+          name: Away mode
+        - entity: switch.wiser_away_mode_affects_hot_water
+          name: Away affects HW
+        - entity: number.wiser_away_mode_target_temperature
+          name: Away target °C
+        - entity: switch.wiser_daylight_saving
+          name: Daylight saving

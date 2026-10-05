@@ -1,0 +1,177 @@
+views:
+- title: System (wide)
+  path: default_view
+  icon: mdi:view-module
+  panel: true
+  cards:
+  - type: vertical-stack
+    cards:
+    - type: vertical-stack
+      cards:
+      - type: custom:bubble-card
+        card_type: pop-up
+        hash: '#printer'
+        name: Brother DCP-L3550CDW
+        icon: mdi:printer
+      - type: entities
+        title: Toner / drum / status
+        show_header_toggle: false
+        entities:
+        - sensor.dcp_l3550cdw_status
+        - sensor.dcp_l3550cdw_black_toner_remaining
+        - sensor.dcp_l3550cdw_cyan_toner_remaining
+        - sensor.dcp_l3550cdw_magenta_toner_remaining
+        - sensor.dcp_l3550cdw_yellow_toner_remaining
+        - sensor.dcp_l3550cdw_drum_remaining_life
+        - sensor.dcp_l3550cdw_duplex_unit_page_counter
+        - sensor.dcp_l3550cdw_page_counter
+        - sensor.dcp_l3550cdw_color_counter
+        - sensor.dcp_l3550cdw_b_w_counter
+    - type: custom:mushroom-chips-card
+      alignment: start
+      chips:
+      - type: template
+        icon: mdi:package-up
+        icon_color: orange
+        content: '{{ states.update | selectattr(''state'',''eq'',''on'') | list | count }} updates'
+      - type: template
+        icon: mdi:battery-alert-variant-outline
+        icon_color: red
+        content: |-
+          {{ states.sensor
+             | selectattr('attributes.device_class','defined')
+             | selectattr('attributes.device_class','eq','battery')
+             | rejectattr('state','in',['unknown','unavailable'])
+             | selectattr('state','lt','25')
+             | list | count }} low batteries
+        tap_action:
+          action: navigate
+          navigation_path: /entity-health-wide
+      - type: template
+        icon: mdi:help-network-outline
+        icon_color: grey
+        content: |-
+          {{ states
+             | selectattr('state','eq','unavailable')
+             | list | count }} unavailable
+      - type: entity
+        entity: sensor.backup_backup_manager_state
+        icon: mdi:backup-restore
+        icon_color: blue
+        content_info: state
+      - type: action
+        icon: mdi:cloud-upload-outline
+        icon_color: green
+        content: Run backup
+        tap_action:
+          action: perform-action
+          perform_action: backup.create_automatic
+      - type: template
+        icon: mdi:heart-pulse
+        icon_color: pink
+        content: Entity health
+        tap_action:
+          action: navigate
+          navigation_path: /entity-health-wide
+      - type: template
+        icon: mdi:printer
+        icon_color: blue
+        content: Printer
+        tap_action:
+          action: navigate
+          navigation_path: '#printer'
+    - type: markdown
+      content: '### Pending updates & unavailable entities'
+    - type: horizontal-stack
+      cards:
+      - type: custom:auto-entities
+        card:
+          type: entities
+          title: All pending updates
+          show_header_toggle: false
+        filter:
+          include:
+          - domain: update
+            state: 'on'
+            options:
+              secondary_info: last-changed
+        sort:
+          method: friendly_name
+        show_empty: true
+      - type: custom:auto-entities
+        card:
+          type: entities
+          title: Unavailable entities
+          show_header_toggle: false
+        filter:
+          include:
+          - state: unavailable
+            options:
+              secondary_info: last-changed
+          exclude:
+          - entity_id: '*_signal$'
+        sort:
+          method: last_changed
+        show_empty: true
+    - type: markdown
+      content: '### Backups, host & printer'
+    - type: horizontal-stack
+      cards:
+      - type: entities
+        title: Backups & HA host
+        show_header_toggle: false
+        entities:
+        - type: section
+          label: Backups
+        - entity: sensor.backup_backup_manager_state
+          name: Manager state
+        - entity: sensor.backup_last_attempted_automatic_backup
+          name: Last attempted
+        - entity: sensor.backup_last_successful_automatic_backup
+          name: Last successful
+        - entity: sensor.backup_next_scheduled_automatic_backup
+          name: Next scheduled
+        - type: section
+          label: Host
+        - entity: device_tracker.homeassistant
+          name: Home Assistant host
+        - entity: update.hacs_update
+          name: HACS
+        - entity: update.drayton_wiser_integration_for_home_assistant_update
+          name: Drayton Wiser
+        - entity: update.myenergi_update
+          name: myenergi
+        - entity: update.openid_connect_update
+          name: OpenID Connect
+        - entity: update.node_red_companion_update
+          name: Node-RED Companion
+      - type: entities
+        title: Printer (Brother DCP-L3550CDW)
+        show_header_toggle: false
+        entities:
+        - type: section
+          label: Status
+        - entity: sensor.dcp_l3550cdw_status
+          name: Status
+        - type: section
+          label: Toner & drum
+        - entity: sensor.dcp_l3550cdw_black_toner_remaining
+          name: Black
+        - entity: sensor.dcp_l3550cdw_cyan_toner_remaining
+          name: Cyan
+        - entity: sensor.dcp_l3550cdw_magenta_toner_remaining
+          name: Magenta
+        - entity: sensor.dcp_l3550cdw_yellow_toner_remaining
+          name: Yellow
+        - entity: sensor.dcp_l3550cdw_drum_remaining_life
+          name: Drum
+        - type: section
+          label: Counters
+        - entity: sensor.dcp_l3550cdw_page_counter
+          name: Pages
+        - entity: sensor.dcp_l3550cdw_color_counter
+          name: Colour pages
+        - entity: sensor.dcp_l3550cdw_b_w_counter
+          name: B&W pages
+        - entity: sensor.dcp_l3550cdw_duplex_unit_page_counter
+          name: Duplex pages

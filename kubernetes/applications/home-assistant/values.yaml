@@ -49,7 +49,9 @@ homeassistant:
   # Image configuration
   image:
     repository: ghcr.io/home-assistant/home-assistant
-    tag: "2026.3.3"  # Updated from 2024.12 (was over a year old)
+    # Upgrading from 2026.3.3 in two steps (2026.6.x, then 2026.9.x) to stay
+    # inside HA's deprecation windows.
+    tag: "2026.6.4"
     pullPolicy: IfNotPresent
 
   # Service configuration
@@ -72,10 +74,11 @@ homeassistant:
 
   # Resource limits
   # Memory raised from 1Gi → 2Gi: HA was using ~1.4 GB working set, exceeding its own limit.
+  # Request matches steady-state usage (~1 GiB) so the scheduler/evictor see the real footprint.
   resources:
     requests:
       cpu: 100m
-      memory: 256Mi
+      memory: 1Gi
     limits:
       cpu: "1"       # Use "1" not "1000m" to avoid ArgoCD out-of-sync due to k8s normalization
       memory: 2Gi
@@ -101,13 +104,12 @@ homeassistant:
     # and limits for every container (including init containers).
     # Keep false unless the chart adds init-container resources support.
     enabled: false
-    # forceInit is ignored while configuration.enabled=false.
-    # Keep the desired value documented here for future re-enable.
-    # forceInit: false — configuration.yaml already contains the required
-    # `homeassistant: packages: !include_dir_merge_named packages` line.
-    # Setting true causes the expensive yq merge to run on EVERY pod restart,
-    # which amplifies cluster load during crash-loops. Keep false unless you
-    # need to reset configuration.yaml to the template (e.g. fresh install).
+    # While disabled, the live /config/configuration.yaml is hand-maintained
+    # and nothing below is applied. templateConfig is kept as the reference
+    # baseline for rebuilds: the live file must at least contain the
+    # `homeassistant: packages:` include so the Git-managed packages load.
+    # Everything new should go in packages/*.yaml, not here.
+    # forceInit=true would re-run the yq merge on every restart; keep false.
     forceInit: false
     # Trust Traefik proxy and cluster network
     trusted_proxies:
@@ -152,36 +154,44 @@ homeassistant:
         # ConfigMaps without touching this file again.
         packages: !include_dir_merge_named packages
 
-  # Mount the plex package ConfigMap into the HA pod.
-  # The ha-package-plex ConfigMap is defined in templates/plex-package-configmap.yaml.
+  # Git-managed HA packages (packages/*.yaml → templates/packages-configmap.yaml),
+  # mounted as a directory so ConfigMap updates appear without a restart.
   # pajikos chart exposes additionalVolumes / additionalMounts (not extraVolumes).
   additionalVolumes:
-    - name: ha-package-plex
+    - name: ha-packages
       configMap:
-        name: ha-package-plex
+        name: ha-packages
 
   additionalMounts:
-    - name: ha-package-plex
-      mountPath: /config/packages/plex.yaml
-      subPath: plex.yaml
+    - name: ha-packages
+      mountPath: /config/packages
       readOnly: true
 
-  # Liveness/Readiness probes
-  # Generous timeouts: under high load HA can take 3-4 min to fully start.
-  # InitialDelaySeconds=300 prevents crash-loops on resource-constrained reboots.
-  probes:
-    liveness:
-      enabled: true
-      initialDelaySeconds: 300
-      periodSeconds: 30
-      timeoutSeconds: 10
-      failureThreshold: 5
-    readiness:
-      enabled: true
-      initialDelaySeconds: 180
-      periodSeconds: 30
-      timeoutSeconds: 10
-      failureThreshold: 5
+  # Probes: the chart reads livenessProbe/readinessProbe/startupProbe (an
+  # earlier `probes:` block here was silently ignored). The startup probe
+  # allows up to 10 min for a slow start (large recorder DB, loaded node)
+  # before liveness takes over.
+  startupProbe:
+    httpGet:
+      path: /
+      port: http
+    periodSeconds: 15
+    timeoutSeconds: 5
+    failureThreshold: 40
+  livenessProbe:
+    httpGet:
+      path: /
+      port: http
+    periodSeconds: 30
+    timeoutSeconds: 10
+    failureThreshold: 5
+  readinessProbe:
+    httpGet:
+      path: /
+      port: http
+    periodSeconds: 30
+    timeoutSeconds: 10
+    failureThreshold: 3
 
   # Home Assistant's Thread integration needs direct LAN visibility for OTBR
   # border-agent discovery; REST access alone is not enough.

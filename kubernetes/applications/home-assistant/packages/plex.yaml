@@ -1,0 +1,47 @@
+# Plex power toggle: scales media/plex between 0 and 1 replicas via the
+# Kubernetes API (RBAC in kubernetes/applications/plex/templates/ha-rbac.yaml).
+# Plex defaults to replicas: 0 and is started on demand from this toggle.
+plex_package:
+  input_boolean:
+    plex_server:
+      name: "Plex Server"
+      icon: mdi:plex
+
+  shell_command:
+    plex_start: >-
+      TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token) &&
+      curl -sf
+      --cacert /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+      -H "Authorization: Bearer $TOKEN"
+      -H "Content-Type: application/strategic-merge-patch+json"
+      -X PATCH
+      https://kubernetes.default.svc/apis/apps/v1/namespaces/media/deployments/plex/scale
+      -d '{"spec":{"replicas":1}}'
+    plex_stop: >-
+      TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token) &&
+      curl -sf
+      --cacert /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+      -H "Authorization: Bearer $TOKEN"
+      -H "Content-Type: application/strategic-merge-patch+json"
+      -X PATCH
+      https://kubernetes.default.svc/apis/apps/v1/namespaces/media/deployments/plex/scale
+      -d '{"spec":{"replicas":0}}'
+
+  # automation inside packages must use list format, not named-dict format
+  automation:
+    - alias: "Start Plex when toggled on"
+      id: plex_start_on_toggle
+      trigger:
+        - platform: state
+          entity_id: input_boolean.plex_server
+          to: "on"
+      action:
+        - service: shell_command.plex_start
+    - alias: "Stop Plex when toggled off"
+      id: plex_stop_on_toggle
+      trigger:
+        - platform: state
+          entity_id: input_boolean.plex_server
+          to: "off"
+      action:
+        - service: shell_command.plex_stop

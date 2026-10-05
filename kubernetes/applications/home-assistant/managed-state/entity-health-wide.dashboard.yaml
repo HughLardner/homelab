@@ -1,0 +1,319 @@
+views:
+- title: Entity health (wide)
+  path: default_view
+  icon: mdi:view-list
+  panel: true
+  cards:
+  - type: vertical-stack
+    cards:
+    - type: custom:mushroom-chips-card
+      alignment: start
+      chips:
+      - type: template
+        icon: mdi:battery-alert-variant-outline
+        icon_color: red
+        content: |-
+          {{ states.sensor
+             | selectattr('attributes.device_class','defined')
+             | selectattr('attributes.device_class','eq','battery')
+             | rejectattr('state','in',['unknown','unavailable'])
+             | selectattr('state','lt','25')
+             | list | count }} low
+      - type: template
+        icon: mdi:signal-variant
+        icon_color: orange
+        content: |-
+          {{ (states.sensor
+              | selectattr('entity_id','search','_signal$')
+              | selectattr('state','eq','Poor')
+              | list | count) +
+             (states.sensor
+              | selectattr('entity_id','search','_signal$')
+              | selectattr('state','eq','NoSignal')
+              | list | count) }} weak signals
+      - type: template
+        icon: mdi:help-network-outline
+        icon_color: grey
+        content: |-
+          {{ states
+             | selectattr('state','eq','unavailable')
+             | list | count }} unavailable
+      - type: entity
+        entity: binary_sensor.zigbee2mqtt_bridge_connection_state
+        icon: mdi:zigbee
+        icon_color: green
+        content_info: state
+      - type: entity
+        entity: binary_sensor.slzb_mr3u_internet
+        icon: mdi:web
+        icon_color: blue
+        content_info: state
+      - type: entity
+        entity: sensor.wiser_cloud
+        icon: mdi:cloud
+        icon_color: cyan
+        content_info: state
+    - type: markdown
+      content: '### Device health (batteries, sorted worst first)'
+    - type: custom:auto-entities
+      card:
+        type: custom:bar-card
+        min: 0
+        max: 100
+        unit_of_measurement: '%'
+        positions:
+          icon: outside
+          indicator: 'off'
+          name: outside
+          value: inside
+        severity:
+        - color: '#ef5350'
+          from: 0
+          to: 25
+        - color: '#ffa726'
+          from: 25
+          to: 50
+        - color: '#66bb6a'
+          from: 50
+          to: 100
+      filter:
+        include:
+        - domain: sensor
+          attributes:
+            device_class: battery
+          state: < 101
+        exclude:
+        - state: unknown
+        - state: unavailable
+        - state: '> 100'
+      sort:
+        method: state
+        numeric: true
+      show_empty: true
+    - type: markdown
+      content: '### 7-day trends'
+    - type: horizontal-stack
+      cards:
+      - type: custom:apexcharts-card
+        header:
+          show: true
+          title: 7d battery levels (iTRV / RoomStat / sensors)
+          show_states: false
+        graph_span: 7d
+        span:
+          end: day
+        yaxis:
+        - min: 0
+          max: 100
+          decimals: 0
+        apex_config:
+          chart:
+            height: 280
+          stroke:
+            width: 2
+            curve: smooth
+          legend:
+            position: bottom
+            showForSingleSeries: false
+          grid:
+            borderColor: rgba(255,255,255,0.08)
+        series:
+        - entity: sensor.hall_motion_sensor_battery
+          name: Hall motion
+        - entity: sensor.landing_motion_sensor_battery
+          name: Landing motion
+        - entity: sensor.office_motion_sensor_battery
+          name: Office motion
+        - entity: sensor.main_bathroom_temperature_humidity_sensor_battery
+          name: Main bath
+        - entity: sensor.ensuite_temperature_humidity_sensor_battery
+          name: Ensuite
+        - entity: sensor.ams_temperature_humidity_sensor_battery
+          name: Attic AMS
+      - type: custom:apexcharts-card
+        header:
+          show: true
+          title: 7d Wiser HeatHub signal
+          show_states: false
+        graph_span: 7d
+        span:
+          end: day
+        apex_config:
+          chart:
+            height: 280
+          stroke:
+            width: 2
+            curve: smooth
+          legend:
+            position: bottom
+          grid:
+            borderColor: rgba(255,255,255,0.08)
+        series:
+        - entity: sensor.wiser_heathub_signal
+          name: HeatHub
+        - entity: sensor.slzb_mr3u_core_chip_temp
+          name: SLZB core °C
+          yaxis_id: temp
+        - entity: sensor.slzb_mr3u_zigbee_chip_temp
+          name: SLZB zigbee °C
+          yaxis_id: temp
+        yaxis:
+        - id: default
+          decimals: 0
+        - id: temp
+          opposite: true
+          decimals: 1
+    - type: horizontal-stack
+      cards:
+      - type: custom:auto-entities
+        card:
+          type: entities
+          title: Needs attention
+          show_header_toggle: false
+        filter:
+          include:
+          - entity_id: /^sensor\.wiser_itrv_.*_signal$/
+            state: Poor
+          - entity_id: /^sensor\.wiser_itrv_.*_signal$/
+            state: NoSignal
+          - entity_id: /^sensor\.wiser_roomstat_.*_signal$/
+            state: Poor
+          - entity_id: /^binary_sensor\.slzb_mr3u_internet$/
+            state: 'off'
+          - entity_id: /^binary_sensor\.zigbee2mqtt_bridge_connection_state$/
+            state: 'off'
+          - domain: sensor
+            attributes:
+              device_class: battery
+            state: < 20
+          exclude:
+          - state: unknown
+          - state: unavailable
+        show_empty: true
+      - type: entities
+        title: Bridges & hubs
+        show_header_toggle: false
+        entities:
+        - type: section
+          label: SLZB coordinator
+        - binary_sensor.slzb_mr3u_internet
+        - binary_sensor.slzb_mr3u_ethernet
+        - sensor.slzb_mr3u_connection_mode
+        - sensor.slzb_mr3u_core_chip_temp
+        - sensor.slzb_mr3u_zigbee_chip_temp
+        - sensor.slzb_mr3u_firmware_channel
+        - button.slzb_mr3u_core_restart
+        - button.slzb_mr3u_zigbee_restart
+        - type: section
+          label: Zigbee2MQTT
+        - binary_sensor.zigbee2mqtt_bridge_connection_state
+        - switch.zigbee2mqtt_bridge_permit_join
+        - sensor.zigbee2mqtt_bridge_version
+        - type: section
+          label: Wiser HeatHub
+        - sensor.wiser_cloud
+        - sensor.wiser_heathub_signal
+        - device_tracker.wiserheat03be6f
+        - type: section
+          label: myenergi hub
+        - sensor.myenergi_zappi_hub_firmware
+        - sensor.myenergi_zappi_hub_serial_number
+        - update.myenergi_update
+    - type: markdown
+      content: '### Wiser iTRVs & RoomStats'
+    - type: horizontal-stack
+      cards:
+      - type: custom:auto-entities
+        card:
+          type: entities
+          title: Radio signal
+          show_header_toggle: false
+        filter:
+          include:
+          - entity_id: /^sensor\.wiser_itrv_.*_signal$/
+          - entity_id: /^sensor\.wiser_roomstat_.*_signal$/
+        sort:
+          method: state
+        show_empty: true
+      - type: custom:auto-entities
+        card:
+          type: custom:bar-card
+          min: 0
+          max: 100
+          unit_of_measurement: '%'
+          positions:
+            icon: outside
+            indicator: 'off'
+            name: outside
+            value: inside
+          severity:
+          - color: '#ef5350'
+            from: 0
+            to: 30
+          - color: '#ffa726'
+            from: 30
+            to: 60
+          - color: '#66bb6a'
+            from: 60
+            to: 100
+        filter:
+          include:
+          - entity_id: /^sensor\.wiser_itrv_.*_battery$/
+          - entity_id: /^sensor\.wiser_roomstat_.*_battery$/
+          exclude:
+          - state: unknown
+          - state: unavailable
+          - state: '> 100'
+        sort:
+          method: state
+          numeric: true
+        show_empty: true
+    - type: markdown
+      content: '### myenergi hardware & CTs'
+    - type: horizontal-stack
+      cards:
+      - type: entities
+        title: myenergi hardware
+        show_header_toggle: false
+        entities:
+        - sensor.myenergi_zappi_hub_firmware
+        - sensor.myenergi_zappi_25608214_firmware
+        - sensor.myenergi_harvi_2239208_firmware
+        - sensor.myenergi_zappi_hub_serial_number
+        - sensor.myenergi_zappi_25608214_serial_number
+        - sensor.myenergi_harvi_2239208_serial_number
+        - update.myenergi_update
+        - binary_sensor.myenergi_zappi_25608214_update_available
+      - type: entities
+        title: Harvi / CTs
+        show_header_toggle: false
+        entities:
+        - entity: sensor.myenergi_harvi_2239208_power_ct_grid
+          name: Power CT grid
+        - entity: sensor.myenergi_harvi_2239208_power_ct_grid_inverted
+          name: Power CT grid (inverted)
+        - entity: sensor.myenergi_harvi_2239208_grid_ct1
+          name: Grid CT1
+        - entity: sensor.myenergi_harvi_2239208_none_ct2
+          name: CT2
+        - entity: sensor.myenergi_harvi_2239208_none_ct3
+          name: CT3
+    - type: markdown
+      content: '### Devices reporting last-seen'
+    - type: custom:auto-entities
+      card:
+        type: entities
+        show_header_toggle: false
+      filter:
+        include:
+        - attributes:
+            last_seen: /.*/
+          options:
+            secondary_info: last-changed
+        exclude:
+        - state: unknown
+        - state: unavailable
+      sort:
+        method: last_changed
+        reverse: true
+      show_empty: true
