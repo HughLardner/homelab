@@ -49,9 +49,7 @@ homeassistant:
   # Image configuration
   image:
     repository: ghcr.io/home-assistant/home-assistant
-    # Upgrading from 2026.3.3 in two steps (2026.6.x, then 2026.9.x) to stay
-    # inside HA's deprecation windows.
-    tag: "2026.6.4"
+    tag: "2026.9.4"
     pullPolicy: IfNotPresent
 
   # Service configuration

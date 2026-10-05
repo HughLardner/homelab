@@ -17,7 +17,7 @@ Date: 2026-10-05. Supersedes `HOME_ASSISTANT_REVIEW_2026-03-22.md`.
 | 3 | P0 | Automations in `managed-state/review-managed-automations.yaml` were never live. | Moved to `packages/` |
 | 4 | P0 | The live `configuration.yaml` lacks the `homeassistant: packages:` include, so `packages/plex.yaml` never loaded and `input_boolean.plex_server` didn't exist. | Needs one-time live edit |
 | 5 | P1 | A `cffi` 2.1.1 / `_cffi_backend` 2.0.0 mismatch breaks every `pycryptodome` import: the Google Calendar integration and the Roborock config flow. | Expected to clear with image upgrade |
-| 6 | P1 | HA was 7 months behind and no Renovate PR had been merged. | Bumped to `2026.6.4` (step 1 of 2) |
+| 6 | P1 | HA was 7 months behind and no Renovate PR had been merged. | Upgraded to `2026.9.4` (via 2026.6.4) |
 | 7 | P1 | `Bedtime — Scene & Wind Down` references the missing `scene.bedroom_lamps_bed_time` every night. | Needs UI fix |
 | 8 | P1 | Claude Code's MCP token for `/api/mcp` is rejected (401). | Needs new token |
 | 9 | P2 | UniFi CPU/memory sensors (~2s updates) produced ~60% of recorder rows. | Excluded in `packages/core.yaml` |
@@ -31,7 +31,7 @@ Date: 2026-10-05. Supersedes `HOME_ASSISTANT_REVIEW_2026-03-22.md`.
 1. Add `homeassistant: packages: !include_dir_merge_named packages` to the live `configuration.yaml`, then restart.
 2. In Settings → System → Backups, add Garage S3 and Google Drive agents, store the encryption key outside the cluster, and delete the 578 MB September manual tar.
 3. After the packages load, run `recorder.purge` with `repack: true`.
-4. Upgrade step 2 (`2026.9.x`) once 2026.6.4 is stable. Check Renovate's Dependency Dashboard.
+4. Check Renovate's Dependency Dashboard (no HA update PR was ever merged).
 5. Fix the bedtime scene reference, then delete or re-enable the disabled automations, the `map` dashboard and `plotly-graph-card`.
 6. Delete `kubernetes/applications/home-assistant-matter-hub/` and `home-assistant/secrets/home-assistant-matter-hub-auth-sealed.yaml`, and revoke that HA token.
 7. Cluster-wide: give Velero real PV backups (Kopia file-system backup or a Longhorn backup target).
