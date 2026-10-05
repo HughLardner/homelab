@@ -194,8 +194,7 @@ Automations:
 - Git-managed automations now live as HA **packages** in
   `../packages/*.yaml` (alerting, presence, plex, recorder baseline) and are
   deployed by ArgoCD via the `ha-packages` ConfigMap, so they no longer need a
-  manual MCP apply. `review-managed-automations.yaml` is superseded by
-  `../packages/alerting.yaml` + `../packages/presence.yaml`.
+  manual MCP apply.
 - Room / lighting / button automations remain UI-managed in the live
   `automations.yaml`.
 
