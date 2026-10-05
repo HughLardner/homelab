@@ -109,21 +109,14 @@ homeassistant:
     # Everything new should go in packages/*.yaml, not here.
     # forceInit=true would re-run the yq merge on every restart; keep false.
     forceInit: false
-    # Trust Traefik proxy and cluster network
-    trusted_proxies:
-      - 10.42.0.0/16    # K3s pod CIDR
-      - 10.43.0.0/16    # K3s service CIDR
-      - 192.168.10.0/24 # Local network
     templateConfig: |-
       # Loads default set of integrations. Do not remove.
       default_config:
 
-      http:
-        use_x_forwarded_for: true
-        trusted_proxies:
-          {{- range .Values.configuration.trusted_proxies }}
-          - {{ . }}
-          {{- end }}
+      # No http: block. Since HA 2026.9 the HTTP integration is configured in
+      # the UI (Settings > System > Network); YAML support ends in 2027.2.
+      # Required there: use_x_forwarded_for on, trusted proxies
+      # 10.42.0.0/16 (pods), 10.43.0.0/16 (services), 192.168.10.0/24 (LAN).
 
       # Load frontend themes from the themes folder
       frontend:
